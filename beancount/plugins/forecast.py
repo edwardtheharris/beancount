@@ -41,6 +41,7 @@ __copyright__ = "Copyright (C) 2014-2017  Martin Blais"
 __license__ = "GNU GPLv2"
 
 import datetime
+import logging
 import re
 
 from dateutil import rrule
@@ -48,6 +49,8 @@ from dateutil import rrule
 from beancount.core import data
 
 __plugins__ = ('forecast_plugin',)
+
+LOG = logging.getLogger('forecast')
 
 
 def forecast_plugin(entries, options_map):
@@ -62,42 +65,48 @@ def forecast_plugin(entries, options_map):
       A tuple of entries and errors.
     """
 
-    # Find the last entry's date.
-    date_today = entries[-1].date
+    periodicities = {
+        'YEARLY': rrule.YEARLY,
+        'MONTHLY': rrule.MONTHLY,
+        'BIWEEKLY': rrule.WEEKLY,
+    }
+    LOG.info(options_map)
 
     # Filter out forecast entries from the list of valid entries.
     forecast_entries = []
     filtered_entries = []
     for entry in entries:
-        outlist = (forecast_entries
-                   if (isinstance(entry, data.Transaction) and entry.flag == '#')
-                   else filtered_entries)
+        if (isinstance(entry, data.Transaction) and entry.flag == '#'):
+            outlist = forecast_entries
+        else:
+            outlist = filtered_entries
         outlist.append(entry)
 
     # Generate forecast entries up to the end of the current year.
     new_entries = []
     for entry in forecast_entries:
         # Parse the periodicity.
-        match = re.search(r'(^.*)\[(MONTHLY|YEARLY)'
+        match = re.search(r'(^.*)\[(MONTHLY|YEARLY|BIWEEKLY)'
                           r'(\s+REPEAT\s+([1-9][0-9]*)\s+TIMES)'
                           r'?(\s+UNTIL\s+([0-9\-]+))?\]', entry.narration)
         if not match:
             new_entries.append(entry)
             continue
         forecast_narration = match.group(1).strip()
-        forecast_interval = (rrule.YEARLY
-                             if match.group(2).strip() == 'YEARLY'
-                             else rrule.MONTHLY)
-        forecast_periodicity = {'dtstart': entry.date}
-        if match.group(4):  # e.g., [MONTHLY REPEAT 3 TIMES]:
-            forecast_periodicity['count'] = int(match.group(4))
-        elif match.group(6):  # e.g., [MONTHLY UNTIL 2020-01-01]:
-            forecast_periodicity['until'] = datetime.datetime.strptime(match.group(6),
-                                                                       '%Y-%m-%d').date()
-        else:  # e.g., [MONTHLY]
-            forecast_periodicity['until'] = datetime.date(datetime.date.today().year,
-                                                          12, 31)
+        forecast_interval = periodicities.get(match.group(2).strip())
+        forecast_periodicity = {
+            'dtstart': entry.date,
+            'count': # e.g., [MONTHLY REPEAT 3 TIMES]:
+                int(match.group(4)) if match.group(4) else None,
+            'interval':
+                2 if match.group(2).strip() == 'BIWEEKLY' else 1,
+            'until': # e.g., [MONTHLY UNTIL 2020-01-01]:
+                datetime.datetime.strptime(match.group(6), '%Y-%m-%d').date()
+                if match.group(5)
+                else datetime.date(datetime.date.today().year, 12, 31),
+        }
 
+        print(forecast_periodicity)
         # Generate a new entry for each forecast date.
         forecast_dates = [dt.date() for dt in rrule.rrule(forecast_interval,
                                                           **forecast_periodicity)]
