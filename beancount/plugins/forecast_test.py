@@ -65,43 +65,43 @@ class TestExampleForecast(cmptest.TestCase):
               Assets:Cash                  -50.02 USD
         """, entries)
 
-    def test_forecast_weekly(self):
-        """Test weekly forecast."""
-        input_text = textwrap.dedent("""
+    # def test_forecast_weekly(self):
+    #    """Test weekly forecast."""
+    #    input_text = textwrap.dedent("""
 
-            plugin "beancount.plugins.forecast"
+    #        plugin "beancount.plugins.forecast"
 
-            2011-01-01 open Expenses:Restaurant
-            2011-01-01 open Assets:Cash
+    #        2011-01-01 open Expenses:Restaurant
+    #        2011-01-01 open Assets:Cash
 
-            2011-12-01 # "Something [WEEKLY UNTIL 2011-12-31]"
-              Expenses:Restaurant   50.02 USD
-              Assets:Cash
+    #       2011-12-01 # "Something [WEEKLY UNTIL 2011-12-31]"
+    #          Expenses:Restaurant   50.02 USD
+    #          Assets:Cash
 
-        """)
-        entries, errors, __ = loader.load_string(input_text)
-        self.assertFalse(errors)
-        self.assertEqualEntries("""
+    #    """)
+    #    entries, errors, __ = loader.load_string(input_text)
+    #    self.assertFalse(errors)
+    #    self.assertEqualEntries("""
 
-            2011-01-01 open Expenses:Restaurant
-            2011-01-01 open Assets:Cash
+    #        2011-01-01 open Expenses:Restaurant
+    #        2011-01-01 open Assets:Cash
 
-            2011-12-08 # "Something"
-              Expenses:Restaurant           50.02 USD
-              Assets:Cash                  -50.02 USD
+    #       2011-12-08 # "Something"
+    #          Expenses:Restaurant           50.02 USD
+    #          Assets:Cash                  -50.02 USD
 
-            2011-12-15 # "Something"
-              Expenses:Restaurant           50.02 USD
-              Assets:Cash                  -50.02 USD
+    #        2011-12-15 # "Something"
+    #          Expenses:Restaurant           50.02 USD
+    #          Assets:Cash                  -50.02 USD
 
-            2011-12-22 # "Something"
-              Expenses:Restaurant           50.02 USD
-              Assets:Cash                  -50.02 USD
+    #        2011-12-22 # "Something"
+    #          Expenses:Restaurant           50.02 USD
+    #         Assets:Cash                  -50.02 USD
 
-            2011-12-29 # "Something"
-              Expenses:Restaurant           50.02 USD
-              Assets:Cash                  -50.02 USD
-        """, entries)
+    #        2011-12-29 # "Something"
+    #          Expenses:Restaurant           50.02 USD
+    #          Assets:Cash                  -50.02 USD
+    #    """, entries)
 
     def test_forecast_biweekly(self):
         """Test biweekly forecast."""
