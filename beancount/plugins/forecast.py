@@ -106,7 +106,7 @@ def forecast_plugin(entries, options_map):
                 else datetime.date(datetime.date.today().year, 12, 31),
         }
 
-        print(forecast_periodicity)
+        # print(forecast_periodicity)
         # Generate a new entry for each forecast date.
         forecast_dates = [dt.date() for dt in rrule.rrule(forecast_interval,
                                                           **forecast_periodicity)]
