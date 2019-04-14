@@ -124,7 +124,10 @@ def file_one_file(filename, importers, destination, idify=False, logfile=None):
         clean_basename = misc_utils.idify(clean_basename)
 
     # Prepend the date prefix.
-    new_filename = '{0:%Y-%m-%d}.{1}'.format(date, clean_basename)
+    try:
+        new_filename = '{0:%Y-%m-%d}.{1}'.format(date, clean_basename)
+    except ValueError:
+        new_filename = clean_basename
 
     # Prepend destination directory.
     new_fullname = path.normpath(path.join(destination,
