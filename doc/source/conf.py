@@ -38,7 +38,6 @@ extensions = [
     'sphinx.ext.inheritance_diagram',
     'sphinx.ext.intersphinx',
     'sphinx.ext.napoleon',
-    'sphinx.ext.linkcode',
     'sphinx.ext.todo',
     'sphinx.ext.viewcode'
 ]
@@ -63,14 +62,10 @@ html_theme = 'alabaster'
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
-
-
-def linkcode_resolve(domain, info):
-    """Resolve linkcode."""
-    if domain != 'py':
-        return None
-    if not info['module']:
-        return None
-    gh_url = "https://github.com/edwardtheharris/beancount/blob/master"
-    filename = info['module'].replace('.', '/')
-    return "{gh_url}/beancount/{filename}.py".format(gh_url, filename)
+autodoc_default_options = {
+    'members': True,
+    'member-order': 'bysource',
+    'special-members': '__init__',
+    'undoc-members': True,
+    'exclude-members': '__weakref__'
+}

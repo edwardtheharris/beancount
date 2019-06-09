@@ -1,110 +1,145 @@
 """Beancount syntax parser.
 
-IMPORTANT: The parser (and its grammar builder) produces "incomplete"
-Transaction objects. This means that some of the data can be found missing from
-the output of the parser and some of the data types vary slightly. Missing
-components are replaced not by None, but by a special constant 'NA' which helps
-diagnose problems if a user inadvertently attempts to work on an incomplete
-posting instead of a complete one. Those incomplete entries are then run through
-the "booking" routines which do two things simultaneously:
+.. topic:: Incomplete Transaction Objects
 
-1. They find matching lots for reducing inventory positions, and
-2. They interpolate missing numbers.
+    The parser (and its grammar builder) produces "incomplete"
+    Transaction objects.
+    This means that some of the data can be found missing from
+    the output of the parser and some of the data types vary slightly.
+    Missing
+    components are replaced not by None, but by a special constant 'NA'
+    which helps
+    diagnose problems if a user inadvertently attempts to work on an incomplete
+    posting instead of a complete one. Those incomplete entries are then
+    run through
+    the "booking" routines which do two things simultaneously:
 
-In doing so they normalize the entries to "complete" entries by converting a
-position/lot's "cost" attribute from a CostSpec to a Cost. A Cost is similar to
-an Amount in that it shares "number" and "currency" attributes, but also has a
-label and a lot date. A CostSpec is similar to a Cost, but has all optional
-data; it consists in a specification for matching against a particular inventory
-lot.
+    * They find matching lots for reducing inventory positions, and
+    * They interpolate missing numbers.
 
-Other parts of a posting may also be missing, not just parts of the cost.
-Leaving out some parts of the input is used to invoke interpolation, to tell
-Beancount to automatically compute the missing numbers (if possible).
+    In doing so they normalize the entries to "complete" entries by converting
+    a position/lot's "cost" attribute from a CostSpec to a Cost. A Cost
+    is similar to an Amount in that it shares "number" and
+    "currency" attributes, but also has a label and a lot date.
+    A CostSpec is similar to a Cost, but has all optional
+    data; it consists in a specification for matching against a
+    particular inventory lot.
 
-Missing components will be set to the special value
-"beancount.core.number.MISSING" until inventory booking and number interpolation
-has been completed. The "MISSING" value should never appear in completed, loaded
-transaction postings.
+    Other parts of a posting may also be missing, not just parts of the cost.
+    Leaving out some parts of the input is used to invoke interpolation, to
+    tell Beancount to automatically compute the missing numbers (if possible).
 
-For instance, all of the units may be missing:
+    Missing components will be set to the special value
+    "beancount.core.number.MISSING" until inventory booking and
+    number interpolation has been completed.
+    The "MISSING" value should never appear in completed, loaded
+    transaction postings.
 
-  INPUT: Assets:Account
-  posting.units = MISSING
+    For instance, all of the units may be missing:
 
-Or just the number of the units:
+    .. code:: python
 
-  INPUT: Assets:Account                    USD
-  posting.units = Amount(MISSING, "USD")
+        # INPUT: Assets:Account
+        posting.units = MISSING
 
-You must always specify the currency.
+    Or just the number of the units:
 
-If a price annotation is simply absent, it appears as None:
+    .. code:: python
 
-  INPUT: Assets:Account                 2 MXN
-  posting.price = None
+        # INPUT: Assets:Account                    USD
+        posting.units = Amount(MISSING, "USD")
 
-However, you may indicate that there is a price but have Beancount compute it
-automatically:
+    You must always specify the currency.
 
-  INPUT: Assets:Account                 2 MXN @
-  posting.price = Amount(MISSING, MISSING)
+    If a price annotation is simply absent, it appears as None:
 
-Indicating the conversion currency is also possible (and recommended):
+    .. code:: python
 
-  INPUT: Assets:Account                 2 MXN @ USD
-  posting.price = Amount(MISSING, "USD")
+        # INPUT: Assets:Account                 2 MXN
+        posting.price = None
 
-If a cost specification is provided, a "cost" attribute it set but it does not
-refer to a Cost instance (as in complete entries) but rather to a CostSpec
-instance. Some of the fields of a CostSpec may be MISSING if they were not
-specified in the input. For exammple:
+    However, you may indicate that there is a price but have Beancount
+    compute it automatically:
 
-  INPUT: Assets:Account  1 HOOL {100 # 5 USD}
-  posting.cost = CostSpec(Decimal("100"), Decimal("5"), "USD", None, None, False))
+    .. code:: python
 
-Note how we never consider the label of date override to be MISSING; this is
-because those inputs are optional: A missing label is simply left unset in the
-computed Cost, and a missing date override uses the date of the transaction
-that contains the posting.
+        # INPUT: Assets:Account                 2 MXN @
+        posting.price = Amount(MISSING, MISSING)
 
-You can indicate that there is a total number to be filled in like this:
+    Indicating the conversion currency is also possible (and recommended):
 
-  INPUT: Assets:Account  1 HOOL {100 # USD}
-  posting.cost = CostSpec(Decimal("100"), MISSING, "USD", None, None, False))
+    .. code:: python
 
-This is in contrast to the total value simple not being used:
+        # INPUT: Assets:Account                 2 MXN @ USD
+        posting.price = Amount(MISSING, "USD")
 
-  INPUT: Assets:Account  1 HOOL {100 USD}
-  posting.cost = CostSpec(Decimal("100"), None, "USD", None, None, False))
+    If a cost specification is provided, a "cost" attribute it set
+    but it does not refer to a Cost instance (as in complete entries)
+    but rather to a CostSpec instance. Some of the fields of a CostSpec
+    may be MISSING if they were not specified in the input. For exammple:
 
-Both per-unit and total numbers may be omitted as well, in which case, only the
-number-per-unit portion of the CostSpec will appear as MISSING:
+    .. code:: python
 
-  INPUT: Assets:Account  1 HOOL {USD}
-  posting.cost = CostSpec(MISSING, None, "USD", None, None, False))
+        # INPUT: Assets:Account  1 HOOL {100 # 5 USD}
+        posting.cost = CostSpec(Decimal("100"), Decimal("5"), "USD",
+                                None, None, False))
 
-And furthermore, all the cost basis may be missing:
+    Note how we never consider the label of date override to be MISSING; this
+    is because those inputs are optional: A missing label is simply left
+    unset in the computed Cost, and a missing date override uses the date
+    of the transaction that contains the posting.
 
-  INPUT: Assets:Account  1 HOOL {}
-  posting.cost = CostSpec(MISSING, None, MISSING, None, None, False))
+    You can indicate that there is a total number to be filled in like this:
 
-If you ask for the lots to be merged, you get this:
+    .. code:: python
 
-  INPUT: Assets:Account  1 HOOL {*}
-  posting.cost = CostSpec(MISSING, None, MISSING, None, None, True))
+        # INPUT: Assets:Account  1 HOOL {100 # USD}
+        posting.cost = CostSpec(Decimal("100"), MISSING, "USD",
+                                None, None, False))
 
-The numbers have to be computed by Beancount, so we output this with MISSING
-values.
+    This is in contrast to the total value simple not being used:
 
-Of course, you can provide only the non-basis informations, like just the date
-or label:
+    .. code:: python
 
-  INPUT: Assets:Account  1 HOOL {2015-09-21}
-  posting.cost = CostSpec(MISSING, None, MISSING, date(2015, 9, 21), None, True)
+        # INPUT: Assets:Account  1 HOOL {100 USD}
+        posting.cost = CostSpec(Decimal("100"), None, "USD", None, None, False))
 
-See the test beancount.parser.grammar_test.TestIncompleteInputs for examples and
-corresponding expected values.
+    Both per-unit and total numbers may be omitted as well, in which case,
+    only the number-per-unit portion of the CostSpec will appear as MISSING:
+
+    .. code:: python
+
+        # INPUT: Assets:Account  1 HOOL {USD}
+        posting.cost = CostSpec(MISSING, None, "USD", None, None, False))
+
+    And furthermore, all the cost basis may be missing:
+
+    .. code:: python
+
+        # INPUT: Assets:Account  1 HOOL {}
+        posting.cost = CostSpec(MISSING, None, MISSING, None, None, False))
+
+    If you ask for the lots to be merged, you get this:
+
+    .. code:: python
+
+        # INPUT: Assets:Account  1 HOOL {*}
+        posting.cost = CostSpec(MISSING, None, MISSING, None, None, True))
+
+    The numbers have to be computed by Beancount, so we output this
+    with MISSING values.
+
+    Of course, you can provide only the non-basis informations, like just
+    the date or label:
+
+    .. code:: python
+
+        # INPUT: Assets:Account  1 HOOL {2015-09-21}
+        posting.cost = CostSpec(MISSING, None, MISSING,
+                                date(2015, 9, 21), None, True)
+
+    See the test beancount.parser.grammar_test.TestIncompleteInputs
+    for examples and corresponding expected values.
 """
 __copyright__ = "Copyright (C) 2013-2016  Martin Blais"
 __license__ = "GNU GPLv2"
@@ -115,7 +150,7 @@ import textwrap
 import io
 from os import path
 
-from beancount.parser import _parser
+# from beancount.parser import _parser
 from beancount.parser import grammar
 from beancount.parser import printer
 from beancount.parser import hashsrc
