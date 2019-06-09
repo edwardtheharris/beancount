@@ -155,26 +155,26 @@ for examples and corresponding expected values.</p>
 <col style="width: 90%" />
 </colgroup>
 <tbody>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_entry_incomplete</span></code>(entry)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.parser.parser.is_entry_incomplete" title="beancount.parser.parser.is_entry_incomplete"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_entry_incomplete</span></code></a>(entry)</p></td>
 <td><p>Detect the presence of elided amounts in Transactions.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_posting_incomplete</span></code>(posting)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.parser.parser.is_posting_incomplete" title="beancount.parser.parser.is_posting_incomplete"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_posting_incomplete</span></code></a>(posting)</p></td>
 <td><p>Detect the presence of any elided amounts in a Posting.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_doc</span></code>([expect_errors, allow_incomplete])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.parser.parser.parse_doc" title="beancount.parser.parser.parse_doc"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_doc</span></code></a>([expect_errors, allow_incomplete])</p></td>
 <td><p>Factory of decorators that parse a function’s docstring as an argument.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_file</span></code>(filename, **kw)</p></td>
-<td><p>Parse a beancount input file and return Ledger with the list of transactions and tree of accounts.</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.parser.parser.parse_file" title="beancount.parser.parser.parse_file"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_file</span></code></a>(filename, **kw)</p></td>
+<td><p>Parse a beancount input file.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_many</span></code>(string[, level])</p></td>
-<td><p>Parse a string with a snippet of Beancount input and replace vars from caller.</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.parser.parser.parse_many" title="beancount.parser.parser.parse_many"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_many</span></code></a>(string[, level])</p></td>
+<td><p>Parse a string with a snippet of Beancount input.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_one</span></code>(string)</p></td>
-<td><p>Parse a string with single Beancount directive and replace vars from caller.</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.parser.parser.parse_one" title="beancount.parser.parser.parse_one"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_one</span></code></a>(string)</p></td>
+<td><p>Parse a string with single Beancount directive.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_string</span></code>(string[, report_filename])</p></td>
-<td><p>Parse a beancount input file and return Ledger with the list of transactions and tree of accounts.</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.parser.parser.parse_string" title="beancount.parser.parser.parse_string"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_string</span></code></a>(string[, report_filename])</p></td>
+<td><p>Parse a beancount input string.</p></td>
 </tr>
 </tbody>
 </table>
@@ -210,7 +210,8 @@ for examples and corresponding expected values.</p>
 <dl class="function">
 <dt id="beancount.parser.parser.parse_file">
 <code class="sig-prename descclassname">beancount.parser.parser.</code><code class="sig-name descname">parse_file</code><span class="sig-paren">(</span><em class="sig-param">filename</em>, <em class="sig-param">**kw</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/parser.html#parse_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.parser.parse_file" title="Permalink to this definition">¶</a></dt>
-<dd><p>Parse a beancount input file and return Ledger with the list of
+<dd><p>Parse a beancount input file.</p>
+<p>Returns a Ledger with the list of
 transactions and tree of accounts.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -234,7 +235,8 @@ a dict of the option values that were parsed from the file.)</p>
 <dl class="function">
 <dt id="beancount.parser.parser.parse_string">
 <code class="sig-prename descclassname">beancount.parser.parser.</code><code class="sig-name descname">parse_string</code><span class="sig-paren">(</span><em class="sig-param">string</em>, <em class="sig-param">report_filename=None</em>, <em class="sig-param">**kw</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/parser.html#parse_string"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.parser.parse_string" title="Permalink to this definition">¶</a></dt>
-<dd><p>Parse a beancount input file and return Ledger with the list of
+<dd><p>Parse a beancount input string.</p>
+<p>Return Ledger with the list of
 transactions and tree of accounts.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -282,7 +284,8 @@ minimize the features tests depend on.</p></li>
 <dl class="function">
 <dt id="beancount.parser.parser.parse_many">
 <code class="sig-prename descclassname">beancount.parser.parser.</code><code class="sig-name descname">parse_many</code><span class="sig-paren">(</span><em class="sig-param">string</em>, <em class="sig-param">level=0</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/parser.html#parse_many"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.parser.parse_many" title="Permalink to this definition">¶</a></dt>
-<dd><p>Parse a string with a snippet of Beancount input and replace vars from caller.</p>
+<dd><p>Parse a string with a snippet of Beancount input.</p>
+<p>Replaces vars from caller.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
@@ -302,7 +305,8 @@ minimize the features tests depend on.</p></li>
 <dl class="function">
 <dt id="beancount.parser.parser.parse_one">
 <code class="sig-prename descclassname">beancount.parser.parser.</code><code class="sig-name descname">parse_one</code><span class="sig-paren">(</span><em class="sig-param">string</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/parser.html#parse_one"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.parser.parse_one" title="Permalink to this definition">¶</a></dt>
-<dd><p>Parse a string with single Beancount directive and replace vars from caller.</p>
+<dd><p>Parse a string with single Beancount directive.</p>
+<p>Replaces vars from caller.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">

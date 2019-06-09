@@ -207,7 +207,7 @@
 <span class="n">hashsrc</span><span class="o">.</span><span class="n">check_parser_source_files</span><span class="p">()</span>
 
 
-<div class="viewcode-block" id="is_posting_incomplete"><a class="viewcode-back" href="../../../modules/parser/parser.html#beancount.parser.parser.is_posting_incomplete">[docs]</a><span class="k">def</span> <span class="nf">is_posting_incomplete</span><span class="p">(</span><span class="n">posting</span><span class="p">):</span>
+<div class="viewcode-block" id="is_posting_incomplete"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.parser.html#beancount.parser.parser.is_posting_incomplete">[docs]</a><span class="k">def</span> <span class="nf">is_posting_incomplete</span><span class="p">(</span><span class="n">posting</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Detect the presence of any elided amounts in a Posting.</span>
 
 <span class="sd">    If any of the possible amounts are missing, this returns True.</span>
@@ -218,24 +218,26 @@
 <span class="sd">      A boolean, true if there are some missing portions of any postings found.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">units</span> <span class="o">=</span> <span class="n">posting</span><span class="o">.</span><span class="n">units</span>
-    <span class="k">if</span> <span class="p">(</span><span class="n">units</span> <span class="ow">is</span> <span class="n">MISSING</span> <span class="ow">or</span>
-        <span class="n">units</span><span class="o">.</span><span class="n">number</span> <span class="ow">is</span> <span class="n">MISSING</span> <span class="ow">or</span>
-        <span class="n">units</span><span class="o">.</span><span class="n">currency</span> <span class="ow">is</span> <span class="n">MISSING</span><span class="p">):</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">units</span> <span class="ow">is</span> <span class="n">MISSING</span>
+            <span class="ow">or</span> <span class="n">units</span><span class="o">.</span><span class="n">number</span> <span class="ow">is</span> <span class="n">MISSING</span>
+            <span class="ow">or</span> <span class="n">units</span><span class="o">.</span><span class="n">currency</span> <span class="ow">is</span> <span class="n">MISSING</span><span class="p">):</span>
         <span class="k">return</span> <span class="kc">True</span>
     <span class="n">price</span> <span class="o">=</span> <span class="n">posting</span><span class="o">.</span><span class="n">price</span>
-    <span class="k">if</span> <span class="p">(</span><span class="n">price</span> <span class="ow">is</span> <span class="n">MISSING</span> <span class="ow">or</span>
-        <span class="n">price</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="p">(</span><span class="n">price</span><span class="o">.</span><span class="n">number</span> <span class="ow">is</span> <span class="n">MISSING</span> <span class="ow">or</span>
-                               <span class="n">price</span><span class="o">.</span><span class="n">currency</span> <span class="ow">is</span> <span class="n">MISSING</span><span class="p">)):</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">price</span> <span class="ow">is</span> <span class="n">MISSING</span>
+            <span class="ow">or</span> <span class="n">price</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="ow">and</span> <span class="p">(</span><span class="n">price</span><span class="o">.</span><span class="n">number</span> <span class="ow">is</span> <span class="n">MISSING</span>
+                 <span class="ow">or</span> <span class="n">price</span><span class="o">.</span><span class="n">currency</span> <span class="ow">is</span> <span class="n">MISSING</span><span class="p">)):</span>
         <span class="k">return</span> <span class="kc">True</span>
     <span class="n">cost</span> <span class="o">=</span> <span class="n">posting</span><span class="o">.</span><span class="n">cost</span>
-    <span class="k">if</span> <span class="n">cost</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="p">(</span><span class="n">cost</span><span class="o">.</span><span class="n">number_per</span> <span class="ow">is</span> <span class="n">MISSING</span> <span class="ow">or</span>
-                             <span class="n">cost</span><span class="o">.</span><span class="n">number_total</span> <span class="ow">is</span> <span class="n">MISSING</span> <span class="ow">or</span>
-                             <span class="n">cost</span><span class="o">.</span><span class="n">currency</span> <span class="ow">is</span> <span class="n">MISSING</span><span class="p">):</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">cost</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="ow">and</span> <span class="p">(</span><span class="n">cost</span><span class="o">.</span><span class="n">number_per</span> <span class="ow">is</span> <span class="n">MISSING</span>
+                 <span class="ow">or</span> <span class="n">cost</span><span class="o">.</span><span class="n">number_total</span> <span class="ow">is</span> <span class="n">MISSING</span>
+                 <span class="ow">or</span> <span class="n">cost</span><span class="o">.</span><span class="n">currency</span> <span class="ow">is</span> <span class="n">MISSING</span><span class="p">)):</span>
         <span class="k">return</span> <span class="kc">True</span>
     <span class="k">return</span> <span class="kc">False</span></div>
 
 
-<div class="viewcode-block" id="is_entry_incomplete"><a class="viewcode-back" href="../../../modules/parser/parser.html#beancount.parser.parser.is_entry_incomplete">[docs]</a><span class="k">def</span> <span class="nf">is_entry_incomplete</span><span class="p">(</span><span class="n">entry</span><span class="p">):</span>
+<div class="viewcode-block" id="is_entry_incomplete"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.parser.html#beancount.parser.parser.is_entry_incomplete">[docs]</a><span class="k">def</span> <span class="nf">is_entry_incomplete</span><span class="p">(</span><span class="n">entry</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Detect the presence of elided amounts in Transactions.</span>
 
 <span class="sd">    Args:</span>
@@ -249,8 +251,10 @@
     <span class="k">return</span> <span class="kc">False</span></div>
 
 
-<div class="viewcode-block" id="parse_file"><a class="viewcode-back" href="../../../modules/parser/parser.html#beancount.parser.parser.parse_file">[docs]</a><span class="k">def</span> <span class="nf">parse_file</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Parse a beancount input file and return Ledger with the list of</span>
+<div class="viewcode-block" id="parse_file"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.parser.html#beancount.parser.parser.parse_file">[docs]</a><span class="k">def</span> <span class="nf">parse_file</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Parse a beancount input file.</span>
+
+<span class="sd">    Returns a Ledger with the list of</span>
 <span class="sd">    transactions and tree of accounts.</span>
 
 <span class="sd">    Args:</span>
@@ -268,8 +272,10 @@
     <span class="k">return</span> <span class="n">builder</span><span class="o">.</span><span class="n">finalize</span><span class="p">()</span></div>
 
 
-<div class="viewcode-block" id="parse_string"><a class="viewcode-back" href="../../../modules/parser/parser.html#beancount.parser.parser.parse_string">[docs]</a><span class="k">def</span> <span class="nf">parse_string</span><span class="p">(</span><span class="n">string</span><span class="p">,</span> <span class="n">report_filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Parse a beancount input file and return Ledger with the list of</span>
+<div class="viewcode-block" id="parse_string"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.parser.html#beancount.parser.parser.parse_string">[docs]</a><span class="k">def</span> <span class="nf">parse_string</span><span class="p">(</span><span class="n">string</span><span class="p">,</span> <span class="n">report_filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Parse a beancount input string.</span>
+
+<span class="sd">    Return Ledger with the list of</span>
 <span class="sd">    transactions and tree of accounts.</span>
 
 <span class="sd">    Args:</span>
@@ -290,7 +296,7 @@
     <span class="k">return</span> <span class="n">builder</span><span class="o">.</span><span class="n">finalize</span><span class="p">()</span></div>
 
 
-<div class="viewcode-block" id="parse_doc"><a class="viewcode-back" href="../../../modules/parser/parser.html#beancount.parser.parser.parse_doc">[docs]</a><span class="k">def</span> <span class="nf">parse_doc</span><span class="p">(</span><span class="n">expect_errors</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">allow_incomplete</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<div class="viewcode-block" id="parse_doc"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.parser.html#beancount.parser.parser.parse_doc">[docs]</a><span class="k">def</span> <span class="nf">parse_doc</span><span class="p">(</span><span class="n">expect_errors</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">allow_incomplete</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Factory of decorators that parse a function&#39;s docstring as an argument.</span>
 
 <span class="sd">    Note that the decorators thus generated only run the parser on the tests,</span>
@@ -317,23 +323,25 @@
 <span class="sd">          fun: the function object to be decorated.</span>
 <span class="sd">        Returns:</span>
 <span class="sd">          A decorated test function.</span>
+
+<span class="sd">        .. note::</span>
+
+<span class="sd">         decorator line + function definition line (I realize this is largely</span>
+<span class="sd">         imperfect, but it&#39;s only for reporting in our tests) - empty</span>
+<span class="sd">         first line stripped away.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">filename</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getfile</span><span class="p">(</span><span class="n">fun</span><span class="p">)</span>
         <span class="n">lines</span><span class="p">,</span> <span class="n">lineno</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getsourcelines</span><span class="p">(</span><span class="n">fun</span><span class="p">)</span>
 
-        <span class="c1"># decorator line + function definition line (I realize this is largely</span>
-        <span class="c1"># imperfect, but it&#39;s only for reporting in our tests) - empty first line</span>
-        <span class="c1"># stripped away.</span>
         <span class="n">lineno</span> <span class="o">+=</span> <span class="mi">1</span>
 
         <span class="nd">@functools</span><span class="o">.</span><span class="n">wraps</span><span class="p">(</span><span class="n">fun</span><span class="p">)</span>
         <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
             <span class="k">assert</span> <span class="n">fun</span><span class="o">.</span><span class="vm">__doc__</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="p">(</span>
                 <span class="s2">&quot;You need to insert a docstring on </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">fun</span><span class="o">.</span><span class="vm">__name__</span><span class="p">))</span>
-            <span class="n">entries</span><span class="p">,</span> <span class="n">errors</span><span class="p">,</span> <span class="n">options_map</span> <span class="o">=</span> <span class="n">parse_string</span><span class="p">(</span><span class="n">fun</span><span class="o">.</span><span class="vm">__doc__</span><span class="p">,</span>
-                                                        <span class="n">report_filename</span><span class="o">=</span><span class="n">filename</span><span class="p">,</span>
-                                                        <span class="n">report_firstline</span><span class="o">=</span><span class="n">lineno</span><span class="p">,</span>
-                                                        <span class="n">dedent</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">entries</span><span class="p">,</span> <span class="n">errors</span><span class="p">,</span> <span class="n">options_map</span> <span class="o">=</span> <span class="n">parse_string</span><span class="p">(</span>
+                <span class="n">fun</span><span class="o">.</span><span class="vm">__doc__</span><span class="p">,</span> <span class="n">report_filename</span><span class="o">=</span><span class="n">filename</span><span class="p">,</span>
+                <span class="n">report_firstline</span><span class="o">=</span><span class="n">lineno</span><span class="p">,</span> <span class="n">dedent</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
             <span class="k">if</span> <span class="ow">not</span> <span class="n">allow_incomplete</span> <span class="ow">and</span> <span class="nb">any</span><span class="p">(</span><span class="n">is_entry_incomplete</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
                                             <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">entries</span><span class="p">):</span>
@@ -343,7 +351,8 @@
                 <span class="k">if</span> <span class="n">expect_errors</span> <span class="ow">is</span> <span class="kc">False</span> <span class="ow">and</span> <span class="n">errors</span><span class="p">:</span>
                     <span class="n">oss</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">StringIO</span><span class="p">()</span>
                     <span class="n">printer</span><span class="o">.</span><span class="n">print_errors</span><span class="p">(</span><span class="n">errors</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">oss</span><span class="p">)</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">fail</span><span class="p">(</span><span class="s2">&quot;Unexpected errors found:</span><span class="se">\n</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">oss</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()))</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">fail</span><span class="p">(</span><span class="s2">&quot;Unexpected errors found:</span><span class="se">\n</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                        <span class="n">oss</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()))</span>
                 <span class="k">elif</span> <span class="n">expect_errors</span> <span class="ow">is</span> <span class="kc">True</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">errors</span><span class="p">:</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">fail</span><span class="p">(</span><span class="s2">&quot;Expected errors, none found:&quot;</span><span class="p">)</span>
 
@@ -356,8 +365,10 @@
     <span class="k">return</span> <span class="n">decorator</span></div>
 
 
-<div class="viewcode-block" id="parse_many"><a class="viewcode-back" href="../../../modules/parser/parser.html#beancount.parser.parser.parse_many">[docs]</a><span class="k">def</span> <span class="nf">parse_many</span><span class="p">(</span><span class="n">string</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Parse a string with a snippet of Beancount input and replace vars from caller.</span>
+<div class="viewcode-block" id="parse_many"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.parser.html#beancount.parser.parser.parse_many">[docs]</a><span class="k">def</span> <span class="nf">parse_many</span><span class="p">(</span><span class="n">string</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Parse a string with a snippet of Beancount input.</span>
+
+<span class="sd">    Replaces vars from caller.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">      string: A string with some Beancount input.</span>
@@ -379,8 +390,10 @@
     <span class="k">return</span> <span class="n">entries</span></div>
 
 
-<div class="viewcode-block" id="parse_one"><a class="viewcode-back" href="../../../modules/parser/parser.html#beancount.parser.parser.parse_one">[docs]</a><span class="k">def</span> <span class="nf">parse_one</span><span class="p">(</span><span class="n">string</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Parse a string with single Beancount directive and replace vars from caller.</span>
+<div class="viewcode-block" id="parse_one"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.parser.html#beancount.parser.parser.parse_one">[docs]</a><span class="k">def</span> <span class="nf">parse_one</span><span class="p">(</span><span class="n">string</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Parse a string with single Beancount directive.</span>
+
+<span class="sd">    Replaces vars from caller.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">      string: A string with some Beancount input.</span>

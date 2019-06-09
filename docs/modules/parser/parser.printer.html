@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta charset="utf-8" />
-    <title>parser.parser &#8212; Beancount 2.2.1 documentation</title>
+    <title>parser.printer &#8212; Beancount 2.2.1 documentation</title>
     <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
@@ -15,8 +15,6 @@
     <script type="text/javascript" src="../../_static/language_data.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="beancount.parser.booking_full" href="beancount.parser.booking_full.html" />
-    <link rel="prev" title="Parser" href="index.html" />
    
   <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
   
@@ -34,7 +32,7 @@
           <div class="body" role="main">
             
   <div class="section" id="module-beancount.parser.printer">
-<span id="parser-parser"></span><h1>parser.parser<a class="headerlink" href="#module-beancount.parser.printer" title="Permalink to this headline">¶</a></h1>
+<span id="parser-printer"></span><h1>parser.printer<a class="headerlink" href="#module-beancount.parser.printer" title="Permalink to this headline">¶</a></h1>
 <p>Conversion from internal data structures to text.</p>
 <p class="rubric">Functions</p>
 <table class="longtable docutils align-default">
@@ -43,26 +41,41 @@
 <col style="width: 90%" />
 </colgroup>
 <tbody>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_posting_incomplete</span></code></p></td>
-<td><p></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.parser.printer.align_position_strings" title="beancount.parser.printer.align_position_strings"><code class="xref py py-obj docutils literal notranslate"><span class="pre">align_position_strings</span></code></a>(strings)</p></td>
+<td><p>A helper used to align rendered amounts positions to their first currency character (an uppercase letter).</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_entry_incomplete</span></code></p></td>
-<td><p></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.parser.printer.format_entry" title="beancount.parser.printer.format_entry"><code class="xref py py-obj docutils literal notranslate"><span class="pre">format_entry</span></code></a>(entry[, dcontext, render_weights])</p></td>
+<td><p>Format an entry into a string in the same input syntax the parser accepts.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_file</span></code></p></td>
-<td><p></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.parser.printer.format_error" title="beancount.parser.printer.format_error"><code class="xref py py-obj docutils literal notranslate"><span class="pre">format_error</span></code></a>(error)</p></td>
+<td><p>Given an error objects, return a formatted string for it.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_string</span></code></p></td>
-<td><p></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.parser.printer.print_entries" title="beancount.parser.printer.print_entries"><code class="xref py py-obj docutils literal notranslate"><span class="pre">print_entries</span></code></a>(entries[, dcontext, …])</p></td>
+<td><p>A convenience function that prints a list of entries to a file.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_doc</span></code></p></td>
-<td><p></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.parser.printer.print_entry" title="beancount.parser.printer.print_entry"><code class="xref py py-obj docutils literal notranslate"><span class="pre">print_entry</span></code></a>(entry[, dcontext, …])</p></td>
+<td><p>A convenience function that prints a single entry to a file.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_many</span></code></p></td>
-<td><p></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.parser.printer.print_error" title="beancount.parser.printer.print_error"><code class="xref py py-obj docutils literal notranslate"><span class="pre">print_error</span></code></a>(error[, file])</p></td>
+<td><p>A convenience function that prints a single error to a file.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_one</span></code></p></td>
-<td><p></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.parser.printer.print_errors" title="beancount.parser.printer.print_errors"><code class="xref py py-obj docutils literal notranslate"><span class="pre">print_errors</span></code></a>(errors[, file, prefix])</p></td>
+<td><p>A convenience function that prints a list of errors to a file.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.parser.printer.render_source" title="beancount.parser.printer.render_source"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_source</span></code></a>(meta)</p></td>
+<td><p>Render the source for errors in a way that it will be both detected by Emacs and align and rendered nicely.</p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Classes</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.parser.printer.EntryPrinter" title="beancount.parser.printer.EntryPrinter"><code class="xref py py-obj docutils literal notranslate"><span class="pre">EntryPrinter</span></code></a>([dcontext, render_weight, …])</p></td>
+<td><p>A multi-method interface for printing all directive types.</p></td>
 </tr>
 </tbody>
 </table>
@@ -359,24 +372,14 @@ list of directive objects.</p>
 
 <h3>Navigation</h3>
 <p class="caption"><span class="caption-text">Contents:</span></p>
-<ul class="current">
-<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Beancount Modules</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="../core/index.html">Beancount Core</a></li>
-<li class="toctree-l2 current"><a class="reference internal" href="index.html">Parser</a></li>
-</ul>
-</li>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Beancount Modules</a></li>
 </ul>
 
 <div class="relations">
 <h3>Related Topics</h3>
 <ul>
   <li><a href="../../index.html">Documentation overview</a><ul>
-  <li><a href="../index.html">Beancount Modules</a><ul>
-  <li><a href="index.html">Parser</a><ul>
-      <li>Previous: <a href="index.html" title="previous chapter">Parser</a></li>
-      <li>Next: <a href="beancount.parser.booking_full.html" title="next chapter">beancount.parser.booking_full</a></li>
-  </ul></li>
-  </ul></li>
   </ul></li>
 </ul>
 </div>
@@ -410,7 +413,7 @@ list of directive objects.</p>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |
-      <a href="../../_sources/modules/parser/parser.rst.txt"
+      <a href="../../_sources/modules/parser/parser.printer.rst.txt"
           rel="nofollow">Page source</a>
     </div>
 
