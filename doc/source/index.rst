@@ -10,7 +10,9 @@ Welcome to Beancount's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-   api
+   api/modules
+   api/beancount.core
+ 
 
 
 
