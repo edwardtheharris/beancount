@@ -155,25 +155,25 @@ for examples and corresponding expected values.</p>
 <col style="width: 90%" />
 </colgroup>
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="parser.html#beancount.parser.parser.is_entry_incomplete" title="beancount.parser.parser.is_entry_incomplete"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_entry_incomplete</span></code></a>(entry)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_entry_incomplete</span></code>(entry)</p></td>
 <td><p>Detect the presence of elided amounts in Transactions.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="parser.html#beancount.parser.parser.is_posting_incomplete" title="beancount.parser.parser.is_posting_incomplete"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_posting_incomplete</span></code></a>(posting)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_posting_incomplete</span></code>(posting)</p></td>
 <td><p>Detect the presence of any elided amounts in a Posting.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="parser.html#beancount.parser.parser.parse_doc" title="beancount.parser.parser.parse_doc"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_doc</span></code></a>([expect_errors, allow_incomplete])</p></td>
-<td><p>Factory of decorators that parse the function’s docstring as an argument.</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_doc</span></code>([expect_errors, allow_incomplete])</p></td>
+<td><p>Factory of decorators that parse a function’s docstring as an argument.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="parser.html#beancount.parser.parser.parse_file" title="beancount.parser.parser.parse_file"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_file</span></code></a>(filename, **kw)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_file</span></code>(filename, **kw)</p></td>
 <td><p>Parse a beancount input file and return Ledger with the list of transactions and tree of accounts.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="parser.html#beancount.parser.parser.parse_many" title="beancount.parser.parser.parse_many"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_many</span></code></a>(string[, level])</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_many</span></code>(string[, level])</p></td>
 <td><p>Parse a string with a snippet of Beancount input and replace vars from caller.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="parser.html#beancount.parser.parser.parse_one" title="beancount.parser.parser.parse_one"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_one</span></code></a>(string)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_one</span></code>(string)</p></td>
 <td><p>Parse a string with single Beancount directive and replace vars from caller.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="parser.html#beancount.parser.parser.parse_string" title="beancount.parser.parser.parse_string"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_string</span></code></a>(string[, report_filename])</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_string</span></code>(string[, report_filename])</p></td>
 <td><p>Parse a beancount input file and return Ledger with the list of transactions and tree of accounts.</p></td>
 </tr>
 </tbody>
@@ -256,7 +256,7 @@ whitespace from the front of the text (default is False).</p></li>
 <dl class="function">
 <dt id="beancount.parser.parser.parse_doc">
 <code class="sig-prename descclassname">beancount.parser.parser.</code><code class="sig-name descname">parse_doc</code><span class="sig-paren">(</span><em class="sig-param">expect_errors=False</em>, <em class="sig-param">allow_incomplete=False</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/parser.html#parse_doc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.parser.parse_doc" title="Permalink to this definition">¶</a></dt>
-<dd><p>Factory of decorators that parse the function’s docstring as an argument.</p>
+<dd><p>Factory of decorators that parse a function’s docstring as an argument.</p>
 <p>Note that the decorators thus generated only run the parser on the tests,
 not the loader, so is no validation, balance checks, nor plugins applied to
 the parsed text.</p>
@@ -264,12 +264,13 @@ the parsed text.</p>
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>expect_errors</strong> – A boolean or None, with the following semantics,
-True: Expect errors and fail if there are none.
-False: Expect no errors and fail if there are some.
-None: Do nothing, no check.</p></li>
-<li><p><strong>allow_incomplete</strong> – A boolean, if true, allow incomplete input. Otherwise
-barf if the input would require interpolation. The default value is set
-not to allow it because we want to minimize the features tests depend on.</p></li>
+* True: Expect errors and fail if there are none.
+* False: Expect no errors and fail if there are some.
+* None: Do nothing, no check.</p></li>
+<li><p><strong>allow_incomplete</strong> – A boolean, if true, allow incomplete input.
+Otherwise barf if the input would require interpolation.
+The default value is set not to allow it because we want to
+minimize the features tests depend on.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>

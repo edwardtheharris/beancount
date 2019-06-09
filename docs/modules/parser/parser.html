@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta charset="utf-8" />
-    <title>parser.parser &#8212; Beancount 2.2.1 documentation</title>
+    <title>parser.printer &#8212; Beancount 2.2.1 documentation</title>
     <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
@@ -33,175 +33,148 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="parser-parser">
-<h1>parser.parser<a class="headerlink" href="#parser-parser" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="module-beancount.parser.printer">
+<span id="parser-printer"></span><h1>parser.printer<a class="headerlink" href="#module-beancount.parser.printer" title="Permalink to this headline">¶</a></h1>
+<p>Conversion from internal data structures to text.</p>
+<p class="rubric">Functions</p>
 <table class="longtable docutils align-default">
 <colgroup>
 <col style="width: 10%" />
 <col style="width: 90%" />
 </colgroup>
 <tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.parser.printer.align_position_strings" title="beancount.parser.printer.align_position_strings"><code class="xref py py-obj docutils literal notranslate"><span class="pre">align_position_strings</span></code></a>(strings)</p></td>
+<td><p>A helper used to align rendered amounts positions to their first currency character (an uppercase letter).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.parser.printer.format_entry" title="beancount.parser.printer.format_entry"><code class="xref py py-obj docutils literal notranslate"><span class="pre">format_entry</span></code></a>(entry[, dcontext, render_weights])</p></td>
+<td><p>Format an entry into a string in the same input syntax the parser accepts.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.parser.printer.format_error" title="beancount.parser.printer.format_error"><code class="xref py py-obj docutils literal notranslate"><span class="pre">format_error</span></code></a>(error)</p></td>
+<td><p>Given an error objects, return a formatted string for it.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.parser.printer.print_entries" title="beancount.parser.printer.print_entries"><code class="xref py py-obj docutils literal notranslate"><span class="pre">print_entries</span></code></a>(entries[, dcontext, …])</p></td>
+<td><p>A convenience function that prints a list of entries to a file.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.parser.printer.print_entry" title="beancount.parser.printer.print_entry"><code class="xref py py-obj docutils literal notranslate"><span class="pre">print_entry</span></code></a>(entry[, dcontext, …])</p></td>
+<td><p>A convenience function that prints a single entry to a file.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.parser.printer.print_error" title="beancount.parser.printer.print_error"><code class="xref py py-obj docutils literal notranslate"><span class="pre">print_error</span></code></a>(error[, file])</p></td>
+<td><p>A convenience function that prints a single error to a file.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.parser.printer.print_errors" title="beancount.parser.printer.print_errors"><code class="xref py py-obj docutils literal notranslate"><span class="pre">print_errors</span></code></a>(errors[, file, prefix])</p></td>
+<td><p>A convenience function that prints a list of errors to a file.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.parser.printer.render_source" title="beancount.parser.printer.render_source"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_source</span></code></a>(meta)</p></td>
+<td><p>Render the source for errors in a way that it will be both detected by Emacs and align and rendered nicely.</p></td>
+</tr>
 </tbody>
 </table>
-<span class="target" id="module-beancount.parser.parser"></span><p>Beancount syntax parser.</p>
-<div class="topic">
-<p class="topic-title first">Incomplete Transaction Objects</p>
-<p>The parser (and its grammar builder) produces “incomplete”
-Transaction objects.
-This means that some of the data can be found missing from
-the output of the parser and some of the data types vary slightly.
-Missing
-components are replaced not by None, but by a special constant ‘NA’
-which helps
-diagnose problems if a user inadvertently attempts to work on an incomplete
-posting instead of a complete one. Those incomplete entries are then
-run through
-the “booking” routines which do two things simultaneously:</p>
-<ul class="simple">
-<li><p>They find matching lots for reducing inventory positions, and</p></li>
-<li><p>They interpolate missing numbers.</p></li>
-</ul>
-<p>In doing so they normalize the entries to “complete” entries by converting
-a position/lot’s “cost” attribute from a CostSpec to a Cost. A Cost
-is similar to an Amount in that it shares “number” and
-“currency” attributes, but also has a label and a lot date.
-A CostSpec is similar to a Cost, but has all optional
-data; it consists in a specification for matching against a
-particular inventory lot.</p>
-<p>Other parts of a posting may also be missing, not just parts of the cost.
-Leaving out some parts of the input is used to invoke interpolation, to
-tell Beancount to automatically compute the missing numbers (if possible).</p>
-<p>Missing components will be set to the special value
-“beancount.core.number.MISSING” until inventory booking and
-number interpolation has been completed.
-The “MISSING” value should never appear in completed, loaded
-transaction postings.</p>
-<p>For instance, all of the units may be missing:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># INPUT: Assets:Account</span>
-<span class="n">posting</span><span class="o">.</span><span class="n">units</span> <span class="o">=</span> <span class="n">MISSING</span>
-</pre></div>
-</div>
-<p>Or just the number of the units:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># INPUT: Assets:Account                    USD</span>
-<span class="n">posting</span><span class="o">.</span><span class="n">units</span> <span class="o">=</span> <span class="n">Amount</span><span class="p">(</span><span class="n">MISSING</span><span class="p">,</span> <span class="s2">&quot;USD&quot;</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>You must always specify the currency.</p>
-<p>If a price annotation is simply absent, it appears as None:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># INPUT: Assets:Account                 2 MXN</span>
-<span class="n">posting</span><span class="o">.</span><span class="n">price</span> <span class="o">=</span> <span class="bp">None</span>
-</pre></div>
-</div>
-<p>However, you may indicate that there is a price but have Beancount
-compute it automatically:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># INPUT: Assets:Account                 2 MXN @</span>
-<span class="n">posting</span><span class="o">.</span><span class="n">price</span> <span class="o">=</span> <span class="n">Amount</span><span class="p">(</span><span class="n">MISSING</span><span class="p">,</span> <span class="n">MISSING</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>Indicating the conversion currency is also possible (and recommended):</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># INPUT: Assets:Account                 2 MXN @ USD</span>
-<span class="n">posting</span><span class="o">.</span><span class="n">price</span> <span class="o">=</span> <span class="n">Amount</span><span class="p">(</span><span class="n">MISSING</span><span class="p">,</span> <span class="s2">&quot;USD&quot;</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>If a cost specification is provided, a “cost” attribute it set
-but it does not refer to a Cost instance (as in complete entries)
-but rather to a CostSpec instance. Some of the fields of a CostSpec
-may be MISSING if they were not specified in the input. For exammple:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># INPUT: Assets:Account  1 HOOL {100 # 5 USD}</span>
-<span class="n">posting</span><span class="o">.</span><span class="n">cost</span> <span class="o">=</span> <span class="n">CostSpec</span><span class="p">(</span><span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;100&quot;</span><span class="p">),</span> <span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;5&quot;</span><span class="p">),</span> <span class="s2">&quot;USD&quot;</span><span class="p">,</span>
-                        <span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">False</span><span class="p">))</span>
-</pre></div>
-</div>
-<p>Note how we never consider the label of date override to be MISSING; this
-is because those inputs are optional: A missing label is simply left
-unset in the computed Cost, and a missing date override uses the date
-of the transaction that contains the posting.</p>
-<p>You can indicate that there is a total number to be filled in like this:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># INPUT: Assets:Account  1 HOOL {100 # USD}</span>
-<span class="n">posting</span><span class="o">.</span><span class="n">cost</span> <span class="o">=</span> <span class="n">CostSpec</span><span class="p">(</span><span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;100&quot;</span><span class="p">),</span> <span class="n">MISSING</span><span class="p">,</span> <span class="s2">&quot;USD&quot;</span><span class="p">,</span>
-                        <span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">False</span><span class="p">))</span>
-</pre></div>
-</div>
-<p>This is in contrast to the total value simple not being used:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># INPUT: Assets:Account  1 HOOL {100 USD}</span>
-<span class="n">posting</span><span class="o">.</span><span class="n">cost</span> <span class="o">=</span> <span class="n">CostSpec</span><span class="p">(</span><span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;100&quot;</span><span class="p">),</span> <span class="bp">None</span><span class="p">,</span> <span class="s2">&quot;USD&quot;</span><span class="p">,</span>
-                        <span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">False</span><span class="p">))</span>
-</pre></div>
-</div>
-<p>Both per-unit and total numbers may be omitted as well, in which case,
-only the number-per-unit portion of the CostSpec will appear as MISSING:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># INPUT: Assets:Account  1 HOOL {USD}</span>
-<span class="n">posting</span><span class="o">.</span><span class="n">cost</span> <span class="o">=</span> <span class="n">CostSpec</span><span class="p">(</span><span class="n">MISSING</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="s2">&quot;USD&quot;</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">False</span><span class="p">))</span>
-</pre></div>
-</div>
-<p>And furthermore, all the cost basis may be missing:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># INPUT: Assets:Account  1 HOOL {}</span>
-<span class="n">posting</span><span class="o">.</span><span class="n">cost</span> <span class="o">=</span> <span class="n">CostSpec</span><span class="p">(</span><span class="n">MISSING</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="n">MISSING</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">False</span><span class="p">))</span>
-</pre></div>
-</div>
-<p>If you ask for the lots to be merged, you get this:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># INPUT: Assets:Account  1 HOOL {*}</span>
-<span class="n">posting</span><span class="o">.</span><span class="n">cost</span> <span class="o">=</span> <span class="n">CostSpec</span><span class="p">(</span><span class="n">MISSING</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="n">MISSING</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">True</span><span class="p">))</span>
-</pre></div>
-</div>
-<p>The numbers have to be computed by Beancount, so we output this
-with MISSING values.</p>
-<p>Of course, you can provide only the non-basis informations, like just
-the date or label:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># INPUT: Assets:Account  1 HOOL {2015-09-21}</span>
-<span class="n">posting</span><span class="o">.</span><span class="n">cost</span> <span class="o">=</span> <span class="n">CostSpec</span><span class="p">(</span><span class="n">MISSING</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="n">MISSING</span><span class="p">,</span>
-                        <span class="n">date</span><span class="p">(</span><span class="mi">2015</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">21</span><span class="p">),</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">True</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>See the test beancount.parser.grammar_test.TestIncompleteInputs
-for examples and corresponding expected values.</p>
-</div>
+<p class="rubric">Classes</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.parser.printer.EntryPrinter" title="beancount.parser.printer.EntryPrinter"><code class="xref py py-obj docutils literal notranslate"><span class="pre">EntryPrinter</span></code></a>([dcontext, render_weight, …])</p></td>
+<td><p>A multi-method interface for printing all directive types.</p></td>
+</tr>
+</tbody>
+</table>
 <dl class="function">
-<dt id="beancount.parser.parser.is_posting_incomplete">
-<code class="sig-prename descclassname">beancount.parser.parser.</code><code class="sig-name descname">is_posting_incomplete</code><span class="sig-paren">(</span><em class="sig-param">posting</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/parser.html#is_posting_incomplete"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.parser.is_posting_incomplete" title="Permalink to this definition">¶</a></dt>
-<dd><p>Detect the presence of any elided amounts in a Posting.</p>
-<p>If any of the possible amounts are missing, this returns True.</p>
+<dt id="beancount.parser.printer.align_position_strings">
+<code class="sig-prename descclassname">beancount.parser.printer.</code><code class="sig-name descname">align_position_strings</code><span class="sig-paren">(</span><em class="sig-param">strings</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/printer.html#align_position_strings"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.printer.align_position_strings" title="Permalink to this definition">¶</a></dt>
+<dd><p>A helper used to align rendered amounts positions to their first currency
+character (an uppercase letter). This class accepts a list of rendered
+positions and calculates the necessary width to render them stacked in a
+column so that the first currency word aligns. It does not go beyond that
+(further currencies, e.g. for the price or cost, are not aligned).</p>
+<p>This is perhaps best explained with an example. The following positions will
+be aligned around the column marked with ‘^’:</p>
+<blockquote>
+<div><blockquote>
+<div><blockquote>
+<div><dl class="simple">
+<dt>45 HOOL {504.30 USD}</dt><dd><p>4 HOOL {504.30 USD, 2014-11-11}</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>9.95 USD</p>
+</div></blockquote>
+<dl class="simple">
+<dt>-22473.32 CAD &#64; 1.10 USD</dt><dd><p>^</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>Strings without a currency character will be rendered flush left.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>entries</strong> – A directive.</p>
+<dd class="field-odd"><p><strong>strings</strong> – A list of rendered position or amount strings.</p>
 </dd>
 <dt class="field-even">Returns</dt>
-<dd class="field-even"><p>A boolean, true if there are some missing portions of any postings found.</p>
+<dd class="field-even"><p>A pair of a list of aligned strings and the width of the aligned strings.</p>
 </dd>
 </dl>
 </dd></dl>
 
-<dl class="function">
-<dt id="beancount.parser.parser.is_entry_incomplete">
-<code class="sig-prename descclassname">beancount.parser.parser.</code><code class="sig-name descname">is_entry_incomplete</code><span class="sig-paren">(</span><em class="sig-param">entry</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/parser.html#is_entry_incomplete"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.parser.is_entry_incomplete" title="Permalink to this definition">¶</a></dt>
-<dd><p>Detect the presence of elided amounts in Transactions.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>entries</strong> – A directive.</p>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>A boolean, true if there are some missing portions of any postings found.</p>
+<dl class="class">
+<dt id="beancount.parser.printer.EntryPrinter">
+<em class="property">class </em><code class="sig-prename descclassname">beancount.parser.printer.</code><code class="sig-name descname">EntryPrinter</code><span class="sig-paren">(</span><em class="sig-param">dcontext=None</em>, <em class="sig-param">render_weight=False</em>, <em class="sig-param">min_width_account=None</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/printer.html#EntryPrinter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.printer.EntryPrinter" title="Permalink to this definition">¶</a></dt>
+<dd><p>A multi-method interface for printing all directive types.</p>
+<dl>
+<dt>Atributes:</dt><dd><p>dcontext: An instance of DisplayContext with which to render all the numbers.
+render_weight: A boolean, true if we should render the weight of the postings</p>
+<blockquote>
+<div><p>as a comment, for debugging.</p>
+</div></blockquote>
+<p>min_width_account: An integer, the minimum width to leave for the account name.</p>
 </dd>
 </dl>
+<dl class="method">
+<dt id="beancount.parser.printer.EntryPrinter.__init__">
+<code class="sig-name descname">__init__</code><span class="sig-paren">(</span><em class="sig-param">dcontext=None</em>, <em class="sig-param">render_weight=False</em>, <em class="sig-param">min_width_account=None</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/printer.html#EntryPrinter.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.printer.EntryPrinter.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize self.  See help(type(self)) for accurate signature.</p>
 </dd></dl>
 
-<dl class="function">
-<dt id="beancount.parser.parser.parse_file">
-<code class="sig-prename descclassname">beancount.parser.parser.</code><code class="sig-name descname">parse_file</code><span class="sig-paren">(</span><em class="sig-param">filename</em>, <em class="sig-param">**kw</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/parser.html#parse_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.parser.parse_file" title="Permalink to this definition">¶</a></dt>
-<dd><p>Parse a beancount input file and return Ledger with the list of
-transactions and tree of accounts.</p>
+<dl class="attribute">
+<dt id="beancount.parser.printer.EntryPrinter.META_IGNORE">
+<code class="sig-name descname">META_IGNORE</code><em class="property"> = {'__automatic__', 'filename', 'lineno'}</em><a class="headerlink" href="#beancount.parser.printer.EntryPrinter.META_IGNORE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.printer.EntryPrinter.write_metadata">
+<code class="sig-name descname">write_metadata</code><span class="sig-paren">(</span><em class="sig-param">meta</em>, <em class="sig-param">oss</em>, <em class="sig-param">prefix='  '</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/printer.html#EntryPrinter.write_metadata"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.printer.EntryPrinter.write_metadata" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write metadata to the file object, excluding filename and line number.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>filename</strong> – the name of the file to be parsed.</p></li>
-<li><p><strong>kw</strong> – a dict of keywords to be applied to the C parser.</p></li>
+<li><p><strong>meta</strong> – A dict that contains the metadata for this directive.</p></li>
+<li><p><strong>oss</strong> – A file object to write to.</p></li>
 </ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.printer.EntryPrinter.Transaction">
+<code class="sig-name descname">Transaction</code><span class="sig-paren">(</span><em class="sig-param">entry</em>, <em class="sig-param">oss</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/printer.html#EntryPrinter.Transaction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.printer.EntryPrinter.Transaction" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.printer.EntryPrinter.render_posting_strings">
+<code class="sig-name descname">render_posting_strings</code><span class="sig-paren">(</span><em class="sig-param">posting</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/printer.html#EntryPrinter.render_posting_strings"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.printer.EntryPrinter.render_posting_strings" title="Permalink to this definition">¶</a></dt>
+<dd><p>This renders the three components of a posting: the account and its optional
+posting flag, the position, and finally, the weight of the position. The
+purpose is to align these in the caller.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>posting</strong> – An instance of Posting, the posting to render.</p>
 </dd>
 <dt class="field-even">Returns</dt>
 <dd class="field-even"><p><dl class="simple">
-<dt>A tuple of (</dt><dd><p>list of entries parsed in the file,
-list of errors that were encountered during parsing, and
-a dict of the option values that were parsed from the file.)</p>
+<dt>A tuple of</dt><dd><p>flag_account: A string, the account name including the flag.
+position_str: A string, the rendered position string.
+weight_str: A string, the rendered weight of the posting.</p>
 </dd>
 </dl>
 </p>
@@ -209,89 +182,174 @@ a dict of the option values that were parsed from the file.)</p>
 </dl>
 </dd></dl>
 
+<dl class="method">
+<dt id="beancount.parser.printer.EntryPrinter.Posting">
+<code class="sig-name descname">Posting</code><span class="sig-paren">(</span><em class="sig-param">posting</em>, <em class="sig-param">oss</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/printer.html#EntryPrinter.Posting"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.printer.EntryPrinter.Posting" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.printer.EntryPrinter.Balance">
+<code class="sig-name descname">Balance</code><span class="sig-paren">(</span><em class="sig-param">entry</em>, <em class="sig-param">oss</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/printer.html#EntryPrinter.Balance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.printer.EntryPrinter.Balance" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.printer.EntryPrinter.Note">
+<code class="sig-name descname">Note</code><span class="sig-paren">(</span><em class="sig-param">entry</em>, <em class="sig-param">oss</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/printer.html#EntryPrinter.Note"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.printer.EntryPrinter.Note" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.printer.EntryPrinter.Document">
+<code class="sig-name descname">Document</code><span class="sig-paren">(</span><em class="sig-param">entry</em>, <em class="sig-param">oss</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/printer.html#EntryPrinter.Document"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.printer.EntryPrinter.Document" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.printer.EntryPrinter.Pad">
+<code class="sig-name descname">Pad</code><span class="sig-paren">(</span><em class="sig-param">entry</em>, <em class="sig-param">oss</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/printer.html#EntryPrinter.Pad"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.printer.EntryPrinter.Pad" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.printer.EntryPrinter.Open">
+<code class="sig-name descname">Open</code><span class="sig-paren">(</span><em class="sig-param">entry</em>, <em class="sig-param">oss</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/printer.html#EntryPrinter.Open"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.printer.EntryPrinter.Open" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.printer.EntryPrinter.Close">
+<code class="sig-name descname">Close</code><span class="sig-paren">(</span><em class="sig-param">entry</em>, <em class="sig-param">oss</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/printer.html#EntryPrinter.Close"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.printer.EntryPrinter.Close" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.printer.EntryPrinter.Commodity">
+<code class="sig-name descname">Commodity</code><span class="sig-paren">(</span><em class="sig-param">entry</em>, <em class="sig-param">oss</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/printer.html#EntryPrinter.Commodity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.printer.EntryPrinter.Commodity" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.printer.EntryPrinter.Price">
+<code class="sig-name descname">Price</code><span class="sig-paren">(</span><em class="sig-param">entry</em>, <em class="sig-param">oss</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/printer.html#EntryPrinter.Price"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.printer.EntryPrinter.Price" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.printer.EntryPrinter.Event">
+<code class="sig-name descname">Event</code><span class="sig-paren">(</span><em class="sig-param">entry</em>, <em class="sig-param">oss</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/printer.html#EntryPrinter.Event"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.printer.EntryPrinter.Event" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.printer.EntryPrinter.Query">
+<code class="sig-name descname">Query</code><span class="sig-paren">(</span><em class="sig-param">entry</em>, <em class="sig-param">oss</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/printer.html#EntryPrinter.Query"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.printer.EntryPrinter.Query" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.printer.EntryPrinter.Custom">
+<code class="sig-name descname">Custom</code><span class="sig-paren">(</span><em class="sig-param">entry</em>, <em class="sig-param">oss</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/printer.html#EntryPrinter.Custom"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.printer.EntryPrinter.Custom" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
 <dl class="function">
-<dt id="beancount.parser.parser.parse_string">
-<code class="sig-prename descclassname">beancount.parser.parser.</code><code class="sig-name descname">parse_string</code><span class="sig-paren">(</span><em class="sig-param">string</em>, <em class="sig-param">report_filename=None</em>, <em class="sig-param">**kw</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/parser.html#parse_string"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.parser.parse_string" title="Permalink to this definition">¶</a></dt>
-<dd><p>Parse a beancount input file and return Ledger with the list of
-transactions and tree of accounts.</p>
+<dt id="beancount.parser.printer.format_entry">
+<code class="sig-prename descclassname">beancount.parser.printer.</code><code class="sig-name descname">format_entry</code><span class="sig-paren">(</span><em class="sig-param">entry</em>, <em class="sig-param">dcontext=None</em>, <em class="sig-param">render_weights=False</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/printer.html#format_entry"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.printer.format_entry" title="Permalink to this definition">¶</a></dt>
+<dd><p>Format an entry into a string in the same input syntax the parser accepts.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>string</strong> – A string, the contents to be parsed instead of a file’s.</p></li>
-<li><p><strong>report_filename</strong> – A string, the source filename from which this string
-has been extracted, if any. This is stored in the metadata of the
-parsed entries.</p></li>
-<li><p><strong>**kw</strong> – See parse.c. This function parses out ‘dedent’ which removes
-whitespace from the front of the text (default is False).</p></li>
+<li><p><strong>entry</strong> – An entry instance.</p></li>
+<li><p><strong>dcontext</strong> – An instance of DisplayContext used to format the numbers.</p></li>
+<li><p><strong>render_weights</strong> – A boolean, true to render the weights for debugging.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
-<dd class="field-even"><p>Same as the output of parse_file().</p>
+<dd class="field-even"><p>A string, the formatted entry.</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="function">
-<dt id="beancount.parser.parser.parse_doc">
-<code class="sig-prename descclassname">beancount.parser.parser.</code><code class="sig-name descname">parse_doc</code><span class="sig-paren">(</span><em class="sig-param">expect_errors=False</em>, <em class="sig-param">allow_incomplete=False</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/parser.html#parse_doc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.parser.parse_doc" title="Permalink to this definition">¶</a></dt>
-<dd><p>Factory of decorators that parse the function’s docstring as an argument.</p>
-<p>Note that the decorators thus generated only run the parser on the tests,
-not the loader, so is no validation, balance checks, nor plugins applied to
-the parsed text.</p>
+<dt id="beancount.parser.printer.print_entry">
+<code class="sig-prename descclassname">beancount.parser.printer.</code><code class="sig-name descname">print_entry</code><span class="sig-paren">(</span><em class="sig-param">entry</em>, <em class="sig-param">dcontext=None</em>, <em class="sig-param">render_weights=False</em>, <em class="sig-param">file=None</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/printer.html#print_entry"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.printer.print_entry" title="Permalink to this definition">¶</a></dt>
+<dd><p>A convenience function that prints a single entry to a file.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>expect_errors</strong> – A boolean or None, with the following semantics,
-True: Expect errors and fail if there are none.
-False: Expect no errors and fail if there are some.
-None: Do nothing, no check.</p></li>
-<li><p><strong>allow_incomplete</strong> – A boolean, if true, allow incomplete input. Otherwise
-barf if the input would require interpolation. The default value is set
-not to allow it because we want to minimize the features tests depend on.</p></li>
+<li><p><strong>entry</strong> – A directive entry.</p></li>
+<li><p><strong>dcontext</strong> – An instance of DisplayContext used to format the numbers.</p></li>
+<li><p><strong>render_weights</strong> – A boolean, true to render the weights for debugging.</p></li>
+<li><p><strong>file</strong> – An optional file object to write the entries to.</p></li>
 </ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>A decorator for test functions.</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="function">
-<dt id="beancount.parser.parser.parse_many">
-<code class="sig-prename descclassname">beancount.parser.parser.</code><code class="sig-name descname">parse_many</code><span class="sig-paren">(</span><em class="sig-param">string</em>, <em class="sig-param">level=0</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/parser.html#parse_many"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.parser.parse_many" title="Permalink to this definition">¶</a></dt>
-<dd><p>Parse a string with a snippet of Beancount input and replace vars from caller.</p>
+<dt id="beancount.parser.printer.print_entries">
+<code class="sig-prename descclassname">beancount.parser.printer.</code><code class="sig-name descname">print_entries</code><span class="sig-paren">(</span><em class="sig-param">entries</em>, <em class="sig-param">dcontext=None</em>, <em class="sig-param">render_weights=False</em>, <em class="sig-param">file=None</em>, <em class="sig-param">prefix=None</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/printer.html#print_entries"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.printer.print_entries" title="Permalink to this definition">¶</a></dt>
+<dd><p>A convenience function that prints a list of entries to a file.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>string</strong> – A string with some Beancount input.</p></li>
-<li><p><strong>level</strong> – The number of extra stacks to ignore.</p></li>
+<li><p><strong>entries</strong> – A list of directives.</p></li>
+<li><p><strong>dcontext</strong> – An instance of DisplayContext used to format the numbers.</p></li>
+<li><p><strong>render_weights</strong> – A boolean, true to render the weights for debugging.</p></li>
+<li><p><strong>file</strong> – An optional file object to write the entries to.</p></li>
 </ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>A list of entries.</p>
-</dd>
-<dt class="field-odd">Raises</dt>
-<dd class="field-odd"><p><strong>AssertionError</strong> – If there are any errors.</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="function">
-<dt id="beancount.parser.parser.parse_one">
-<code class="sig-prename descclassname">beancount.parser.parser.</code><code class="sig-name descname">parse_one</code><span class="sig-paren">(</span><em class="sig-param">string</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/parser.html#parse_one"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.parser.parse_one" title="Permalink to this definition">¶</a></dt>
-<dd><p>Parse a string with single Beancount directive and replace vars from caller.</p>
+<dt id="beancount.parser.printer.render_source">
+<code class="sig-prename descclassname">beancount.parser.printer.</code><code class="sig-name descname">render_source</code><span class="sig-paren">(</span><em class="sig-param">meta</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/printer.html#render_source"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.printer.render_source" title="Permalink to this definition">¶</a></dt>
+<dd><p>Render the source for errors in a way that it will be both detected by
+Emacs and align and rendered nicely.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>meta</strong> – A dict with the metadata.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A string, rendered to be interpretable as a message location for Emacs or
+other editors.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.parser.printer.format_error">
+<code class="sig-prename descclassname">beancount.parser.printer.</code><code class="sig-name descname">format_error</code><span class="sig-paren">(</span><em class="sig-param">error</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/printer.html#format_error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.printer.format_error" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given an error objects, return a formatted string for it.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>error</strong> – a namedtuple objects representing an error. It has to have an
+‘entry’ attribute that may be either a single directive object or a
+list of directive objects.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A string, the errors rendered.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.parser.printer.print_error">
+<code class="sig-prename descclassname">beancount.parser.printer.</code><code class="sig-name descname">print_error</code><span class="sig-paren">(</span><em class="sig-param">error</em>, <em class="sig-param">file=None</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/printer.html#print_error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.printer.print_error" title="Permalink to this definition">¶</a></dt>
+<dd><p>A convenience function that prints a single error to a file.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>string</strong> – A string with some Beancount input.</p></li>
-<li><p><strong>level</strong> – The number of extra stacks to ignore.</p></li>
+<li><p><strong>error</strong> – An error object.</p></li>
+<li><p><strong>file</strong> – An optional file object to write the errors to.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>A list of entries.</p>
-</dd>
-<dt class="field-odd">Raises</dt>
-<dd class="field-odd"><p><strong>AssertionError</strong> – If there are any errors.</p>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.parser.printer.print_errors">
+<code class="sig-prename descclassname">beancount.parser.printer.</code><code class="sig-name descname">print_errors</code><span class="sig-paren">(</span><em class="sig-param">errors</em>, <em class="sig-param">file=None</em>, <em class="sig-param">prefix=None</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/printer.html#print_errors"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.printer.print_errors" title="Permalink to this definition">¶</a></dt>
+<dd><p>A convenience function that prints a list of errors to a file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>errors</strong> – A list of errors.</p></li>
+<li><p><strong>file</strong> – An optional file object to write the errors to.</p></li>
+</ul>
 </dd>
 </dl>
 </dd></dl>

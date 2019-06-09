@@ -184,19 +184,21 @@ def is_posting_incomplete(posting):
       A boolean, true if there are some missing portions of any postings found.
     """
     units = posting.units
-    if (units is MISSING or
-        units.number is MISSING or
-        units.currency is MISSING):
+    if (units is MISSING
+            or units.number is MISSING
+            or units.currency is MISSING):
         return True
     price = posting.price
-    if (price is MISSING or
-        price is not None and (price.number is MISSING or
-                               price.currency is MISSING)):
+    if (price is MISSING
+            or price is not None
+            and (price.number is MISSING
+                 or price.currency is MISSING)):
         return True
     cost = posting.cost
-    if cost is not None and (cost.number_per is MISSING or
-                             cost.number_total is MISSING or
-                             cost.currency is MISSING):
+    if (cost is not None
+            and (cost.number_per is MISSING
+                 or cost.number_total is MISSING
+                 or cost.currency is MISSING)):
         return True
     return False
 
@@ -216,7 +218,9 @@ def is_entry_incomplete(entry):
 
 
 def parse_file(filename, **kw):
-    """Parse a beancount input file and return Ledger with the list of
+    """Parse a beancount input file.
+
+    Returns a Ledger with the list of
     transactions and tree of accounts.
 
     Args:
@@ -235,7 +239,8 @@ def parse_file(filename, **kw):
 
 
 def parse_string(string, report_filename=None, **kw):
-    """Parse a beancount input file and return Ledger with the list of
+    """Parse a beancount input string.
+    Return Ledger with the list of
     transactions and tree of accounts.
 
     Args:
@@ -251,27 +256,30 @@ def parse_string(string, report_filename=None, **kw):
     if kw.pop('dedent', None):
         string = textwrap.dedent(string)
     builder = grammar.Builder(report_filename or '<string>')
-    _parser.parse_string(string, builder, report_filename=report_filename, **kw)
+    _parser.parse_string(string, builder,
+                         report_filename=report_filename, **kw)
     return builder.finalize()
 
 
 def parse_doc(expect_errors=False, allow_incomplete=False):
-    """Factory of decorators that parse the function's docstring as an argument.
+    """Factory of decorators that parse a function's docstring as an argument.
 
     Note that the decorators thus generated only run the parser on the tests,
     not the loader, so is no validation, balance checks, nor plugins applied to
     the parsed text.
 
-    Args:
-      expect_errors: A boolean or None, with the following semantics,
-        True: Expect errors and fail if there are none.
-        False: Expect no errors and fail if there are some.
-        None: Do nothing, no check.
-      allow_incomplete: A boolean, if true, allow incomplete input. Otherwise
-        barf if the input would require interpolation. The default value is set
-        not to allow it because we want to minimize the features tests depend on.
-    Returns:
-      A decorator for test functions.
+    :arg expect_errors: A boolean or None, with the following semantics,
+        * True: Expect errors and fail if there are none.
+        * False: Expect no errors and fail if there are some.
+        * None: Do nothing, no check.
+    :type bool:
+    :type none:
+    :arg allow_incomplete: A boolean, if true, allow incomplete input.
+        Otherwise barf if the input would require interpolation.
+        The default value is set not to allow it because we want to
+        minimize the features tests depend on.
+    :type bool:
+    :returns: A decorator for test functions.
     """
     def decorator(fun):
         """A decorator that parses the function's docstring as an argument.
@@ -280,23 +288,25 @@ def parse_doc(expect_errors=False, allow_incomplete=False):
           fun: the function object to be decorated.
         Returns:
           A decorated test function.
+
+        .. note::
+
+         decorator line + function definition line (I realize this is largely
+         imperfect, but it's only for reporting in our tests) - empty
+         first line stripped away.
         """
         filename = inspect.getfile(fun)
         lines, lineno = inspect.getsourcelines(fun)
 
-        # decorator line + function definition line (I realize this is largely
-        # imperfect, but it's only for reporting in our tests) - empty first line
-        # stripped away.
         lineno += 1
 
         @functools.wraps(fun)
         def wrapper(self):
             assert fun.__doc__ is not None, (
                 "You need to insert a docstring on {}".format(fun.__name__))
-            entries, errors, options_map = parse_string(fun.__doc__,
-                                                        report_filename=filename,
-                                                        report_firstline=lineno,
-                                                        dedent=True)
+            entries, errors, options_map = parse_string(
+                fun.__doc__, report_filename=filename,
+                report_firstline=lineno, dedent=True)
 
             if not allow_incomplete and any(is_entry_incomplete(entry)
                                             for entry in entries):
@@ -306,7 +316,8 @@ def parse_doc(expect_errors=False, allow_incomplete=False):
                 if expect_errors is False and errors:
                     oss = io.StringIO()
                     printer.print_errors(errors, file=oss)
-                    self.fail("Unexpected errors found:\n{}".format(oss.getvalue()))
+                    self.fail("Unexpected errors found:\n{}".format(
+                        oss.getvalue()))
                 elif expect_errors is True and not errors:
                     self.fail("Expected errors, none found:")
 
@@ -320,7 +331,9 @@ def parse_doc(expect_errors=False, allow_incomplete=False):
 
 
 def parse_many(string, level=0):
-    """Parse a string with a snippet of Beancount input and replace vars from caller.
+    """Parse a string with a snippet of Beancount input.
+
+    Replaces vars from caller.
 
     Args:
       string: A string with some Beancount input.
@@ -343,7 +356,9 @@ def parse_many(string, level=0):
 
 
 def parse_one(string):
-    """Parse a string with single Beancount directive and replace vars from caller.
+    """Parse a string with single Beancount directive.
+
+    Replaces vars from caller.
 
     Args:
       string: A string with some Beancount input.
