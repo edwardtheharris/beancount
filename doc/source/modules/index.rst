@@ -6,3 +6,4 @@ Beancount Modules
    :caption: Contents:
 
    core/index
+   parser/index

@@ -1,0 +1,4 @@
+Parser
+======
+
+.. automodule:: beancount.parser
