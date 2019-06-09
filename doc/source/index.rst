@@ -10,6 +10,10 @@ Welcome to Beancount's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+   api/modules
+   api/beancount.core
+ 
+
 
 
 Indices and tables
