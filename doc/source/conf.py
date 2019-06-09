@@ -1,4 +1,5 @@
-# Configuration file for the Sphinx documentation builder.
+#!/usr/bin/python3
+"""Configuration file for the Sphinx documentation builder."""
 #
 # This file only contains a selection of the most common options. For a full
 # list see the documentation:
@@ -10,11 +11,6 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
-# import sys
-# sys.path.insert(0, os.path.abspath('.'))
-
-
 # -- Project information -----------------------------------------------------
 
 project = 'Beancount'
@@ -31,6 +27,20 @@ release = '2.2.1'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    'sphinx.ext.autodoc',
+    'sphinx.ext.autosectionlabel',
+    'sphinx.ext.autosummary',
+    'sphinx.ext.coverage',
+    'sphinx.ext.doctest',
+    'sphinx.ext.extlinks',
+    'sphinx.ext.githubpages',
+    'sphinx.ext.graphviz',
+    'sphinx.ext.inheritance_diagram',
+    'sphinx.ext.intersphinx',
+    'sphinx.ext.napoleon',
+    'sphinx.ext.linkcode',
+    'sphinx.ext.todo',
+    'sphinx.ext.viewcode'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -53,3 +63,14 @@ html_theme = 'alabaster'
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+
+
+def linkcode_resolve(domain, info):
+    """Resolve linkcode."""
+    if domain != 'py':
+        return None
+    if not info['module']:
+        return None
+    gh_url = "https://github.com/edwardtheharris/beancount/blob/master"
+    filename = info['module'].replace('.', '/')
+    return "{gh_url}/beancount/{filename}.py".format(gh_url, filename)

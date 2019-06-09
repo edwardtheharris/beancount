@@ -4,3 +4,4 @@
 *cpython*
 build/
 __pycache__/
+*.pyc
