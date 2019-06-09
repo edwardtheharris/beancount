@@ -1,6 +1,6 @@
 parser.parser
 =============
 
-.. autosummary:: beancount.parser.parser
+.. autosummary::
 
 .. automodule:: beancount.parser.parser

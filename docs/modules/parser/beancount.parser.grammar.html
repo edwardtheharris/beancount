@@ -1,0 +1,1030 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>beancount.parser.grammar &#8212; Beancount 2.2.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="beancount.parser.hashsrc" href="beancount.parser.hashsrc.html" />
+    <link rel="prev" title="beancount.parser.cmptest" href="beancount.parser.cmptest.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-beancount.parser.grammar">
+<span id="beancount-parser-grammar"></span><h1>beancount.parser.grammar<a class="headerlink" href="#module-beancount.parser.grammar" title="Permalink to this headline">¶</a></h1>
+<p>Builder for Beancount grammar.</p>
+<p class="rubric">Functions</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.parser.grammar.valid_account_regexp" title="beancount.parser.grammar.valid_account_regexp"><code class="xref py py-obj docutils literal notranslate"><span class="pre">valid_account_regexp</span></code></a>(options)</p></td>
+<td><p>Build a regexp to validate account names from the options.</p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Classes</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.parser.grammar.Builder" title="beancount.parser.grammar.Builder"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Builder</span></code></a>(filename)</p></td>
+<td><p>A builder used by the lexer and grammar parser as callbacks to create the data objects corresponding to rules parsed from the input file.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.parser.grammar.CompoundAmount" title="beancount.parser.grammar.CompoundAmount"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CompoundAmount</span></code></a>(number_per, number_total, …)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.parser.grammar.DeprecatedError" title="beancount.parser.grammar.DeprecatedError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DeprecatedError</span></code></a>(source, message, entry)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.parser.grammar.KeyValue" title="beancount.parser.grammar.KeyValue"><code class="xref py py-obj docutils literal notranslate"><span class="pre">KeyValue</span></code></a>(key, value)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.parser.grammar.ParserError" title="beancount.parser.grammar.ParserError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ParserError</span></code></a>(source, message, entry)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.parser.grammar.ParserSyntaxError" title="beancount.parser.grammar.ParserSyntaxError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ParserSyntaxError</span></code></a>(source, message, entry)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.parser.grammar.TagsLinks" title="beancount.parser.grammar.TagsLinks"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TagsLinks</span></code></a>(tags, links)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.parser.grammar.ValueType" title="beancount.parser.grammar.ValueType"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ValueType</span></code></a>(value, dtype)</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+<dl class="class">
+<dt id="beancount.parser.grammar.ParserError">
+<em class="property">class </em><code class="sig-prename descclassname">beancount.parser.grammar.</code><code class="sig-name descname">ParserError</code><span class="sig-paren">(</span><em class="sig-param">source</em>, <em class="sig-param">message</em>, <em class="sig-param">entry</em><span class="sig-paren">)</span><a class="headerlink" href="#beancount.parser.grammar.ParserError" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="beancount.parser.grammar.ParserError.entry">
+<em class="property">property </em><code class="sig-name descname">entry</code><a class="headerlink" href="#beancount.parser.grammar.ParserError.entry" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 2</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.ParserError.message">
+<em class="property">property </em><code class="sig-name descname">message</code><a class="headerlink" href="#beancount.parser.grammar.ParserError.message" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 1</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.ParserError.source">
+<em class="property">property </em><code class="sig-name descname">source</code><a class="headerlink" href="#beancount.parser.grammar.ParserError.source" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="beancount.parser.grammar.ParserSyntaxError">
+<em class="property">class </em><code class="sig-prename descclassname">beancount.parser.grammar.</code><code class="sig-name descname">ParserSyntaxError</code><span class="sig-paren">(</span><em class="sig-param">source</em>, <em class="sig-param">message</em>, <em class="sig-param">entry</em><span class="sig-paren">)</span><a class="headerlink" href="#beancount.parser.grammar.ParserSyntaxError" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="beancount.parser.grammar.ParserSyntaxError.entry">
+<em class="property">property </em><code class="sig-name descname">entry</code><a class="headerlink" href="#beancount.parser.grammar.ParserSyntaxError.entry" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 2</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.ParserSyntaxError.message">
+<em class="property">property </em><code class="sig-name descname">message</code><a class="headerlink" href="#beancount.parser.grammar.ParserSyntaxError.message" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 1</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.ParserSyntaxError.source">
+<em class="property">property </em><code class="sig-name descname">source</code><a class="headerlink" href="#beancount.parser.grammar.ParserSyntaxError.source" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="beancount.parser.grammar.DeprecatedError">
+<em class="property">class </em><code class="sig-prename descclassname">beancount.parser.grammar.</code><code class="sig-name descname">DeprecatedError</code><span class="sig-paren">(</span><em class="sig-param">source</em>, <em class="sig-param">message</em>, <em class="sig-param">entry</em><span class="sig-paren">)</span><a class="headerlink" href="#beancount.parser.grammar.DeprecatedError" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="beancount.parser.grammar.DeprecatedError.entry">
+<em class="property">property </em><code class="sig-name descname">entry</code><a class="headerlink" href="#beancount.parser.grammar.DeprecatedError.entry" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 2</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.DeprecatedError.message">
+<em class="property">property </em><code class="sig-name descname">message</code><a class="headerlink" href="#beancount.parser.grammar.DeprecatedError.message" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 1</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.DeprecatedError.source">
+<em class="property">property </em><code class="sig-name descname">source</code><a class="headerlink" href="#beancount.parser.grammar.DeprecatedError.source" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="beancount.parser.grammar.KeyValue">
+<em class="property">class </em><code class="sig-prename descclassname">beancount.parser.grammar.</code><code class="sig-name descname">KeyValue</code><span class="sig-paren">(</span><em class="sig-param">key</em>, <em class="sig-param">value</em><span class="sig-paren">)</span><a class="headerlink" href="#beancount.parser.grammar.KeyValue" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="beancount.parser.grammar.KeyValue.key">
+<em class="property">property </em><code class="sig-name descname">key</code><a class="headerlink" href="#beancount.parser.grammar.KeyValue.key" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.KeyValue.value">
+<em class="property">property </em><code class="sig-name descname">value</code><a class="headerlink" href="#beancount.parser.grammar.KeyValue.value" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 1</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="beancount.parser.grammar.ValueType">
+<em class="property">class </em><code class="sig-prename descclassname">beancount.parser.grammar.</code><code class="sig-name descname">ValueType</code><span class="sig-paren">(</span><em class="sig-param">value</em>, <em class="sig-param">dtype</em><span class="sig-paren">)</span><a class="headerlink" href="#beancount.parser.grammar.ValueType" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="beancount.parser.grammar.ValueType.dtype">
+<em class="property">property </em><code class="sig-name descname">dtype</code><a class="headerlink" href="#beancount.parser.grammar.ValueType.dtype" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 1</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.ValueType.value">
+<em class="property">property </em><code class="sig-name descname">value</code><a class="headerlink" href="#beancount.parser.grammar.ValueType.value" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="beancount.parser.grammar.CompoundAmount">
+<em class="property">class </em><code class="sig-prename descclassname">beancount.parser.grammar.</code><code class="sig-name descname">CompoundAmount</code><span class="sig-paren">(</span><em class="sig-param">number_per</em>, <em class="sig-param">number_total</em>, <em class="sig-param">currency</em><span class="sig-paren">)</span><a class="headerlink" href="#beancount.parser.grammar.CompoundAmount" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="beancount.parser.grammar.CompoundAmount.currency">
+<em class="property">property </em><code class="sig-name descname">currency</code><a class="headerlink" href="#beancount.parser.grammar.CompoundAmount.currency" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 2</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.CompoundAmount.number_per">
+<em class="property">property </em><code class="sig-name descname">number_per</code><a class="headerlink" href="#beancount.parser.grammar.CompoundAmount.number_per" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.CompoundAmount.number_total">
+<em class="property">property </em><code class="sig-name descname">number_total</code><a class="headerlink" href="#beancount.parser.grammar.CompoundAmount.number_total" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 1</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="data">
+<dt id="beancount.parser.grammar.MERGE_COST">
+<code class="sig-prename descclassname">beancount.parser.grammar.</code><code class="sig-name descname">MERGE_COST</code><em class="property"> = '***'</em><a class="headerlink" href="#beancount.parser.grammar.MERGE_COST" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="beancount.parser.grammar.valid_account_regexp">
+<code class="sig-prename descclassname">beancount.parser.grammar.</code><code class="sig-name descname">valid_account_regexp</code><span class="sig-paren">(</span><em class="sig-param">options</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#valid_account_regexp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.valid_account_regexp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Build a regexp to validate account names from the options.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>options</strong> – A dict of options, as per beancount.parser.options.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A string, a regular expression that will match all account names.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="class">
+<dt id="beancount.parser.grammar.TagsLinks">
+<em class="property">class </em><code class="sig-prename descclassname">beancount.parser.grammar.</code><code class="sig-name descname">TagsLinks</code><span class="sig-paren">(</span><em class="sig-param">tags</em>, <em class="sig-param">links</em><span class="sig-paren">)</span><a class="headerlink" href="#beancount.parser.grammar.TagsLinks" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="beancount.parser.grammar.TagsLinks.links">
+<em class="property">property </em><code class="sig-name descname">links</code><a class="headerlink" href="#beancount.parser.grammar.TagsLinks.links" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 1</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.TagsLinks.tags">
+<em class="property">property </em><code class="sig-name descname">tags</code><a class="headerlink" href="#beancount.parser.grammar.TagsLinks.tags" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="beancount.parser.grammar.Builder">
+<em class="property">class </em><code class="sig-prename descclassname">beancount.parser.grammar.</code><code class="sig-name descname">Builder</code><span class="sig-paren">(</span><em class="sig-param">filename</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder" title="Permalink to this definition">¶</a></dt>
+<dd><p>A builder used by the lexer and grammar parser as callbacks to create
+the data objects corresponding to rules parsed from the input file.</p>
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.__init__">
+<code class="sig-name descname">__init__</code><span class="sig-paren">(</span><em class="sig-param">filename</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize self.  See help(type(self)) for accurate signature.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.dcupdate">
+<code class="sig-name descname">dcupdate</code><span class="sig-paren">(</span><em class="sig-param">number</em>, <em class="sig-param">currency</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.dcupdate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.dcupdate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the display context.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.finalize">
+<code class="sig-name descname">finalize</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.finalize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.finalize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Finalize the parser, check for final errors and return the triple.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>A triple of</dt><dd><p>entries: A list of parsed directives, which may need completion.
+errors: A list of errors, hopefully empty.
+options_map: A dict of options.</p>
+</dd>
+</dl>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.get_entries">
+<code class="sig-name descname">get_entries</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.get_entries"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.get_entries" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the accumulated entries.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>A list of sorted directives.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.get_options">
+<code class="sig-name descname">get_options</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.get_options"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.get_options" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the final options map.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>A dict of option names to options.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.get_invalid_account">
+<code class="sig-name descname">get_invalid_account</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.get_invalid_account"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.get_invalid_account" title="Permalink to this definition">¶</a></dt>
+<dd><p>See base class.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.get_long_string_maxlines">
+<code class="sig-name descname">get_long_string_maxlines</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.get_long_string_maxlines"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.get_long_string_maxlines" title="Permalink to this definition">¶</a></dt>
+<dd><p>See base class.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.store_result">
+<code class="sig-name descname">store_result</code><span class="sig-paren">(</span><em class="sig-param">entries</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.store_result"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.store_result" title="Permalink to this definition">¶</a></dt>
+<dd><p>Start rule stores the final result here.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>entries</strong> – A list of entries to store.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.build_grammar_error">
+<code class="sig-name descname">build_grammar_error</code><span class="sig-paren">(</span><em class="sig-param">filename</em>, <em class="sig-param">lineno</em>, <em class="sig-param">exc_value</em>, <em class="sig-param">exc_type=None</em>, <em class="sig-param">exc_traceback=None</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.build_grammar_error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.build_grammar_error" title="Permalink to this definition">¶</a></dt>
+<dd><p>Build a grammar error and appends it to the list of pending errors.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filename</strong> – The current filename</p></li>
+<li><p><strong>lineno</strong> – The current line number</p></li>
+<li><p><strong>excvalue</strong> – The exception value, or a str, the message of the error.</p></li>
+<li><p><strong>exc_type</strong> – An exception type, if an exception occurred.</p></li>
+<li><p><strong>exc_traceback</strong> – A traceback object.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.pipe_deprecated_error">
+<code class="sig-name descname">pipe_deprecated_error</code><span class="sig-paren">(</span><em class="sig-param">filename</em>, <em class="sig-param">lineno</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.pipe_deprecated_error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.pipe_deprecated_error" title="Permalink to this definition">¶</a></dt>
+<dd><p>Issue a ‘Pipe deprecated’ error.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filename</strong> – The current filename</p></li>
+<li><p><strong>lineno</strong> – The current line number</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.pushtag">
+<code class="sig-name descname">pushtag</code><span class="sig-paren">(</span><em class="sig-param">tag</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.pushtag"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.pushtag" title="Permalink to this definition">¶</a></dt>
+<dd><p>Push a tag on the current set of tags.</p>
+<p>Note that this does not need to be stack ordered.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>tag</strong> – A string, a tag to be added.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.poptag">
+<code class="sig-name descname">poptag</code><span class="sig-paren">(</span><em class="sig-param">tag</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.poptag"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.poptag" title="Permalink to this definition">¶</a></dt>
+<dd><p>Pop a tag off the current set of stacks.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>tag</strong> – A string, a tag to be removed from the current set of tags.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.pushmeta">
+<code class="sig-name descname">pushmeta</code><span class="sig-paren">(</span><em class="sig-param">key</em>, <em class="sig-param">value</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.pushmeta"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.pushmeta" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set a metadata field on the current key-value pairs to be added to transactions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>key_value</strong> – A KeyValue instance, to be added to the dict of metadata.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.popmeta">
+<code class="sig-name descname">popmeta</code><span class="sig-paren">(</span><em class="sig-param">key</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.popmeta"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.popmeta" title="Permalink to this definition">¶</a></dt>
+<dd><p>Removed a key off the current set of stacks.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>key</strong> – A string, a key to be removed from the meta dict.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.option">
+<code class="sig-name descname">option</code><span class="sig-paren">(</span><em class="sig-param">filename</em>, <em class="sig-param">lineno</em>, <em class="sig-param">key</em>, <em class="sig-param">value</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.option"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.option" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process an option directive.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filename</strong> – current filename.</p></li>
+<li><p><strong>lineno</strong> – current line number.</p></li>
+<li><p><strong>key</strong> – option’s key (str)</p></li>
+<li><p><strong>value</strong> – option’s value</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.include">
+<code class="sig-name descname">include</code><span class="sig-paren">(</span><em class="sig-param">filename</em>, <em class="sig-param">lineno</em>, <em class="sig-param">include_filename</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.include"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.include" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process an include directive.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filename</strong> – current filename.</p></li>
+<li><p><strong>lineno</strong> – current line number.</p></li>
+<li><p><strong>include_name</strong> – A string, the name of the file to include.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.plugin">
+<code class="sig-name descname">plugin</code><span class="sig-paren">(</span><em class="sig-param">filename</em>, <em class="sig-param">lineno</em>, <em class="sig-param">plugin_name</em>, <em class="sig-param">plugin_config</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.plugin"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.plugin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a plugin directive.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filename</strong> – current filename.</p></li>
+<li><p><strong>lineno</strong> – current line number.</p></li>
+<li><p><strong>plugin_name</strong> – A string, the name of the plugin module to import.</p></li>
+<li><p><strong>plugin_config</strong> – A string or None, an optional configuration string to
+pass in to the plugin module.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.amount">
+<code class="sig-name descname">amount</code><span class="sig-paren">(</span><em class="sig-param">number</em>, <em class="sig-param">currency</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.amount"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.amount" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process an amount grammar rule.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>number</strong> – a Decimal instance, the number of the amount.</p></li>
+<li><p><strong>currency</strong> – a currency object (a str, really, see CURRENCY above)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>An instance of Amount.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.compound_amount">
+<code class="sig-name descname">compound_amount</code><span class="sig-paren">(</span><em class="sig-param">number_per</em>, <em class="sig-param">number_total</em>, <em class="sig-param">currency</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.compound_amount"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.compound_amount" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process an amount grammar rule.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>number_per</strong> – a Decimal instance, the number of the cost per share.</p></li>
+<li><p><strong>number_total</strong> – a Decimal instance, the number of the cost over all shares.</p></li>
+<li><p><strong>currency</strong> – a currency object (a str, really, see CURRENCY above)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A triple of (Decimal, Decimal, currency string) to be processed further when
+creating the final per-unit cost number.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.cost_merge">
+<code class="sig-name descname">cost_merge</code><span class="sig-paren">(</span><em class="sig-param">_</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.cost_merge"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.cost_merge" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a ‘merge cost’ token.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.cost_spec">
+<code class="sig-name descname">cost_spec</code><span class="sig-paren">(</span><em class="sig-param">cost_comp_list</em>, <em class="sig-param">is_total</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.cost_spec"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.cost_spec" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a cost_spec grammar rule.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cost_comp_list</strong> – A list of CompoundAmount, a datetime.date, or
+label ID strings.</p></li>
+<li><p><strong>is_total</strong> – Assume only the total cost is specified; reject the &lt;number&gt; # &lt;number&gt;
+syntax, that is, no compound amounts may be specified. This is used to support
+the {{…}} syntax.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A cost-info tuple of CompoundAmount, lot date and label string. Any of these
+may be set to a sentinel indicating “unset”.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.handle_list">
+<code class="sig-name descname">handle_list</code><span class="sig-paren">(</span><em class="sig-param">object_list</em>, <em class="sig-param">new_object</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.handle_list"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.handle_list" title="Permalink to this definition">¶</a></dt>
+<dd><p>Handle a recursive list grammar rule, generically.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>object_list</strong> – the current list of objects.</p></li>
+<li><p><strong>new_object</strong> – the new object to be added.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The new, updated list of objects.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.open">
+<code class="sig-name descname">open</code><span class="sig-paren">(</span><em class="sig-param">filename</em>, <em class="sig-param">lineno</em>, <em class="sig-param">date</em>, <em class="sig-param">account</em>, <em class="sig-param">currencies</em>, <em class="sig-param">booking_str</em>, <em class="sig-param">kvlist</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.open"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.open" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process an open directive.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filename</strong> – The current filename.</p></li>
+<li><p><strong>lineno</strong> – The current line number.</p></li>
+<li><p><strong>date</strong> – A datetime object.</p></li>
+<li><p><strong>account</strong> – A string, the name of the account.</p></li>
+<li><p><strong>currencies</strong> – A list of constraint currencies.</p></li>
+<li><p><strong>booking_str</strong> – A string, the booking method, or None if none was specified.</p></li>
+<li><p><strong>kvlist</strong> – a list of KeyValue instances.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A new Open object.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.close">
+<code class="sig-name descname">close</code><span class="sig-paren">(</span><em class="sig-param">filename</em>, <em class="sig-param">lineno</em>, <em class="sig-param">date</em>, <em class="sig-param">account</em>, <em class="sig-param">kvlist</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.close"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.close" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a close directive.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filename</strong> – The current filename.</p></li>
+<li><p><strong>lineno</strong> – The current line number.</p></li>
+<li><p><strong>date</strong> – A datetime object.</p></li>
+<li><p><strong>account</strong> – A string, the name of the account.</p></li>
+<li><p><strong>kvlist</strong> – a list of KeyValue instances.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A new Close object.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.commodity">
+<code class="sig-name descname">commodity</code><span class="sig-paren">(</span><em class="sig-param">filename</em>, <em class="sig-param">lineno</em>, <em class="sig-param">date</em>, <em class="sig-param">currency</em>, <em class="sig-param">kvlist</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.commodity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.commodity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a close directive.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filename</strong> – The current filename.</p></li>
+<li><p><strong>lineno</strong> – The current line number.</p></li>
+<li><p><strong>date</strong> – A datetime object.</p></li>
+<li><p><strong>currency</strong> – A string, the commodity being declared.</p></li>
+<li><p><strong>kvlist</strong> – a list of KeyValue instances.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A new Close object.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.pad">
+<code class="sig-name descname">pad</code><span class="sig-paren">(</span><em class="sig-param">filename</em>, <em class="sig-param">lineno</em>, <em class="sig-param">date</em>, <em class="sig-param">account</em>, <em class="sig-param">source_account</em>, <em class="sig-param">kvlist</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.pad"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.pad" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a pad directive.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filename</strong> – The current filename.</p></li>
+<li><p><strong>lineno</strong> – The current line number.</p></li>
+<li><p><strong>date</strong> – A datetime object.</p></li>
+<li><p><strong>account</strong> – A string, the account to be padded.</p></li>
+<li><p><strong>source_account</strong> – A string, the account to pad from.</p></li>
+<li><p><strong>kvlist</strong> – a list of KeyValue instances.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A new Pad object.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.balance">
+<code class="sig-name descname">balance</code><span class="sig-paren">(</span><em class="sig-param">filename</em>, <em class="sig-param">lineno</em>, <em class="sig-param">date</em>, <em class="sig-param">account</em>, <em class="sig-param">amount</em>, <em class="sig-param">tolerance</em>, <em class="sig-param">kvlist</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.balance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.balance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process an assertion directive.</p>
+<p>We produce no errors here by default. We replace the failing ones in the
+routine that does the verification later one, that these have succeeded
+or failed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filename</strong> – The current filename.</p></li>
+<li><p><strong>lineno</strong> – The current line number.</p></li>
+<li><p><strong>date</strong> – A datetime object.</p></li>
+<li><p><strong>account</strong> – A string, the account to balance.</p></li>
+<li><p><strong>amount</strong> – The expected amount, to be checked.</p></li>
+<li><p><strong>tolerance</strong> – The tolerance number.</p></li>
+<li><p><strong>kvlist</strong> – a list of KeyValue instances.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A new Balance object.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.event">
+<code class="sig-name descname">event</code><span class="sig-paren">(</span><em class="sig-param">filename</em>, <em class="sig-param">lineno</em>, <em class="sig-param">date</em>, <em class="sig-param">event_type</em>, <em class="sig-param">description</em>, <em class="sig-param">kvlist</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.event"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.event" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process an event directive.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filename</strong> – the current filename.</p></li>
+<li><p><strong>lineno</strong> – the current line number.</p></li>
+<li><p><strong>date</strong> – a datetime object.</p></li>
+<li><p><strong>event_type</strong> – a str, the name of the event type.</p></li>
+<li><p><strong>description</strong> – a str, the event value, the contents.</p></li>
+<li><p><strong>kvlist</strong> – a list of KeyValue instances.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A new Event object.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.query">
+<code class="sig-name descname">query</code><span class="sig-paren">(</span><em class="sig-param">filename</em>, <em class="sig-param">lineno</em>, <em class="sig-param">date</em>, <em class="sig-param">query_name</em>, <em class="sig-param">query_string</em>, <em class="sig-param">kvlist</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.query"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.query" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a document directive.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filename</strong> – the current filename.</p></li>
+<li><p><strong>lineno</strong> – the current line number.</p></li>
+<li><p><strong>date</strong> – a datetime object.</p></li>
+<li><p><strong>query_name</strong> – a str, the name of the query.</p></li>
+<li><p><strong>query_string</strong> – a str, the SQL query itself.</p></li>
+<li><p><strong>kvlist</strong> – a list of KeyValue instances.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A new Query object.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.price">
+<code class="sig-name descname">price</code><span class="sig-paren">(</span><em class="sig-param">filename</em>, <em class="sig-param">lineno</em>, <em class="sig-param">date</em>, <em class="sig-param">currency</em>, <em class="sig-param">amount</em>, <em class="sig-param">kvlist</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.price"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.price" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a price directive.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filename</strong> – the current filename.</p></li>
+<li><p><strong>lineno</strong> – the current line number.</p></li>
+<li><p><strong>date</strong> – a datetime object.</p></li>
+<li><p><strong>currency</strong> – the currency to be priced.</p></li>
+<li><p><strong>amount</strong> – an instance of Amount, that is the price of the currency.</p></li>
+<li><p><strong>kvlist</strong> – a list of KeyValue instances.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A new Price object.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.note">
+<code class="sig-name descname">note</code><span class="sig-paren">(</span><em class="sig-param">filename</em>, <em class="sig-param">lineno</em>, <em class="sig-param">date</em>, <em class="sig-param">account</em>, <em class="sig-param">comment</em>, <em class="sig-param">kvlist</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.note"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.note" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a note directive.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filename</strong> – The current filename.</p></li>
+<li><p><strong>lineno</strong> – The current line number.</p></li>
+<li><p><strong>date</strong> – A datetime object.</p></li>
+<li><p><strong>account</strong> – A string, the account to attach the note to.</p></li>
+<li><p><strong>comment</strong> – A str, the note’s comments contents.</p></li>
+<li><p><strong>kvlist</strong> – a list of KeyValue instances.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A new Note object.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.document">
+<code class="sig-name descname">document</code><span class="sig-paren">(</span><em class="sig-param">filename</em>, <em class="sig-param">lineno</em>, <em class="sig-param">date</em>, <em class="sig-param">account</em>, <em class="sig-param">document_filename</em>, <em class="sig-param">tags_links</em>, <em class="sig-param">kvlist</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.document"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.document" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a document directive.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filename</strong> – the current filename.</p></li>
+<li><p><strong>lineno</strong> – the current line number.</p></li>
+<li><p><strong>date</strong> – a datetime object.</p></li>
+<li><p><strong>account</strong> – an Account instance.</p></li>
+<li><p><strong>document_filename</strong> – a str, the name of the document file.</p></li>
+<li><p><strong>tags_links</strong> – The current TagsLinks accumulator.</p></li>
+<li><p><strong>kvlist</strong> – a list of KeyValue instances.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A new Document object.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.custom">
+<code class="sig-name descname">custom</code><span class="sig-paren">(</span><em class="sig-param">filename</em>, <em class="sig-param">lineno</em>, <em class="sig-param">date</em>, <em class="sig-param">dir_type</em>, <em class="sig-param">custom_values</em>, <em class="sig-param">kvlist</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.custom"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.custom" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a custom directive.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filename</strong> – the current filename.</p></li>
+<li><p><strong>lineno</strong> – the current line number.</p></li>
+<li><p><strong>date</strong> – a datetime object.</p></li>
+<li><p><strong>dir_type</strong> – A string, a type for the custom directive being parsed.</p></li>
+<li><p><strong>custom_values</strong> – A list of the various tokens seen on the same line.</p></li>
+<li><p><strong>kvlist</strong> – a list of KeyValue instances.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A new Custom object.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.custom_value">
+<code class="sig-name descname">custom_value</code><span class="sig-paren">(</span><em class="sig-param">value</em>, <em class="sig-param">dtype=None</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.custom_value"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.custom_value" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a custom value object, along with its type.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>value</strong> – One of the accepted custom values.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A pair of (value, dtype) where ‘dtype’ is the datatype is that of the
+value.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.key_value">
+<code class="sig-name descname">key_value</code><span class="sig-paren">(</span><em class="sig-param">key</em>, <em class="sig-param">value</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.key_value"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.key_value" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a document directive.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filename</strong> – The current filename.</p></li>
+<li><p><strong>lineno</strong> – The current line number.</p></li>
+<li><p><strong>date</strong> – A datetime object.</p></li>
+<li><p><strong>account</strong> – A string, the account the document relates to.</p></li>
+<li><p><strong>document_filename</strong> – A str, the name of the document file.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A new KeyValue object.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.posting">
+<code class="sig-name descname">posting</code><span class="sig-paren">(</span><em class="sig-param">filename</em>, <em class="sig-param">lineno</em>, <em class="sig-param">account</em>, <em class="sig-param">units</em>, <em class="sig-param">cost</em>, <em class="sig-param">price</em>, <em class="sig-param">istotal</em>, <em class="sig-param">flag</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.posting"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.posting" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a posting grammar rule.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filename</strong> – the current filename.</p></li>
+<li><p><strong>lineno</strong> – the current line number.</p></li>
+<li><p><strong>account</strong> – A string, the account of the posting.</p></li>
+<li><p><strong>units</strong> – An instance of Amount for the units.</p></li>
+<li><p><strong>cost</strong> – An instance of CostSpec for the cost.</p></li>
+<li><p><strong>price</strong> – Either None, or an instance of Amount that is the cost of the position.</p></li>
+<li><p><strong>istotal</strong> – A bool, True if the price is for the total amount being parsed, or
+False if the price is for each lot of the position.</p></li>
+<li><p><strong>flag</strong> – A string, one-character, the flag associated with this posting.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A new Posting object, with no parent entry.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.tag_link_new">
+<code class="sig-name descname">tag_link_new</code><span class="sig-paren">(</span><em class="sig-param">_</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.tag_link_new"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.tag_link_new" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a new TagsLinks instance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>An instance of TagsLinks, initialized with expected attributes.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.tag_link_TAG">
+<code class="sig-name descname">tag_link_TAG</code><span class="sig-paren">(</span><em class="sig-param">tags_links</em>, <em class="sig-param">tag</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.tag_link_TAG"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.tag_link_TAG" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a tag to the TagsLinks accumulator.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tags_links</strong> – The current TagsLinks accumulator.</p></li>
+<li><p><strong>tag</strong> – A string, the new tag to insert.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>An updated TagsLinks instance.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.tag_link_LINK">
+<code class="sig-name descname">tag_link_LINK</code><span class="sig-paren">(</span><em class="sig-param">tags_links</em>, <em class="sig-param">link</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.tag_link_LINK"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.tag_link_LINK" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a link to the TagsLinks accumulator.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tags_links</strong> – The current TagsLinks accumulator.</p></li>
+<li><p><strong>link</strong> – A string, the new link to insert.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>An updated TagsLinks instance.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.tag_link_STRING">
+<code class="sig-name descname">tag_link_STRING</code><span class="sig-paren">(</span><em class="sig-param">tags_links</em>, <em class="sig-param">string</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.tag_link_STRING"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.tag_link_STRING" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a string to the TagsLinks accumulator.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tags_links</strong> – The current TagsLinks accumulator.</p></li>
+<li><p><strong>string</strong> – A string, the new string to insert in the list.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>An updated TagsLinks instance.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.unpack_txn_strings">
+<code class="sig-name descname">unpack_txn_strings</code><span class="sig-paren">(</span><em class="sig-param">txn_strings</em>, <em class="sig-param">meta</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.unpack_txn_strings"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.unpack_txn_strings" title="Permalink to this definition">¶</a></dt>
+<dd><p>Unpack a tags_links accumulator to its payee and narration fields.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>txn_strings</strong> – A list of strings.</p></li>
+<li><p><strong>meta</strong> – A metadata dict for errors generated in this routine.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A pair of (payee, narration) strings or None objects, or None, if
+there was an error.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.finalize_tags_links">
+<code class="sig-name descname">finalize_tags_links</code><span class="sig-paren">(</span><em class="sig-param">tags</em>, <em class="sig-param">links</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.finalize_tags_links"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.finalize_tags_links" title="Permalink to this definition">¶</a></dt>
+<dd><p>Finally amend tags and links and return final objects to be inserted.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tags</strong> – A set of tag strings (warning: this gets mutated in-place).</p></li>
+<li><p><strong>links</strong> – A set of link strings.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A sanitized pair of (tags, links).</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.grammar.Builder.transaction">
+<code class="sig-name descname">transaction</code><span class="sig-paren">(</span><em class="sig-param">filename</em>, <em class="sig-param">lineno</em>, <em class="sig-param">date</em>, <em class="sig-param">flag</em>, <em class="sig-param">txn_strings</em>, <em class="sig-param">tags_links</em>, <em class="sig-param">posting_or_kv_list</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/grammar.html#Builder.transaction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.grammar.Builder.transaction" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a transaction directive.</p>
+<p>All the postings of the transaction are available at this point, and so the
+the transaction is balanced here, incomplete postings are completed with the
+appropriate position, and errors are being accumulated on the builder to be
+reported later on.</p>
+<p>This is the main routine that takes up most of the parsing time; be very
+careful with modifications here, they have an impact on performance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filename</strong> – the current filename.</p></li>
+<li><p><strong>lineno</strong> – the current line number.</p></li>
+<li><p><strong>date</strong> – a datetime object.</p></li>
+<li><p><strong>flag</strong> – a str, one-character, the flag associated with this transaction.</p></li>
+<li><p><strong>txn_strings</strong> – A list of strings, possibly empty, possibly longer.</p></li>
+<li><p><strong>tags_links</strong> – A TagsLinks namedtuple of tags, and/or links.</p></li>
+<li><p><strong>posting_or_kv_list</strong> – a list of Posting or KeyValue instances, to be inserted in
+this transaction, or None, if no postings have been declared.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A new Transaction object.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">Beancount</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Beancount Modules</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../core/index.html">Beancount Core</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Parser</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Beancount Modules</a><ul>
+  <li><a href="index.html">Parser</a><ul>
+      <li>Previous: <a href="beancount.parser.cmptest.html" title="previous chapter">beancount.parser.cmptest</a></li>
+      <li>Next: <a href="beancount.parser.hashsrc.html" title="next chapter">beancount.parser.hashsrc</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Martin Blais.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../../_sources/modules/parser/beancount.parser.grammar.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

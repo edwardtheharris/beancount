@@ -1,0 +1,355 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>beancount.parser.lexer &#8212; Beancount 2.2.1 documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for beancount.parser.lexer</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Beancount syntax lexer.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="n">__copyright__</span> <span class="o">=</span> <span class="s2">&quot;Copyright (C) 2014-2016  Martin Blais&quot;</span>
+<span class="n">__license__</span> <span class="o">=</span> <span class="s2">&quot;GNU GPLv2&quot;</span>
+
+<span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">import</span> <span class="nn">datetime</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">tempfile</span>
+
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">data</span>
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">account</span>
+<span class="kn">from</span> <span class="nn">beancount.core.number</span> <span class="k">import</span> <span class="n">Decimal</span>
+<span class="kn">from</span> <span class="nn">beancount.parser</span> <span class="k">import</span> <span class="n">_parser</span>
+
+
+<span class="n">LexerError</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;LexerError&#39;</span><span class="p">,</span> <span class="s1">&#39;source message entry&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="LexBuilder"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.lexer.html#beancount.parser.lexer.LexBuilder">[docs]</a><span class="k">class</span> <span class="nc">LexBuilder</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;A builder used only for building lexer objects.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">      long_string_maxlines_default: Number of lines for a string to trigger a</span>
+<span class="sd">          warning. This is meant to help users detecting dangling quotes in</span>
+<span class="sd">          their source.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># pylint: disable=invalid-name</span>
+
+<div class="viewcode-block" id="LexBuilder.__init__"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.lexer.html#beancount.parser.lexer.LexBuilder.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># A mapping of all the accounts created.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">accounts</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># A regexp for valid account names.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">account_regexp</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">account</span><span class="o">.</span><span class="n">ACCOUNT_RE</span><span class="p">)</span>
+
+        <span class="c1"># A set of all the commodities that we have seen in the file.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">commodities</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+        <span class="c1"># Errors that occurred during lexing and parsing.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">errors</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Default number of lines as threshold to warn over long strings.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">long_string_maxlines_default</span> <span class="o">=</span> <span class="mi">64</span></div>
+
+<div class="viewcode-block" id="LexBuilder.get_invalid_account"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.lexer.html#beancount.parser.lexer.LexBuilder.get_invalid_account">[docs]</a>    <span class="k">def</span> <span class="nf">get_invalid_account</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return the name of an invalid account placeholder.</span>
+
+<span class="sd">        When an account name is not deemed a valid one, replace it by</span>
+<span class="sd">        this account name. This can be overridden by the parser to</span>
+<span class="sd">        take into account the options.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">          A string, the name of the root/type for invalid account names.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s1">&#39;Equity:InvalidAccountName&#39;</span></div>
+
+<div class="viewcode-block" id="LexBuilder.get_lexer_location"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.lexer.html#beancount.parser.lexer.LexBuilder.get_lexer_location">[docs]</a>    <span class="k">def</span> <span class="nf">get_lexer_location</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">data</span><span class="o">.</span><span class="n">new_metadata</span><span class="p">(</span><span class="n">_parser</span><span class="o">.</span><span class="n">get_yyfilename</span><span class="p">(),</span>
+                                 <span class="n">_parser</span><span class="o">.</span><span class="n">get_yylineno</span><span class="p">())</span></div>
+
+    <span class="c1"># Note: We could simplify the code by removing this if we could find a good</span>
+    <span class="c1"># way to have the lexer communicate the error contents to the parser.</span>
+<div class="viewcode-block" id="LexBuilder.build_lexer_error"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.lexer.html#beancount.parser.lexer.LexBuilder.build_lexer_error">[docs]</a>    <span class="k">def</span> <span class="nf">build_lexer_error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">exc_type</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span> <span class="c1"># {0e31aeca3363}</span>
+        <span class="sd">&quot;&quot;&quot;Build a lexer error and appends it to the list of pending errors.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          message: The message of the error.</span>
+<span class="sd">          exc_type: An exception type, if an exception occurred.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">message</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">exc_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">message</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1">: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">exc_type</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">LexerError</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_lexer_location</span><span class="p">(),</span> <span class="n">message</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="LexBuilder.DATE"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.lexer.html#beancount.parser.lexer.LexBuilder.DATE">[docs]</a>    <span class="k">def</span> <span class="nf">DATE</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">year</span><span class="p">,</span> <span class="n">month</span><span class="p">,</span> <span class="n">day</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Process a DATE token.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          year: integer year.</span>
+<span class="sd">          month: integer month.</span>
+<span class="sd">          day: integer day</span>
+<span class="sd">        Returns:</span>
+<span class="sd">          A new datetime object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="p">(</span><span class="n">year</span><span class="p">,</span> <span class="n">month</span><span class="p">,</span> <span class="n">day</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="LexBuilder.ACCOUNT"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.lexer.html#beancount.parser.lexer.LexBuilder.ACCOUNT">[docs]</a>    <span class="k">def</span> <span class="nf">ACCOUNT</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">account_name</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Process an ACCOUNT token.</span>
+
+<span class="sd">        This function attempts to reuse an existing account if one exists,</span>
+<span class="sd">        otherwise creates one on-demand.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          account_name: a str, the valid name of an account.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">          A string, the name of the account.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Check account name validity.</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">account_regexp</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">account_name</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Invalid account name: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">account_name</span><span class="p">))</span>
+
+        <span class="c1"># Reuse (intern) account strings as much as possible. This potentially</span>
+        <span class="c1"># reduces memory usage a fair bit, because these strings are repeated</span>
+        <span class="c1"># liberally.</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">accounts</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">account_name</span><span class="p">,</span> <span class="n">account_name</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="LexBuilder.CURRENCY"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.lexer.html#beancount.parser.lexer.LexBuilder.CURRENCY">[docs]</a>    <span class="k">def</span> <span class="nf">CURRENCY</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">currency_name</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Process a CURRENCY token.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          currency_name: the name of the currency.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">          A new currency object; for now, these are simply represented</span>
+<span class="sd">          as the currency name.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">commodities</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">currency_name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">currency_name</span></div>
+
+<div class="viewcode-block" id="LexBuilder.STRING"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.lexer.html#beancount.parser.lexer.LexBuilder.STRING">[docs]</a>    <span class="k">def</span> <span class="nf">STRING</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">string</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Process a STRING token.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          string: the string to process.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">          The string. Nothing to be done or cleaned up. Eventually we might</span>
+<span class="sd">          do some decoding here.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># If a multiline string, warm over a certain number of lines.</span>
+        <span class="k">if</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="ow">in</span> <span class="n">string</span><span class="p">:</span>
+            <span class="n">num_lines</span> <span class="o">=</span> <span class="n">string</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="n">num_lines</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">long_string_maxlines_default</span><span class="p">:</span>
+                <span class="c1"># This is just a warning; accept the string anyhow.</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="n">LexerError</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">get_lexer_location</span><span class="p">(),</span>
+                        <span class="s2">&quot;String too long (</span><span class="si">{}</span><span class="s2"> lines); possible error&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">num_lines</span><span class="p">),</span>
+                        <span class="kc">None</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">string</span></div>
+
+<div class="viewcode-block" id="LexBuilder.NUMBER"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.lexer.html#beancount.parser.lexer.LexBuilder.NUMBER">[docs]</a>    <span class="k">def</span> <span class="nf">NUMBER</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">number</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Process a NUMBER token. Convert into Decimal.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          number: a str, the number to be converted.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">          A Decimal instance built of the number string.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Note: We don&#39;t use D() for efficiency here.</span>
+        <span class="c1"># The lexer will only yield valid number strings.</span>
+        <span class="k">if</span> <span class="s1">&#39;,&#39;</span> <span class="ow">in</span> <span class="n">number</span><span class="p">:</span>
+            <span class="c1"># Extract the integer part and check the commas match the</span>
+            <span class="c1"># locale-aware formatted version. This</span>
+            <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;([\d,]*)(\.\d*)?$&quot;</span><span class="p">,</span> <span class="n">number</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">match</span><span class="p">:</span>
+                <span class="c1"># This path is never taken because the lexer will parse a comma</span>
+                <span class="c1"># in the fractional part as two NUMBERs with a COMMA token in</span>
+                <span class="c1"># between.</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="n">LexerError</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_lexer_location</span><span class="p">(),</span>
+                               <span class="s2">&quot;Invalid number format: &#39;</span><span class="si">{}</span><span class="s2">&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">number</span><span class="p">),</span> <span class="kc">None</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">int_string</span><span class="p">,</span> <span class="n">float_string</span> <span class="o">=</span> <span class="n">match</span><span class="o">.</span><span class="n">groups</span><span class="p">()</span>
+                <span class="n">reformatted_number</span> <span class="o">=</span> <span class="sa">r</span><span class="s2">&quot;</span><span class="si">{:,.0f}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">int_string</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)))</span>
+                <span class="k">if</span> <span class="n">int_string</span> <span class="o">!=</span> <span class="n">reformatted_number</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="n">LexerError</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_lexer_location</span><span class="p">(),</span>
+                                   <span class="s2">&quot;Invalid commas: &#39;</span><span class="si">{}</span><span class="s2">&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">number</span><span class="p">),</span> <span class="kc">None</span><span class="p">))</span>
+
+            <span class="n">number</span> <span class="o">=</span> <span class="n">number</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Decimal</span><span class="p">(</span><span class="n">number</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="LexBuilder.TAG"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.lexer.html#beancount.parser.lexer.LexBuilder.TAG">[docs]</a>    <span class="k">def</span> <span class="nf">TAG</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Process a TAG token.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          tag: a str, the tag to be processed.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">          The tag string itself. For now we don&#39;t need an object to represent</span>
+<span class="sd">          those; keeping it simple.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">tag</span></div>
+
+<div class="viewcode-block" id="LexBuilder.LINK"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.lexer.html#beancount.parser.lexer.LexBuilder.LINK">[docs]</a>    <span class="k">def</span> <span class="nf">LINK</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">link</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Process a LINK token.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          link: a str, the name of the string.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">          The link string itself. For now we don&#39;t need to represent this by</span>
+<span class="sd">          an object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">link</span></div>
+
+<div class="viewcode-block" id="LexBuilder.KEY"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.lexer.html#beancount.parser.lexer.LexBuilder.KEY">[docs]</a>    <span class="k">def</span> <span class="nf">KEY</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ident</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Process an identifier token.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          ident: a str, the name of the key string.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">          The link string itself. For now we don&#39;t need to represent this by</span>
+<span class="sd">          an object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">ident</span></div></div>
+
+
+<div class="viewcode-block" id="lex_iter"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.lexer.html#beancount.parser.lexer.lex_iter">[docs]</a><span class="k">def</span> <span class="nf">lex_iter</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">builder</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;An iterator that yields all the tokens in the given file.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      file: A string, the filename to run the lexer on, or a file object.</span>
+<span class="sd">      builder: A builder of your choice. If not specified, a LexBuilder is</span>
+<span class="sd">        used and discarded (along with its errors).</span>
+<span class="sd">      encoding: A string (or None), the default encoding to use for strings.</span>
+<span class="sd">    Yields:</span>
+<span class="sd">      Tuples of the token (a string), the matched text (a string), and the line</span>
+<span class="sd">      no (an integer).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">filename</span> <span class="o">=</span> <span class="n">file</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">filename</span> <span class="o">=</span> <span class="n">file</span><span class="o">.</span><span class="n">name</span>
+    <span class="k">if</span> <span class="n">builder</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">builder</span> <span class="o">=</span> <span class="n">LexBuilder</span><span class="p">()</span>
+    <span class="n">_parser</span><span class="o">.</span><span class="n">lexer_initialize</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">builder</span><span class="p">,</span> <span class="n">encoding</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">while</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">token_tuple</span> <span class="o">=</span> <span class="n">_parser</span><span class="o">.</span><span class="n">lexer_next</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">token_tuple</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">break</span>
+            <span class="k">yield</span> <span class="n">token_tuple</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">_parser</span><span class="o">.</span><span class="n">lexer_finalize</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="lex_iter_string"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.lexer.html#beancount.parser.lexer.lex_iter_string">[docs]</a><span class="k">def</span> <span class="nf">lex_iter_string</span><span class="p">(</span><span class="n">string</span><span class="p">,</span> <span class="n">builder</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Parse an input string and print the tokens to an output file.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      input_string: a str or bytes, the contents of the ledger to be parsed.</span>
+<span class="sd">      builder: A builder of your choice. If not specified, a LexBuilder is</span>
+<span class="sd">        used and discarded (along with its errors).</span>
+<span class="sd">      encoding: A string (or None), the default encoding to use for strings.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">      A iterator on the string. See lex_iter() for details.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">tmp_file</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">NamedTemporaryFile</span><span class="p">(</span><span class="s1">&#39;w&#39;</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">string</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">else</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span>
+    <span class="n">tmp_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">string</span><span class="p">)</span>
+    <span class="n">tmp_file</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+    <span class="c1"># Note: We pass in the file object in order to keep it alive during parsing.</span>
+    <span class="k">return</span> <span class="n">lex_iter</span><span class="p">(</span><span class="n">tmp_file</span><span class="p">,</span> <span class="n">builder</span><span class="p">,</span> <span class="n">encoding</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">Beancount</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/index.html">Beancount Modules</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Martin Blais.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,611 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>beancount.parser.booking_full &#8212; Beancount 2.2.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="beancount.parser.booking_method" href="beancount.parser.booking_method.html" />
+    <link rel="prev" title="parser.parser" href="parser.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-beancount.parser.booking_full">
+<span id="beancount-parser-booking-full"></span><h1>beancount.parser.booking_full<a class="headerlink" href="#module-beancount.parser.booking_full" title="Permalink to this headline">¶</a></h1>
+<p>Full (new) booking implementation.</p>
+<p>Problem description:</p>
+<p>Interpolation and booking feed on each other, that is, numbers filled in from
+interpolation might affect the booking process, and numbers derived from the
+booking process may help carry out interpolation that would otherwise be
+under-defined. Here’s an example of interpolation helping the booking process:</p>
+<p>Assume the ante-inventory of Assets:Investments contains two lots of shares of
+HOOL, one at 100.00 USD and the other at 101.00 USD and apply this transaction:</p>
+<blockquote>
+<div><dl class="simple">
+<dt>2015-09-30 *</dt><dd><p>Assets:Investments   -10 HOOL {USD}
+Assets:Cash               1000 USD
+Income:Gains              -200 USD</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>Interpolation is unambiguously able to back out a cost of 100 USD / HOOL, which
+would then result in an unambiguous booking result.</p>
+<p>On the other hand, consider this transaction:</p>
+<blockquote>
+<div><dl class="simple">
+<dt>2015-09-30 *</dt><dd><p>Assets:Investments    -10 HOOL {USD}
+Assets:Cash               1000 USD
+Income:Gains</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>Now the interpolation cannot succeed. If the Assets:Investments account is
+configured to use the FIFO method, the 10 oldest shares would be selected for
+the cost, and we could then interpolate the capital gains correctly.</p>
+<p>First observation: The second case is much more frequent than the first, and the
+first is easily resolved manually by requiring a particular cost be specified.
+Moreover, in many cases there isn’t just a single lot of shares to be reduced
+from and figuring out the correct set of shares given a target cost is an
+underspecified problem.</p>
+<p>Second observation: Booking can only be achieved for inventory reductions, not
+for augmentations. Therefore, we should carry out booking on inventory
+reductions and fail early if reduction is undefined there, and leave inventory
+augmentations with missing numbers undefined, so that interpolation can fill
+them in at a later stage.</p>
+<p>Note that one case we’d like to but may not be able to handle is of a reduction
+with interpolated price, like this:</p>
+<blockquote>
+<div><dl class="simple">
+<dt>2015-09-30 *</dt><dd><p>Assets:Investments        -10 HOOL {100.00 # USD}
+Expenses:Commission      9.95 USD
+Assets:Cash            990.05 USD</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>Therefore we choose to</p>
+<ol class="arabic simple">
+<li><p>Carry out booking first, on inventory reductions only, and leave inventory
+augmentations as they are, possibly undefined. The ‘cost’ attributed of
+booked postings are converted from CostSpec to Cost. Augmented postings with
+missing amounts are left as CostSpec instances in order to allow for
+interpolation of total vs. per-unit amount.</p></li>
+<li><p>Compute interpolations on the resulting postings. Undefined costs for
+inventory augmentations may be filled in by interpolations at this stage (if
+possible).</p></li>
+<li><p>Finally, convert the interpolated CostSpec instances to Cost instances.</p></li>
+</ol>
+<p>Improving on this algorithm would require running a loop over the booking and
+interpolation steps until all numbers are resolved or no more inference can
+occur. We may consider that for later, as an experimental feature. My hunch is
+that there are so few cases for which this would be useful that we won’t bother
+improving on the algorithm above.</p>
+<p class="rubric">Functions</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.parser.booking_full.book" title="beancount.parser.booking_full.book"><code class="xref py py-obj docutils literal notranslate"><span class="pre">book</span></code></a>(entries, options_map, methods)</p></td>
+<td><p>Interpolate missing data from the entries using the full historical algorithm.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.parser.booking_full.book_reductions" title="beancount.parser.booking_full.book_reductions"><code class="xref py py-obj docutils literal notranslate"><span class="pre">book_reductions</span></code></a>(entry, group_postings, …)</p></td>
+<td><p>Book inventory reductions against the ante-balances.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.parser.booking_full.categorize_by_currency" title="beancount.parser.booking_full.categorize_by_currency"><code class="xref py py-obj docutils literal notranslate"><span class="pre">categorize_by_currency</span></code></a>(entry, balances)</p></td>
+<td><p>Group the postings by the currency they declare.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.parser.booking_full.compute_cost_number" title="beancount.parser.booking_full.compute_cost_number"><code class="xref py py-obj docutils literal notranslate"><span class="pre">compute_cost_number</span></code></a>(costspec, units)</p></td>
+<td><p>Given a CostSpec, return the cost number, if possible to compute.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.parser.booking_full.convert_costspec_to_cost" title="beancount.parser.booking_full.convert_costspec_to_cost"><code class="xref py py-obj docutils literal notranslate"><span class="pre">convert_costspec_to_cost</span></code></a>(posting)</p></td>
+<td><p>Convert an instance of CostSpec to Cost, if present on the posting.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.parser.booking_full.get_bucket_currency" title="beancount.parser.booking_full.get_bucket_currency"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_bucket_currency</span></code></a>(refer)</p></td>
+<td><p>Given currency references for a posting, return the bucket currency.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.parser.booking_full.has_self_reduction" title="beancount.parser.booking_full.has_self_reduction"><code class="xref py py-obj docutils literal notranslate"><span class="pre">has_self_reduction</span></code></a>(postings, methods)</p></td>
+<td><p>Return true if the postings potentially reduce each other at cost.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.parser.booking_full.interpolate_group" title="beancount.parser.booking_full.interpolate_group"><code class="xref py py-obj docutils literal notranslate"><span class="pre">interpolate_group</span></code></a>(postings, balances, …)</p></td>
+<td><p>Interpolate missing numbers in the set of postings.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.parser.booking_full.replace_currencies" title="beancount.parser.booking_full.replace_currencies"><code class="xref py py-obj docutils literal notranslate"><span class="pre">replace_currencies</span></code></a>(postings, refer_groups)</p></td>
+<td><p>Replace resolved currencies in the entry’s Postings.</p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Classes</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.parser.booking_full.CategorizationError" title="beancount.parser.booking_full.CategorizationError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CategorizationError</span></code></a>(source, message, entry)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.parser.booking_full.InterpolationError" title="beancount.parser.booking_full.InterpolationError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">InterpolationError</span></code></a>(source, message, entry)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.parser.booking_full.MissingType" title="beancount.parser.booking_full.MissingType"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MissingType</span></code></a></p></td>
+<td><p>The type of missing number.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.parser.booking_full.ReductionError" title="beancount.parser.booking_full.ReductionError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ReductionError</span></code></a>(source, message, entry)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.parser.booking_full.Refer" title="beancount.parser.booking_full.Refer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Refer</span></code></a>(index, units_currency, cost_currency, …)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.parser.booking_full.SelfReduxError" title="beancount.parser.booking_full.SelfReduxError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SelfReduxError</span></code></a>(source, message, entry)</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+<dl class="class">
+<dt id="beancount.parser.booking_full.SelfReduxError">
+<em class="property">class </em><code class="sig-prename descclassname">beancount.parser.booking_full.</code><code class="sig-name descname">SelfReduxError</code><span class="sig-paren">(</span><em class="sig-param">source</em>, <em class="sig-param">message</em>, <em class="sig-param">entry</em><span class="sig-paren">)</span><a class="headerlink" href="#beancount.parser.booking_full.SelfReduxError" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="beancount.parser.booking_full.SelfReduxError.entry">
+<em class="property">property </em><code class="sig-name descname">entry</code><a class="headerlink" href="#beancount.parser.booking_full.SelfReduxError.entry" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 2</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.booking_full.SelfReduxError.message">
+<em class="property">property </em><code class="sig-name descname">message</code><a class="headerlink" href="#beancount.parser.booking_full.SelfReduxError.message" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 1</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.booking_full.SelfReduxError.source">
+<em class="property">property </em><code class="sig-name descname">source</code><a class="headerlink" href="#beancount.parser.booking_full.SelfReduxError.source" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.parser.booking_full.book">
+<code class="sig-prename descclassname">beancount.parser.booking_full.</code><code class="sig-name descname">book</code><span class="sig-paren">(</span><em class="sig-param">entries</em>, <em class="sig-param">options_map</em>, <em class="sig-param">methods</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/booking_full.html#book"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.booking_full.book" title="Permalink to this definition">¶</a></dt>
+<dd><p>Interpolate missing data from the entries using the full historical algorithm.
+See the internal implementation _book() for details.
+This method only stripes some of the return values.</p>
+<p>See _book() for arguments and return values.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="beancount.parser.booking_full.CategorizationError">
+<em class="property">class </em><code class="sig-prename descclassname">beancount.parser.booking_full.</code><code class="sig-name descname">CategorizationError</code><span class="sig-paren">(</span><em class="sig-param">source</em>, <em class="sig-param">message</em>, <em class="sig-param">entry</em><span class="sig-paren">)</span><a class="headerlink" href="#beancount.parser.booking_full.CategorizationError" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="beancount.parser.booking_full.CategorizationError.entry">
+<em class="property">property </em><code class="sig-name descname">entry</code><a class="headerlink" href="#beancount.parser.booking_full.CategorizationError.entry" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 2</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.booking_full.CategorizationError.message">
+<em class="property">property </em><code class="sig-name descname">message</code><a class="headerlink" href="#beancount.parser.booking_full.CategorizationError.message" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 1</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.booking_full.CategorizationError.source">
+<em class="property">property </em><code class="sig-name descname">source</code><a class="headerlink" href="#beancount.parser.booking_full.CategorizationError.source" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.parser.booking_full.get_bucket_currency">
+<code class="sig-prename descclassname">beancount.parser.booking_full.</code><code class="sig-name descname">get_bucket_currency</code><span class="sig-paren">(</span><em class="sig-param">refer</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/booking_full.html#get_bucket_currency"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.booking_full.get_bucket_currency" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given currency references for a posting, return the bucket currency.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>refer</strong> – An instance of Refer.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A currency string.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="class">
+<dt id="beancount.parser.booking_full.Refer">
+<em class="property">class </em><code class="sig-prename descclassname">beancount.parser.booking_full.</code><code class="sig-name descname">Refer</code><span class="sig-paren">(</span><em class="sig-param">index</em>, <em class="sig-param">units_currency</em>, <em class="sig-param">cost_currency</em>, <em class="sig-param">price_currency</em><span class="sig-paren">)</span><a class="headerlink" href="#beancount.parser.booking_full.Refer" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="beancount.parser.booking_full.Refer.cost_currency">
+<em class="property">property </em><code class="sig-name descname">cost_currency</code><a class="headerlink" href="#beancount.parser.booking_full.Refer.cost_currency" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 2</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.booking_full.Refer.index">
+<em class="property">property </em><code class="sig-name descname">index</code><a class="headerlink" href="#beancount.parser.booking_full.Refer.index" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.booking_full.Refer.price_currency">
+<em class="property">property </em><code class="sig-name descname">price_currency</code><a class="headerlink" href="#beancount.parser.booking_full.Refer.price_currency" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 3</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.booking_full.Refer.units_currency">
+<em class="property">property </em><code class="sig-name descname">units_currency</code><a class="headerlink" href="#beancount.parser.booking_full.Refer.units_currency" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 1</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.parser.booking_full.categorize_by_currency">
+<code class="sig-prename descclassname">beancount.parser.booking_full.</code><code class="sig-name descname">categorize_by_currency</code><span class="sig-paren">(</span><em class="sig-param">entry</em>, <em class="sig-param">balances</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/booking_full.html#categorize_by_currency"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.booking_full.categorize_by_currency" title="Permalink to this definition">¶</a></dt>
+<dd><p>Group the postings by the currency they declare.</p>
+<p>This is used to prepare the postings for the next stages: Interpolation and
+booking will then be carried out separately on each currency group. At the
+outset of this routine, we should have distinct groups of currencies without
+any ambiguities regarding which currency they need to balance against.</p>
+<p>Here’s how this works.</p>
+<ul class="simple">
+<li><p>First we apply the constraint that cost-currency and price-currency must
+match, if there is both a cost and a price. This reduces the space of
+possibilities somewahte.</p></li>
+<li><p>If the currency is explicitly specified, we put the posting in that
+currency’s bucket.</p></li>
+<li><p>If not, we have a few methods left to disambiguate the currency:</p>
+<ol class="arabic simple">
+<li><p>We look at the remaining postings… if they are all of a single
+currency, the posting must be in that currency too.</p></li>
+<li><p>If we cannot do that, we inspect the contents of the inventory of the
+account for the posting. If all the contents are of a single currency,
+we use that one.</p></li>
+</ol>
+</li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>postings</strong> – A list of incomplete postings to categorize.</p></li>
+<li><p><strong>balances</strong> – A dict of currency to inventory contents before the transaction is
+applied.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><p>A list of (currency string, list of tuples) items describing each postings
+and its interpolated currencies, and a list of generated errors for
+currency interpolation. The entry’s original postings are left unmodified.
+Each tuple in the value-list contains:</p>
+<blockquote>
+<div><p>index: The posting index in the original entry.
+units_currency: The interpolated currency for units.
+cost_currency: The interpolated currency for cost.
+price_currency: The interpolated currency for price.</p>
+</div></blockquote>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.parser.booking_full.replace_currencies">
+<code class="sig-prename descclassname">beancount.parser.booking_full.</code><code class="sig-name descname">replace_currencies</code><span class="sig-paren">(</span><em class="sig-param">postings</em>, <em class="sig-param">refer_groups</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/booking_full.html#replace_currencies"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.booking_full.replace_currencies" title="Permalink to this definition">¶</a></dt>
+<dd><p>Replace resolved currencies in the entry’s Postings.</p>
+<p>This essentially applies the findings of categorize_by_currency() to produce
+new postings with all currencies resolved.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>postings</strong> – A list of Posting instances to replace.</p></li>
+<li><p><strong>refer_groups</strong> – A list of (currency, list of posting references) items as
+returned by categorize_by_currency().</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A new list of items of (currency, list of Postings), postings for which the
+currencies have been replaced by their interpolated currency values.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="class">
+<dt id="beancount.parser.booking_full.ReductionError">
+<em class="property">class </em><code class="sig-prename descclassname">beancount.parser.booking_full.</code><code class="sig-name descname">ReductionError</code><span class="sig-paren">(</span><em class="sig-param">source</em>, <em class="sig-param">message</em>, <em class="sig-param">entry</em><span class="sig-paren">)</span><a class="headerlink" href="#beancount.parser.booking_full.ReductionError" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="beancount.parser.booking_full.ReductionError.entry">
+<em class="property">property </em><code class="sig-name descname">entry</code><a class="headerlink" href="#beancount.parser.booking_full.ReductionError.entry" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 2</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.booking_full.ReductionError.message">
+<em class="property">property </em><code class="sig-name descname">message</code><a class="headerlink" href="#beancount.parser.booking_full.ReductionError.message" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 1</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.booking_full.ReductionError.source">
+<em class="property">property </em><code class="sig-name descname">source</code><a class="headerlink" href="#beancount.parser.booking_full.ReductionError.source" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.parser.booking_full.has_self_reduction">
+<code class="sig-prename descclassname">beancount.parser.booking_full.</code><code class="sig-name descname">has_self_reduction</code><span class="sig-paren">(</span><em class="sig-param">postings</em>, <em class="sig-param">methods</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/booking_full.html#has_self_reduction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.booking_full.has_self_reduction" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return true if the postings potentially reduce each other at cost.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>postings</strong> – A list of postings with uninterpolated CostSpec cost instances.</p></li>
+<li><p><strong>methods</strong> – A mapping of account name to their corresponding booking
+method.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A boolean, true if there’s a potential for self-reduction.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.parser.booking_full.book_reductions">
+<code class="sig-prename descclassname">beancount.parser.booking_full.</code><code class="sig-name descname">book_reductions</code><span class="sig-paren">(</span><em class="sig-param">entry</em>, <em class="sig-param">group_postings</em>, <em class="sig-param">balances</em>, <em class="sig-param">methods</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/booking_full.html#book_reductions"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.booking_full.book_reductions" title="Permalink to this definition">¶</a></dt>
+<dd><p>Book inventory reductions against the ante-balances.</p>
+<p>This function accepts a dict of (account, Inventory balance) and for each
+posting that is a reduction against its inventory, attempts to find a
+corresponding lot or list of lots to reduce the balance with.</p>
+<ul class="simple">
+<li><p>For reducing lots, the CostSpec instance of the posting is replaced by a
+Cost instance.</p></li>
+<li><p>For augmenting lots, the CostSpec instance of the posting is left alone,
+except for its date, which is inherited from the parent Transaction.</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>entry</strong> – An instance of Transaction. This is only used to refer to when
+logging errors.</p></li>
+<li><p><strong>group_postings</strong> – A list of Posting instances for the group.</p></li>
+<li><p><strong>balances</strong> – A dict of account name to inventory contents.</p></li>
+<li><p><strong>methods</strong> – A mapping of account name to their corresponding booking
+method enum.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><dl>
+<dt>A pair of</dt><dd><dl class="simple">
+<dt>booked_postings: A list of booked postings, with reducing lots resolved</dt><dd><p>against specific position in the corresponding accounts’
+ante-inventory balances. Note single reducing posting in the input may
+result in multiple postings in the output. Also note that augmenting
+postings held-at-cost will still refer to ‘cost’ instances of
+CostSpec, left to be interpolated later.</p>
+</dd>
+</dl>
+<p>errors: A list of errors, if there were any.</p>
+</dd>
+</dl>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.parser.booking_full.compute_cost_number">
+<code class="sig-prename descclassname">beancount.parser.booking_full.</code><code class="sig-name descname">compute_cost_number</code><span class="sig-paren">(</span><em class="sig-param">costspec</em>, <em class="sig-param">units</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/booking_full.html#compute_cost_number"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.booking_full.compute_cost_number" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given a CostSpec, return the cost number, if possible to compute.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>costspec</strong> – A parsed instance of CostSpec.</p></li>
+<li><p><strong>units</strong> – An instance of Amount for the units of the position.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>If it is not possible to calculate the cost, return None.
+Otherwise, returns a Decimal instance, the per-unit cost.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.parser.booking_full.convert_costspec_to_cost">
+<code class="sig-prename descclassname">beancount.parser.booking_full.</code><code class="sig-name descname">convert_costspec_to_cost</code><span class="sig-paren">(</span><em class="sig-param">posting</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/booking_full.html#convert_costspec_to_cost"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.booking_full.convert_costspec_to_cost" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert an instance of CostSpec to Cost, if present on the posting.</p>
+<p>If the posting has no cost, it itself is just returned.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>posting</strong> – An instance of Posting.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>An instance of Posting with a possibly replaced ‘cost’ attribute.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="class">
+<dt id="beancount.parser.booking_full.MissingType">
+<em class="property">class </em><code class="sig-prename descclassname">beancount.parser.booking_full.</code><code class="sig-name descname">MissingType</code><a class="reference internal" href="../../_modules/beancount/parser/booking_full.html#MissingType"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.booking_full.MissingType" title="Permalink to this definition">¶</a></dt>
+<dd><p>The type of missing number.</p>
+<dl class="attribute">
+<dt id="beancount.parser.booking_full.MissingType.UNITS">
+<code class="sig-name descname">UNITS</code><em class="property"> = 1</em><a class="headerlink" href="#beancount.parser.booking_full.MissingType.UNITS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="beancount.parser.booking_full.MissingType.COST_PER">
+<code class="sig-name descname">COST_PER</code><em class="property"> = 2</em><a class="headerlink" href="#beancount.parser.booking_full.MissingType.COST_PER" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="beancount.parser.booking_full.MissingType.COST_TOTAL">
+<code class="sig-name descname">COST_TOTAL</code><em class="property"> = 3</em><a class="headerlink" href="#beancount.parser.booking_full.MissingType.COST_TOTAL" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="beancount.parser.booking_full.MissingType.PRICE">
+<code class="sig-name descname">PRICE</code><em class="property"> = 4</em><a class="headerlink" href="#beancount.parser.booking_full.MissingType.PRICE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="beancount.parser.booking_full.InterpolationError">
+<em class="property">class </em><code class="sig-prename descclassname">beancount.parser.booking_full.</code><code class="sig-name descname">InterpolationError</code><span class="sig-paren">(</span><em class="sig-param">source</em>, <em class="sig-param">message</em>, <em class="sig-param">entry</em><span class="sig-paren">)</span><a class="headerlink" href="#beancount.parser.booking_full.InterpolationError" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="beancount.parser.booking_full.InterpolationError.entry">
+<em class="property">property </em><code class="sig-name descname">entry</code><a class="headerlink" href="#beancount.parser.booking_full.InterpolationError.entry" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 2</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.booking_full.InterpolationError.message">
+<em class="property">property </em><code class="sig-name descname">message</code><a class="headerlink" href="#beancount.parser.booking_full.InterpolationError.message" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 1</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.booking_full.InterpolationError.source">
+<em class="property">property </em><code class="sig-name descname">source</code><a class="headerlink" href="#beancount.parser.booking_full.InterpolationError.source" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.parser.booking_full.interpolate_group">
+<code class="sig-prename descclassname">beancount.parser.booking_full.</code><code class="sig-name descname">interpolate_group</code><span class="sig-paren">(</span><em class="sig-param">postings</em>, <em class="sig-param">balances</em>, <em class="sig-param">currency</em>, <em class="sig-param">tolerances</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/booking_full.html#interpolate_group"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.booking_full.interpolate_group" title="Permalink to this definition">¶</a></dt>
+<dd><p>Interpolate missing numbers in the set of postings.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>postings</strong> – A list of Posting instances.</p></li>
+<li><p><strong>balances</strong> – A dict of account to its ante-inventory.</p></li>
+<li><p><strong>currency</strong> – The weight currency of this group, used for reporting errors.</p></li>
+<li><p><strong>tolerances</strong> – A dict of currency to tolerance values.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>A tuple of</dt><dd><p>postings: A lit of new posting instances.
+errors: A list of errors generated during interpolation.
+interpolated: A boolean, true if we did have to interpolate.</p>
+</dd>
+</dl>
+<p>In the case of an error, this returns the original list of postings, which
+is still incomplete. If an error is returned, you should probably skip the
+transaction altogether, or just not include the postings in it. (An
+alternative behaviour would be to return only the list of valid postings,
+but that would likely result in an unbalanced transaction. We do it this
+way by choice.)</p>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">Beancount</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Beancount Modules</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../core/index.html">Beancount Core</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Parser</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Beancount Modules</a><ul>
+  <li><a href="index.html">Parser</a><ul>
+      <li>Previous: <a href="parser.html" title="previous chapter">parser.parser</a></li>
+      <li>Next: <a href="beancount.parser.booking_method.html" title="next chapter">beancount.parser.booking_method</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Martin Blais.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../../_sources/modules/parser/beancount.parser.booking_full.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

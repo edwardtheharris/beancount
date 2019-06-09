@@ -1,0 +1,661 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>beancount.parser.options &#8212; Beancount 2.2.1 documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for beancount.parser.options</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Declaration of options and their default values.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="n">__copyright__</span> <span class="o">=</span> <span class="s2">&quot;Copyright (C) 2013-2016  Martin Blais&quot;</span>
+<span class="n">__license__</span> <span class="o">=</span> <span class="s2">&quot;GNU GPLv2&quot;</span>
+
+<span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">import</span> <span class="nn">io</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">textwrap</span>
+
+<span class="kn">from</span> <span class="nn">beancount.core.number</span> <span class="k">import</span> <span class="n">D</span>
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">data</span>
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">account_types</span>
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">account</span>
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">display_context</span>
+
+
+<div class="viewcode-block" id="options_validate_processing_mode"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.options.html#beancount.parser.options.options_validate_processing_mode">[docs]</a><span class="k">def</span> <span class="nf">options_validate_processing_mode</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Validate the options processing mode.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      value: A string, the value provided as option.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">      The new value, converted, if the conversion is successful.</span>
+<span class="sd">    Raises:</span>
+<span class="sd">      ValueError: If the value is invalid.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;raw&#39;</span><span class="p">,</span> <span class="s1">&#39;default&#39;</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Invalid value &#39;</span><span class="si">{}</span><span class="s2">&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">value</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">value</span></div>
+
+
+<div class="viewcode-block" id="options_validate_plugin"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.options.html#beancount.parser.options.options_validate_plugin">[docs]</a><span class="k">def</span> <span class="nf">options_validate_plugin</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Validate the plugin option.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      value: A string, the value provided as option.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">      The new value, converted, if the conversion is successful.</span>
+<span class="sd">    Raises:</span>
+<span class="sd">      ValueError: If the value is invalid.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Process the &#39;plugin&#39; option specially: accept an optional</span>
+    <span class="c1"># argument from it. NOTE: We will eventually phase this out and</span>
+    <span class="c1"># replace it by a dedicated &#39;plugin&#39; directive.</span>
+    <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s1">&#39;(.*):(.*)&#39;</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">match</span><span class="p">:</span>
+        <span class="n">plugin_name</span><span class="p">,</span> <span class="n">plugin_config</span> <span class="o">=</span> <span class="n">match</span><span class="o">.</span><span class="n">groups</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">plugin_name</span><span class="p">,</span> <span class="n">plugin_config</span> <span class="o">=</span> <span class="n">value</span><span class="p">,</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">plugin_name</span><span class="p">,</span> <span class="n">plugin_config</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="options_validate_tolerance"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.options.html#beancount.parser.options.options_validate_tolerance">[docs]</a><span class="k">def</span> <span class="nf">options_validate_tolerance</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Validate the tolerance option.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      value: A string, the value provided as option.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">      The new value, converted, if the conversion is successful.</span>
+<span class="sd">    Raises:</span>
+<span class="sd">      ValueError: If the value is invalid.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">D</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="options_validate_tolerance_map"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.options.html#beancount.parser.options.options_validate_tolerance_map">[docs]</a><span class="k">def</span> <span class="nf">options_validate_tolerance_map</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Validate an option with a map of currency/tolerance pairs in a string.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      value: A string, the value provided as option.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">      The new value, converted, if the conversion is successful.</span>
+<span class="sd">    Raises:</span>
+<span class="sd">      ValueError: If the value is invalid.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Process the setting of a key-value, whereby the value is a Decimal</span>
+    <span class="c1"># representation.</span>
+    <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s1">&#39;(.*):(.*)&#39;</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">match</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Invalid value &#39;</span><span class="si">{}</span><span class="s2">&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">value</span><span class="p">))</span>
+    <span class="n">currency</span><span class="p">,</span> <span class="n">tolerance_str</span> <span class="o">=</span> <span class="n">match</span><span class="o">.</span><span class="n">groups</span><span class="p">()</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">currency</span><span class="p">,</span> <span class="n">D</span><span class="p">(</span><span class="n">tolerance_str</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="options_validate_boolean"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.options.html#beancount.parser.options.options_validate_boolean">[docs]</a><span class="k">def</span> <span class="nf">options_validate_boolean</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Validate a boolean option.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      value: A string, the value provided as option.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">      The new value, converted, if the conversion is successful.</span>
+<span class="sd">    Raises:</span>
+<span class="sd">      ValueError: If the value is invalid.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">value</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;1&#39;</span><span class="p">,</span> <span class="s1">&#39;true&#39;</span><span class="p">,</span> <span class="s1">&#39;yes&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="options_validate_booking_method"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.options.html#beancount.parser.options.options_validate_booking_method">[docs]</a><span class="k">def</span> <span class="nf">options_validate_booking_method</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Validate a booking method name.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      value: A string, the value provided as option.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">      The new value, converted, if the conversion is successful.</span>
+<span class="sd">    Raises:</span>
+<span class="sd">      ValueError: If the value is invalid.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">data</span><span class="o">.</span><span class="n">Booking</span><span class="p">[</span><span class="n">value</span><span class="p">]</span>
+    <span class="k">except</span> <span class="ne">KeyError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">))</span></div>
+
+
+<span class="c1"># List of option groups, with their description, option names and default</span>
+<span class="c1"># values.</span>
+<span class="n">OptGroup</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;OptGroup&#39;</span><span class="p">,</span>
+                                  <span class="s1">&#39;description options&#39;</span><span class="p">)</span>
+
+
+<span class="c1"># An option description.</span>
+<span class="c1">#</span>
+<span class="c1"># Attributes:</span>
+<span class="c1">#  name: A string, the short name of the option, as used in the syntax.</span>
+<span class="c1">#  default_value: The default value for the option. If an option may</span>
+<span class="c1">#    show up multiple times, should be a list or a dict.</span>
+<span class="c1">#  example_value: The value to be rendered in the documentation. Even if</span>
+<span class="c1">#    the value may be specified multiple times, this should just be an</span>
+<span class="c1">#    example string for the user to model itself on.</span>
+<span class="c1">#  converter: A function object to be called to convert or validate the</span>
+<span class="c1">#    option during parsing, or None, if no conversion is necessary. The</span>
+<span class="c1">#    callable must either successfully return with the parsed value, or</span>
+<span class="c1">#    raise a ValueError for the handler to report an error to the parser.</span>
+<span class="c1">#  deprecated: A string, a message set if the option is deprecated. This is</span>
+<span class="c1">#    used to issue suitable warnings when options aren&#39;t honored or about</span>
+<span class="c1">#    not to be anymore.</span>
+<span class="c1">#  alias: A string or None; if set, this option automatically gets</span>
+<span class="c1">#    translated to this alias. This is present to support renaming of</span>
+<span class="c1">#    option names.</span>
+<span class="n">OptDesc</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">namedtuple</span><span class="p">(</span>
+    <span class="s1">&#39;OptDesc&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;name default_value example_value converter deprecated alias&#39;</span><span class="p">)</span>
+
+<span class="n">UNSET</span> <span class="o">=</span> <span class="nb">object</span><span class="p">()</span>
+
+<span class="c1"># pylint: disable=invalid-name</span>
+<div class="viewcode-block" id="Opt"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.options.html#beancount.parser.options.Opt">[docs]</a><span class="k">def</span> <span class="nf">Opt</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">default_value</span><span class="p">,</span>
+        <span class="n">example_value</span><span class="o">=</span><span class="n">UNSET</span><span class="p">,</span>
+        <span class="n">converter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">deprecated</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">alias</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Alternative constructor for OptDesc, with default values.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      name: See OptDesc.</span>
+<span class="sd">      default_value: See OptDesc.</span>
+<span class="sd">      example_value: See OptDesc.</span>
+<span class="sd">      converter: See OptDesc.</span>
+<span class="sd">      deprecated: See OptDesc.</span>
+<span class="sd">      alias: See OptDesc.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">      An instance of OptDesc.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">example_value</span> <span class="ow">is</span> <span class="n">UNSET</span><span class="p">:</span>
+        <span class="n">example_value</span> <span class="o">=</span> <span class="n">default_value</span>
+    <span class="k">return</span> <span class="n">OptDesc</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">default_value</span><span class="p">,</span> <span class="n">example_value</span><span class="p">,</span> <span class="n">converter</span><span class="p">,</span> <span class="n">deprecated</span><span class="p">,</span> <span class="n">alias</span><span class="p">)</span></div>
+
+
+<span class="n">_TYPES</span> <span class="o">=</span> <span class="n">account_types</span><span class="o">.</span><span class="n">DEFAULT_ACCOUNT_TYPES</span>
+
+
+<span class="c1"># Options that consist of data produced as a by-product of the parsing process.</span>
+<span class="c1"># These options cannot be input by the user. This is essentially read-only state</span>
+<span class="c1"># that is conceptually separate from the input options.</span>
+<span class="n">OUTPUT_OPTION_GROUPS</span> <span class="o">=</span> <span class="p">[</span>
+
+    <span class="n">OptGroup</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">      The name of the top-level Beancount input file parsed from which the</span>
+<span class="s2">      contents of the ledger have been extracted. This may be None, if no file</span>
+<span class="s2">      was used.</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Opt</span><span class="p">(</span><span class="s2">&quot;filename&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)]),</span>
+
+    <span class="n">OptGroup</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">      A list of other filenames to include. This is output from the parser and</span>
+<span class="s2">      processed by the loader but the list should otherwise have been cleared by the</span>
+<span class="s2">      time it gets to the top-level loader.load_*() function that invoked it.</span>
+<span class="s2">      The filenames are absolute. Relative include filenames are resolved against</span>
+<span class="s2">      the file that contains the include directives.</span>
+
+<span class="s2">      This is used in the parser, but also, the loader sets this list to the</span>
+<span class="s2">      full list of parsed absolute filenames in the options map. This is how you</span>
+<span class="s2">      can find out the entire list of files involved in a Beancount load</span>
+<span class="s2">      procedure.</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Opt</span><span class="p">(</span><span class="s2">&quot;include&quot;</span><span class="p">,</span> <span class="p">[],</span> <span class="s2">&quot;some-other-file.beancount&quot;</span><span class="p">)]),</span>
+
+    <span class="n">OptGroup</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">      A hash of some of the input data. This is used to supplement the</span>
+<span class="s2">      timestamps of the input files for the purpose of load caching. We</span>
+<span class="s2">      typically hash the sizes of the files or perhaps even some of the</span>
+<span class="s2">      contents, or determine any of the inputs have changed beyond the</span>
+<span class="s2">      timestamps of the input files. (Internal use only; do not rely on this.)</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Opt</span><span class="p">(</span><span class="s2">&quot;input_hash&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="s2">&quot;841ee3be9acef165feba2342&quot;</span><span class="p">)]),</span>
+
+    <span class="n">OptGroup</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">      An instance of DisplayContext, which is used to format numbers for output</span>
+<span class="s2">      with precision inferred from that in the input file. This is created</span>
+<span class="s2">      automatically by the parser.</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Opt</span><span class="p">(</span><span class="s2">&quot;dcontext&quot;</span><span class="p">,</span> <span class="n">display_context</span><span class="o">.</span><span class="n">DisplayContext</span><span class="p">())]),</span>
+
+    <span class="n">OptGroup</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">      A set of all the commodities that we have seen in the file.</span>
+<span class="s2">      This is mainly used for efficiency, best computed once at parse time.</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Opt</span><span class="p">(</span><span class="s2">&quot;commodities&quot;</span><span class="p">,</span> <span class="nb">set</span><span class="p">())]),</span>
+
+    <span class="n">OptGroup</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">      A list of Python modules containing transformation functions to run the</span>
+<span class="s2">      entries through after parsing. The parser reads the entries as they are,</span>
+<span class="s2">      transforms them through a list of standard functions, such as balance</span>
+<span class="s2">      checks and inserting padding entries, and then hands the entries over to</span>
+<span class="s2">      those plugins to add more auto-generated goodies. The list is a list of</span>
+<span class="s2">      pairs/tuples, in the format (plugin-name, plugin-configuration). The</span>
+<span class="s2">      plugin-name should be the name of a Python module to import, and within</span>
+<span class="s2">      the module we expect a special &#39;__plugins__&#39; attribute that should list</span>
+<span class="s2">      the name of transform functions to run the entries through. The</span>
+<span class="s2">      plugin-configuration argument is an optional string to be provided by the</span>
+<span class="s2">      user. Each function accepts a pair of (entries, options_map) and should</span>
+<span class="s2">      return a pair of (new entries, error instances). If a plugin configuration</span>
+<span class="s2">      is provided, it is provided as an extra argument to the plugin function.</span>
+<span class="s2">      Errors should not be printed out the output, they will be converted to</span>
+<span class="s2">      strings by the loader and displayed as dictated by the output medium.</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Opt</span><span class="p">(</span><span class="s2">&quot;plugin&quot;</span><span class="p">,</span> <span class="p">[],</span> <span class="s2">&quot;beancount.plugins.module_name&quot;</span><span class="p">,</span>
+              <span class="n">converter</span><span class="o">=</span><span class="n">options_validate_plugin</span><span class="p">)]),</span>
+    <span class="p">]</span>
+
+
+<span class="c1"># Options that are visible to the user and that can be set.</span>
+<span class="n">PUBLIC_OPTION_GROUPS</span> <span class="o">=</span> <span class="p">[</span>
+
+    <span class="n">OptGroup</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">      The title of this ledger / input file. This shows up at the top of every</span>
+<span class="s2">      page.</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Opt</span><span class="p">(</span><span class="s2">&quot;title&quot;</span><span class="p">,</span> <span class="s2">&quot;Beancount&quot;</span><span class="p">,</span> <span class="s2">&quot;Joe Smith&#39;s Personal Ledger&quot;</span><span class="p">)]),</span>
+
+    <span class="n">OptGroup</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">      Root names of every account. This can be used to customize your category</span>
+<span class="s2">      names, so that if you prefer &quot;Revenue&quot; over &quot;Income&quot; or &quot;Capital&quot; over</span>
+<span class="s2">      &quot;Equity&quot;, you can set them here. The account names in your input files</span>
+<span class="s2">      must match, and the parser will validate these. You should place these</span>
+<span class="s2">      options at the beginning of your file, because they affect how the parser</span>
+<span class="s2">      recognizes account names.</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">,</span> <span class="p">[</span>
+        <span class="n">Opt</span><span class="p">(</span><span class="s2">&quot;name_assets&quot;</span><span class="p">,</span> <span class="n">_TYPES</span><span class="o">.</span><span class="n">assets</span><span class="p">),</span>
+        <span class="n">Opt</span><span class="p">(</span><span class="s2">&quot;name_liabilities&quot;</span><span class="p">,</span> <span class="n">_TYPES</span><span class="o">.</span><span class="n">liabilities</span><span class="p">),</span>
+        <span class="n">Opt</span><span class="p">(</span><span class="s2">&quot;name_equity&quot;</span><span class="p">,</span> <span class="n">_TYPES</span><span class="o">.</span><span class="n">equity</span><span class="p">),</span>
+        <span class="n">Opt</span><span class="p">(</span><span class="s2">&quot;name_income&quot;</span><span class="p">,</span> <span class="n">_TYPES</span><span class="o">.</span><span class="n">income</span><span class="p">),</span>
+        <span class="n">Opt</span><span class="p">(</span><span class="s2">&quot;name_expenses&quot;</span><span class="p">,</span> <span class="n">_TYPES</span><span class="o">.</span><span class="n">expenses</span><span class="p">),</span>
+    <span class="p">]),</span>
+
+    <span class="n">OptGroup</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">      Leaf name of the equity account used for summarizing previous transactions</span>
+<span class="s2">      into opening balances.</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Opt</span><span class="p">(</span><span class="s2">&quot;account_previous_balances&quot;</span><span class="p">,</span> <span class="s2">&quot;Opening-Balances&quot;</span><span class="p">)]),</span>
+
+    <span class="n">OptGroup</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">      Leaf name of the equity account used for transferring previous retained</span>
+<span class="s2">      earnings from income and expenses accrued before the beginning of the</span>
+<span class="s2">      exercise into the balance sheet.</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Opt</span><span class="p">(</span><span class="s2">&quot;account_previous_earnings&quot;</span><span class="p">,</span> <span class="s2">&quot;Earnings:Previous&quot;</span><span class="p">)]),</span>
+
+    <span class="n">OptGroup</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">      Leaf name of the equity account used for inserting conversions that will</span>
+<span class="s2">      zero out remaining amounts due to transfers before the opening date. This</span>
+<span class="s2">      will essentially &quot;fixup&quot; the basic accounting equation due to the errors</span>
+<span class="s2">      that priced conversions introduce.</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Opt</span><span class="p">(</span><span class="s2">&quot;account_previous_conversions&quot;</span><span class="p">,</span> <span class="s2">&quot;Conversions:Previous&quot;</span><span class="p">)]),</span>
+
+    <span class="n">OptGroup</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">      Leaf name of the equity account used for transferring current retained</span>
+<span class="s2">      earnings from income and expenses accrued during the current exercise into</span>
+<span class="s2">      the balance sheet. This is most often called &quot;Net Income&quot;.</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Opt</span><span class="p">(</span><span class="s2">&quot;account_current_earnings&quot;</span><span class="p">,</span> <span class="s2">&quot;Earnings:Current&quot;</span><span class="p">)]),</span>
+
+    <span class="n">OptGroup</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">      Leaf name of the equity account used for inserting conversions that will</span>
+<span class="s2">      zero out remaining amounts due to transfers during the exercise period.</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Opt</span><span class="p">(</span><span class="s2">&quot;account_current_conversions&quot;</span><span class="p">,</span> <span class="s2">&quot;Conversions:Current&quot;</span><span class="p">)]),</span>
+
+    <span class="n">OptGroup</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">      The name of an account to be used to post to and accumulate rounding error.</span>
+<span class="s2">      This is unset and this feature is disabled by default; setting this value to</span>
+<span class="s2">      an account name will automatically enable the addition of postings on all</span>
+<span class="s2">      transactions that have a residual amount.</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Opt</span><span class="p">(</span><span class="s2">&quot;account_rounding&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;Rounding&quot;</span><span class="p">)]),</span>
+
+    <span class="n">OptGroup</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">      The imaginary currency used to convert all units for conversions at a</span>
+<span class="s2">      degenerate rate of zero. This can be any currency name that isn&#39;t used in</span>
+<span class="s2">      the rest of the ledger. Choose something unique that makes sense in your</span>
+<span class="s2">      language.</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Opt</span><span class="p">(</span><span class="s2">&quot;conversion_currency&quot;</span><span class="p">,</span> <span class="s2">&quot;NOTHING&quot;</span><span class="p">)]),</span>
+
+    <span class="n">OptGroup</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">      Mappings of currency to the tolerance used when it cannot be inferred</span>
+<span class="s2">      automatically. The tolerance at hand is the one used for verifying (1)</span>
+<span class="s2">      that transactions balance, (2) explicit balance checks from &#39;balance&#39;</span>
+<span class="s2">      directives balance, and (3) in the precision used for padding (from the</span>
+<span class="s2">      &#39;pad&#39; directive).</span>
+
+<span class="s2">      The values must be strings in the following format:</span>
+<span class="s2">        &lt;currency&gt;:&lt;tolerance&gt;</span>
+<span class="s2">      for example, &#39;USD:0.005&#39;.</span>
+
+<span class="s2">      By default, the tolerance used for currencies without an inferred value is</span>
+<span class="s2">      zero (which means infinite precision). As a special case, this value, that</span>
+<span class="s2">      is, the fallback value used for all currencies without an explicit default</span>
+<span class="s2">      can be overridden using the &#39;*&#39; currency, like this:  &#39;*:0.5&#39;. Used by</span>
+<span class="s2">      itself, this last example sets the fallabck tolerance as &#39;0.5&#39; for all</span>
+<span class="s2">      currencies.</span>
+
+<span class="s2">      For detailed documentation about how precision is handled, see this doc:</span>
+<span class="s2">      http://furius.ca/beancount/doc/tolerances</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Opt</span><span class="p">(</span><span class="s2">&quot;inferred_tolerance_default&quot;</span><span class="p">,</span> <span class="p">{},</span> <span class="s2">&quot;CHF:0.01&quot;</span><span class="p">,</span>
+              <span class="n">converter</span><span class="o">=</span><span class="n">options_validate_tolerance_map</span><span class="p">)]),</span>
+
+    <span class="n">OptGroup</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">      A multiplier for inferred tolerance values.</span>
+
+<span class="s2">      When the tolerance values aren&#39;t specified explicitly via the</span>
+<span class="s2">      &#39;inferred_tolerance_default&#39; option, the tolerance is inferred from the</span>
+<span class="s2">      numbers in the input file. For example, if a transaction has posting with</span>
+<span class="s2">      a value like &#39;32.424 CAD&#39;, the tolerance for CAD will be inferred to be</span>
+<span class="s2">      0.001 times some multiplier. This is the muliplier value.</span>
+
+<span class="s2">      We normally assume that the institution we&#39;re reproducing this posting</span>
+<span class="s2">      from applies rounding, and so the default value for the multiplier is</span>
+<span class="s2">      0.5, that is, half of the smallest digit encountered.</span>
+
+<span class="s2">      You can customize this multiplier by changing this option, typically</span>
+<span class="s2">      expanding it to account for amounts slightly beyond the usual tolerance,</span>
+<span class="s2">      for example, if you deal with institutions with bad of unexpected rounding</span>
+<span class="s2">      behaviour.</span>
+
+<span class="s2">      For detailed documentation about how precision is handled, see this doc:</span>
+<span class="s2">      http://furius.ca/beancount/doc/tolerances</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Opt</span><span class="p">(</span><span class="s2">&quot;inferred_tolerance_multiplier&quot;</span><span class="p">,</span> <span class="n">D</span><span class="p">(</span><span class="s2">&quot;0.5&quot;</span><span class="p">),</span> <span class="s2">&quot;1.1&quot;</span><span class="p">,</span>
+              <span class="n">converter</span><span class="o">=</span><span class="n">D</span><span class="p">)]),</span>
+
+    <span class="n">OptGroup</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">      Enable a feature that expands the maximum tolerance inferred on</span>
+<span class="s2">      transactions to include values on cost currencies inferred by postings</span>
+<span class="s2">      held at-cost or converted at price. Those postings can imply a tolerance</span>
+<span class="s2">      value by multiplying the smallest digit of the unit by the cost or price</span>
+<span class="s2">      value and taking half of that value.</span>
+
+<span class="s2">      For example, if a posting has an amount of &quot;2.345 RGAGX {45.00 USD}&quot;</span>
+<span class="s2">      attached to it, it implies a tolerance of 0.001 x 45.00 * M = 0.045 USD</span>
+<span class="s2">      (where M is the inferred_tolerance_multiplier) and this is added to the</span>
+<span class="s2">      mix to enlarge the tolerance allowed for units of USD on that transaction.</span>
+<span class="s2">      All the normally inferred tolerances (see</span>
+<span class="s2">      http://furius.ca/beancount/doc/tolerances) are still taken into account.</span>
+<span class="s2">      Enabling this flag only makes the tolerances potentially wider.</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Opt</span><span class="p">(</span><span class="s2">&quot;infer_tolerance_from_cost&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="kc">True</span><span class="p">)]),</span>
+
+    <span class="n">OptGroup</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">      A list of directory roots, relative to the CWD, which should be searched</span>
+<span class="s2">      for document files. For the document files to be automatically found they</span>
+<span class="s2">      must have the following filename format: YYYY-MM-DD.(.*)</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Opt</span><span class="p">(</span><span class="s2">&quot;documents&quot;</span><span class="p">,</span> <span class="p">[],</span> <span class="s2">&quot;/path/to/your/documents/archive&quot;</span><span class="p">)]),</span>
+
+    <span class="n">OptGroup</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">      A list of currencies that we single out during reporting and create</span>
+<span class="s2">      dedicated columns for. This is used to indicate the main currencies that</span>
+<span class="s2">      you work with in real life. (Refrain from listing all the possible</span>
+<span class="s2">      currencies here, this is not what it is made for; just list the very</span>
+<span class="s2">      principal currencies you use daily only.)</span>
+
+<span class="s2">      Because our system is agnostic to any unit definition that occurs in the</span>
+<span class="s2">      input file, we use this to display these values in table cells without</span>
+<span class="s2">      their associated unit strings. This allows you to import the numbers in a</span>
+<span class="s2">      spreadsheet (e.g, &quot;101.00 USD&quot; does not get parsed by a spreadsheet</span>
+<span class="s2">      import, but &quot;101.00&quot; does).</span>
+
+<span class="s2">      If you need to enter a list of operating currencies, you may input this</span>
+<span class="s2">      option multiple times, that is, you repeat the entire directive once for</span>
+<span class="s2">      each desired operating currency.</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Opt</span><span class="p">(</span><span class="s2">&quot;operating_currency&quot;</span><span class="p">,</span> <span class="p">[],</span> <span class="s2">&quot;USD&quot;</span><span class="p">)]),</span>
+
+    <span class="n">OptGroup</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">      A boolean, true if the number formatting routines should output commas</span>
+<span class="s2">      as thousand separators in numbers.</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Opt</span><span class="p">(</span><span class="s2">&quot;render_commas&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;TRUE&quot;</span><span class="p">,</span>
+              <span class="n">converter</span><span class="o">=</span><span class="n">options_validate_boolean</span><span class="p">)]),</span>
+
+    <span class="n">OptGroup</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">      A string that defines which set of plugins is to be run by the loader: if</span>
+<span class="s2">      the mode is &quot;default&quot;, a preset list of plugins are automatically run</span>
+<span class="s2">      before any user plugin. If the mode is &quot;raw&quot;, no preset plugins are run at</span>
+<span class="s2">      all, only user plugins are run (the user should explicitly load the</span>
+<span class="s2">      desired list of plugins by using the &#39;plugin&#39; option. This is useful in case the</span>
+<span class="s2">      user wants full control over the ordering in which the plugins are run).</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Opt</span><span class="p">(</span><span class="s2">&quot;plugin_processing_mode&quot;</span><span class="p">,</span> <span class="s2">&quot;default&quot;</span><span class="p">,</span> <span class="s2">&quot;raw&quot;</span><span class="p">,</span>
+              <span class="n">converter</span><span class="o">=</span><span class="n">options_validate_processing_mode</span><span class="p">)]),</span>
+
+    <span class="n">OptGroup</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">      The number of lines beyond which a multi-line string will trigger a</span>
+<span class="s2">      overly long line warning. This warning is meant to help detect a dangling</span>
+<span class="s2">      quote by warning users of unexpectedly long strings.</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Opt</span><span class="p">(</span><span class="s2">&quot;long_string_maxlines&quot;</span><span class="p">,</span> <span class="mi">64</span><span class="p">)]),</span>
+
+    <span class="n">OptGroup</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">      The booking method to apply to ambiguous reductions of inventory lots.</span>
+<span class="s2">      When a posting is matched against the contents of an account&#39;s inventory</span>
+<span class="s2">      to reduce its contents and multiple lots match, the method dictates how</span>
+<span class="s2">      this ambiguity is resolved. Methods include &quot;STRICT&quot; which raises an</span>
+<span class="s2">      error, &quot;FIFO&quot; which selects the oldest lot, and &quot;NONE&quot; which allows any</span>
+<span class="s2">      reduction to be added to the inventory despite the absence of a match</span>
+<span class="s2">      (resulting in mixed inventories).</span>
+
+<span class="s2">      See the following documents for details:</span>
+<span class="s2">        http://furius.ca/beancount/doc/inventories</span>
+<span class="s2">        http://furius.ca/beancount/doc/proposal-booking</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Opt</span><span class="p">(</span><span class="s2">&quot;booking_method&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">Booking</span><span class="o">.</span><span class="n">STRICT</span><span class="p">,</span> <span class="s2">&quot;STRICT&quot;</span><span class="p">,</span>
+              <span class="n">converter</span><span class="o">=</span><span class="n">options_validate_booking_method</span><span class="p">)]),</span>
+
+    <span class="n">OptGroup</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">      Support the pipe (|) symbol to for transaction separator.</span>
+
+<span class="s2">      This is only provided as a temporary stopgap to ease transition, and will</span>
+<span class="s2">      be removed eventually. This is why this option is marked as deprecated.</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Opt</span><span class="p">(</span><span class="s2">&quot;allow_pipe_separator&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;TRUE&quot;</span><span class="p">,</span>
+              <span class="n">converter</span><span class="o">=</span><span class="n">options_validate_boolean</span><span class="p">,</span>
+              <span class="n">deprecated</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;Allowing pipe separator temporary; &#39;</span>
+                          <span class="s1">&#39;this will go away eventually.&#39;</span><span class="p">))]),</span>
+
+    <span class="n">OptGroup</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">      Allow plugins to produce a None object for the &#39;tags&#39; and &#39;links&#39;</span>
+<span class="s2">      attributes of a Transaction instance. By default, without this, those</span>
+<span class="s2">      attributes are now ensured to be a Set type, and an empty frozenset()</span>
+<span class="s2">      instance if there are no values</span>
+
+<span class="s2">      This is only provided as a temporary mechanism to allow you some time to</span>
+<span class="s2">      port your plugins code.</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Opt</span><span class="p">(</span><span class="s2">&quot;allow_deprecated_none_for_tags_and_links&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;TRUE&quot;</span><span class="p">,</span>
+              <span class="n">converter</span><span class="o">=</span><span class="n">options_validate_boolean</span><span class="p">,</span>
+              <span class="n">deprecated</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;Allowing None for tags and link &#39;</span>
+                          <span class="s1">&#39;will go away eventually.&#39;</span><span class="p">))]),</span>
+
+    <span class="n">OptGroup</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">      A boolean, if true, prepend the directory name of the top-level file to</span>
+<span class="s2">      the PYTHONPATH.</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Opt</span><span class="p">(</span><span class="s2">&quot;insert_pythonpath&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;TRUE&quot;</span><span class="p">)]),</span>
+    <span class="p">]</span>
+
+
+<span class="n">OPTION_GROUPS</span> <span class="o">=</span> <span class="n">OUTPUT_OPTION_GROUPS</span> <span class="o">+</span> <span class="n">PUBLIC_OPTION_GROUPS</span>
+
+<span class="c1"># A dict of the option names to their descriptors.</span>
+<span class="n">OPTIONS</span> <span class="o">=</span> <span class="p">{</span><span class="n">desc</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">desc</span>
+           <span class="k">for</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">OPTION_GROUPS</span>
+           <span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">group</span><span class="o">.</span><span class="n">options</span><span class="p">}</span>
+
+
+<span class="c1"># A dict of the option names to their default value.</span>
+<span class="n">OPTIONS_DEFAULTS</span> <span class="o">=</span> <span class="p">{</span><span class="n">desc</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">desc</span><span class="o">.</span><span class="n">default_value</span>
+                    <span class="k">for</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">OPTION_GROUPS</span>
+                    <span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">group</span><span class="o">.</span><span class="n">options</span><span class="p">}</span>
+
+
+<span class="c1"># A list of options that cannot be modified.</span>
+<span class="n">READ_ONLY_OPTIONS</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;filename&quot;</span><span class="p">,</span> <span class="s2">&quot;plugin&quot;</span><span class="p">}</span>
+
+
+<div class="viewcode-block" id="get_account_types"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.options.html#beancount.parser.options.get_account_types">[docs]</a><span class="k">def</span> <span class="nf">get_account_types</span><span class="p">(</span><span class="n">options</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Extract the account type names from the parser&#39;s options.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      options: a dict of ledger options.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">      An instance of AccountTypes, that contains all the prefixes.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">account_types</span><span class="o">.</span><span class="n">AccountTypes</span><span class="p">(</span>
+        <span class="o">*</span><span class="p">[</span><span class="n">options</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+          <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;name_assets&quot;</span><span class="p">,</span>
+                      <span class="s2">&quot;name_liabilities&quot;</span><span class="p">,</span>
+                      <span class="s2">&quot;name_equity&quot;</span><span class="p">,</span>
+                      <span class="s2">&quot;name_income&quot;</span><span class="p">,</span>
+                      <span class="s2">&quot;name_expenses&quot;</span><span class="p">)])</span></div>
+
+
+<div class="viewcode-block" id="get_previous_accounts"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.options.html#beancount.parser.options.get_previous_accounts">[docs]</a><span class="k">def</span> <span class="nf">get_previous_accounts</span><span class="p">(</span><span class="n">options</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Return account names for the previous earnings, balances and conversion accounts.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      options: a dict of ledger options.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">      A tuple of 3 account objects, for booking previous earnings,</span>
+<span class="sd">      previous balances, and previous conversions.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">equity</span> <span class="o">=</span> <span class="n">options</span><span class="p">[</span><span class="s1">&#39;name_equity&#39;</span><span class="p">]</span>
+    <span class="n">account_previous_earnings</span> <span class="o">=</span> <span class="n">account</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">equity</span><span class="p">,</span>
+                                             <span class="n">options</span><span class="p">[</span><span class="s1">&#39;account_previous_earnings&#39;</span><span class="p">])</span>
+    <span class="n">account_previous_balances</span> <span class="o">=</span> <span class="n">account</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">equity</span><span class="p">,</span>
+                                             <span class="n">options</span><span class="p">[</span><span class="s1">&#39;account_previous_balances&#39;</span><span class="p">])</span>
+    <span class="n">account_previous_conversions</span> <span class="o">=</span> <span class="n">account</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">equity</span><span class="p">,</span>
+                                                <span class="n">options</span><span class="p">[</span><span class="s1">&#39;account_previous_conversions&#39;</span><span class="p">])</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">account_previous_earnings</span><span class="p">,</span>
+            <span class="n">account_previous_balances</span><span class="p">,</span>
+            <span class="n">account_previous_conversions</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="get_current_accounts"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.options.html#beancount.parser.options.get_current_accounts">[docs]</a><span class="k">def</span> <span class="nf">get_current_accounts</span><span class="p">(</span><span class="n">options</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Return account names for the current earnings and conversion accounts.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      options: a dict of ledger options.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">      A tuple of 2 account objects, one for booking current earnings, and one</span>
+<span class="sd">      for current conversions.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">equity</span> <span class="o">=</span> <span class="n">options</span><span class="p">[</span><span class="s1">&#39;name_equity&#39;</span><span class="p">]</span>
+    <span class="n">account_current_earnings</span> <span class="o">=</span> <span class="n">account</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">equity</span><span class="p">,</span>
+                                            <span class="n">options</span><span class="p">[</span><span class="s1">&#39;account_current_earnings&#39;</span><span class="p">])</span>
+    <span class="n">account_current_conversions</span> <span class="o">=</span> <span class="n">account</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">equity</span><span class="p">,</span>
+                                               <span class="n">options</span><span class="p">[</span><span class="s1">&#39;account_current_conversions&#39;</span><span class="p">])</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">account_current_earnings</span><span class="p">,</span>
+            <span class="n">account_current_conversions</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="list_options"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.options.html#beancount.parser.options.list_options">[docs]</a><span class="k">def</span> <span class="nf">list_options</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Produce a formatted text of the available options and their description.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">      A string, formatted nicely to be printed in 80 columns.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">oss</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">StringIO</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">PUBLIC_OPTION_GROUPS</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">group</span><span class="o">.</span><span class="n">options</span><span class="p">:</span>
+            <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;option &quot;</span><span class="si">{}</span><span class="s1">&quot; &quot;</span><span class="si">{}</span><span class="s1">&quot;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">desc</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">desc</span><span class="o">.</span><span class="n">example_value</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">desc</span><span class="o">.</span><span class="n">deprecated</span><span class="p">:</span>
+                <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">textwrap</span><span class="o">.</span><span class="n">fill</span><span class="p">(</span>
+                    <span class="s2">&quot;THIS OPTION IS DEPRECATED: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">desc</span><span class="o">.</span><span class="n">deprecated</span><span class="p">),</span>
+                    <span class="n">initial_indent</span><span class="o">=</span><span class="s2">&quot;  &quot;</span><span class="p">,</span>
+                    <span class="n">subsequent_indent</span><span class="o">=</span><span class="s2">&quot;  &quot;</span><span class="p">))</span>
+                <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n\n</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">description</span> <span class="o">=</span> <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                               <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">group</span><span class="o">.</span><span class="n">description</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">splitlines</span><span class="p">())</span>
+        <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">textwrap</span><span class="o">.</span><span class="n">fill</span><span class="p">(</span><span class="n">description</span><span class="p">,</span>
+                                <span class="n">initial_indent</span><span class="o">=</span><span class="s1">&#39;  &#39;</span><span class="p">,</span>
+                                <span class="n">subsequent_indent</span><span class="o">=</span><span class="s1">&#39;  &#39;</span><span class="p">))</span>
+        <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">desc</span><span class="o">.</span><span class="n">default_value</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">dict</span><span class="p">,</span> <span class="nb">set</span><span class="p">)):</span>
+            <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;  (This option may be supplied multiple times.)</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+        <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">oss</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">Beancount</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/index.html">Beancount Modules</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Martin Blais.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

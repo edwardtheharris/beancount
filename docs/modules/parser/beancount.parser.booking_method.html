@@ -1,0 +1,267 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>beancount.parser.booking_method &#8212; Beancount 2.2.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="beancount.parser.booking" href="beancount.parser.booking.html" />
+    <link rel="prev" title="beancount.parser.booking_full" href="beancount.parser.booking_full.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-beancount.parser.booking_method">
+<span id="beancount-parser-booking-method"></span><h1>beancount.parser.booking_method<a class="headerlink" href="#module-beancount.parser.booking_method" title="Permalink to this headline">¶</a></h1>
+<p>Implementations of all the particular booking methods.
+This code is used by the full booking algorithm.</p>
+<p class="rubric">Functions</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.parser.booking_method.booking_method_AVERAGE" title="beancount.parser.booking_method.booking_method_AVERAGE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">booking_method_AVERAGE</span></code></a>(entry, posting, matches)</p></td>
+<td><p>AVERAGE booking method implementation.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.parser.booking_method.booking_method_FIFO" title="beancount.parser.booking_method.booking_method_FIFO"><code class="xref py py-obj docutils literal notranslate"><span class="pre">booking_method_FIFO</span></code></a>(entry, posting, matches)</p></td>
+<td><p>FIFO booking method implementation.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.parser.booking_method.booking_method_LIFO" title="beancount.parser.booking_method.booking_method_LIFO"><code class="xref py py-obj docutils literal notranslate"><span class="pre">booking_method_LIFO</span></code></a>(entry, posting, matches)</p></td>
+<td><p>LIFO booking method implementation.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.parser.booking_method.booking_method_NONE" title="beancount.parser.booking_method.booking_method_NONE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">booking_method_NONE</span></code></a>(entry, posting, matches)</p></td>
+<td><p>NONE booking method implementation.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.parser.booking_method.booking_method_STRICT" title="beancount.parser.booking_method.booking_method_STRICT"><code class="xref py py-obj docutils literal notranslate"><span class="pre">booking_method_STRICT</span></code></a>(entry, posting, matches)</p></td>
+<td><p>Strict booking method.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.parser.booking_method.handle_ambiguous_matches" title="beancount.parser.booking_method.handle_ambiguous_matches"><code class="xref py py-obj docutils literal notranslate"><span class="pre">handle_ambiguous_matches</span></code></a>(entry, posting, …)</p></td>
+<td><p>Handle ambiguous matches by dispatching to a particular method.</p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Classes</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.parser.booking_method.AmbiguousMatchError" title="beancount.parser.booking_method.AmbiguousMatchError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">AmbiguousMatchError</span></code></a>(source, message, entry)</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+<dl class="class">
+<dt id="beancount.parser.booking_method.AmbiguousMatchError">
+<em class="property">class </em><code class="sig-prename descclassname">beancount.parser.booking_method.</code><code class="sig-name descname">AmbiguousMatchError</code><span class="sig-paren">(</span><em class="sig-param">source</em>, <em class="sig-param">message</em>, <em class="sig-param">entry</em><span class="sig-paren">)</span><a class="headerlink" href="#beancount.parser.booking_method.AmbiguousMatchError" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="beancount.parser.booking_method.AmbiguousMatchError.entry">
+<em class="property">property </em><code class="sig-name descname">entry</code><a class="headerlink" href="#beancount.parser.booking_method.AmbiguousMatchError.entry" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 2</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.booking_method.AmbiguousMatchError.message">
+<em class="property">property </em><code class="sig-name descname">message</code><a class="headerlink" href="#beancount.parser.booking_method.AmbiguousMatchError.message" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 1</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.booking_method.AmbiguousMatchError.source">
+<em class="property">property </em><code class="sig-name descname">source</code><a class="headerlink" href="#beancount.parser.booking_method.AmbiguousMatchError.source" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.parser.booking_method.handle_ambiguous_matches">
+<code class="sig-prename descclassname">beancount.parser.booking_method.</code><code class="sig-name descname">handle_ambiguous_matches</code><span class="sig-paren">(</span><em class="sig-param">entry</em>, <em class="sig-param">posting</em>, <em class="sig-param">matches</em>, <em class="sig-param">method</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/booking_method.html#handle_ambiguous_matches"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.booking_method.handle_ambiguous_matches" title="Permalink to this definition">¶</a></dt>
+<dd><p>Handle ambiguous matches by dispatching to a particular method.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>entry</strong> – The parent Transaction instance.</p></li>
+<li><p><strong>posting</strong> – An instance of Posting, the reducing posting which we’re
+attempting to match.</p></li>
+<li><p><strong>matches</strong> – A list of matching Position instances from the ante-inventory.
+Those positions are known to already match the ‘posting’ spec.</p></li>
+<li><p><strong>methods</strong> – A mapping of account name to their corresponding booking
+method.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><dl>
+<dt>A pair of</dt><dd><dl class="simple">
+<dt>booked_postings: A list of matched Posting instances, whose ‘cost’</dt><dd><p>attributes are ensured to be of type Cost.</p>
+</dd>
+</dl>
+<p>errors: A list of errors to be generated.</p>
+</dd>
+</dl>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.parser.booking_method.booking_method_STRICT">
+<code class="sig-prename descclassname">beancount.parser.booking_method.</code><code class="sig-name descname">booking_method_STRICT</code><span class="sig-paren">(</span><em class="sig-param">entry</em>, <em class="sig-param">posting</em>, <em class="sig-param">matches</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/booking_method.html#booking_method_STRICT"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.booking_method.booking_method_STRICT" title="Permalink to this definition">¶</a></dt>
+<dd><p>Strict booking method.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>entry</strong> – The parent Transaction instance.</p></li>
+<li><p><strong>posting</strong> – An instance of Posting, the reducing posting which we’re
+attempting to match.</p></li>
+<li><p><strong>matches</strong> – A list of matching Position instances from the ante-inventory.
+Those positions are known to already match the ‘posting’ spec.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><dl>
+<dt>A triple of</dt><dd><dl class="simple">
+<dt>booked_postings: A list of matched Posting instances, whose ‘cost’</dt><dd><p>attributes are ensured to be of type Cost.</p>
+</dd>
+</dl>
+<p>errors: A list of errors to be generated.
+insufficient: A boolean, true if we could not find enough matches</p>
+<blockquote>
+<div><p>to fulfill the reduction.</p>
+</div></blockquote>
+</dd>
+</dl>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.parser.booking_method.booking_method_FIFO">
+<code class="sig-prename descclassname">beancount.parser.booking_method.</code><code class="sig-name descname">booking_method_FIFO</code><span class="sig-paren">(</span><em class="sig-param">entry</em>, <em class="sig-param">posting</em>, <em class="sig-param">matches</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/booking_method.html#booking_method_FIFO"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.booking_method.booking_method_FIFO" title="Permalink to this definition">¶</a></dt>
+<dd><p>FIFO booking method implementation.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.parser.booking_method.booking_method_LIFO">
+<code class="sig-prename descclassname">beancount.parser.booking_method.</code><code class="sig-name descname">booking_method_LIFO</code><span class="sig-paren">(</span><em class="sig-param">entry</em>, <em class="sig-param">posting</em>, <em class="sig-param">matches</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/booking_method.html#booking_method_LIFO"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.booking_method.booking_method_LIFO" title="Permalink to this definition">¶</a></dt>
+<dd><p>LIFO booking method implementation.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.parser.booking_method.booking_method_NONE">
+<code class="sig-prename descclassname">beancount.parser.booking_method.</code><code class="sig-name descname">booking_method_NONE</code><span class="sig-paren">(</span><em class="sig-param">entry</em>, <em class="sig-param">posting</em>, <em class="sig-param">matches</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/booking_method.html#booking_method_NONE"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.booking_method.booking_method_NONE" title="Permalink to this definition">¶</a></dt>
+<dd><p>NONE booking method implementation.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.parser.booking_method.booking_method_AVERAGE">
+<code class="sig-prename descclassname">beancount.parser.booking_method.</code><code class="sig-name descname">booking_method_AVERAGE</code><span class="sig-paren">(</span><em class="sig-param">entry</em>, <em class="sig-param">posting</em>, <em class="sig-param">matches</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/booking_method.html#booking_method_AVERAGE"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.booking_method.booking_method_AVERAGE" title="Permalink to this definition">¶</a></dt>
+<dd><p>AVERAGE booking method implementation.</p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">Beancount</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Beancount Modules</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../core/index.html">Beancount Core</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Parser</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Beancount Modules</a><ul>
+  <li><a href="index.html">Parser</a><ul>
+      <li>Previous: <a href="beancount.parser.booking_full.html" title="previous chapter">beancount.parser.booking_full</a></li>
+      <li>Next: <a href="beancount.parser.booking.html" title="next chapter">beancount.parser.booking</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Martin Blais.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../../_sources/modules/parser/beancount.parser.booking_method.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

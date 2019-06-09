@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta charset="utf-8" />
-    <title>parser.parser &#8212; Beancount 2.2.1 documentation</title>
+    <title>beancount.parser.parser &#8212; Beancount 2.2.1 documentation</title>
     <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
@@ -15,8 +15,8 @@
     <script type="text/javascript" src="../../_static/language_data.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="beancount.parser.booking_full" href="beancount.parser.booking_full.html" />
-    <link rel="prev" title="Parser" href="index.html" />
+    <link rel="next" title="beancount.parser.printer" href="beancount.parser.printer.html" />
+    <link rel="prev" title="beancount.parser.options" href="beancount.parser.options.html" />
    
   <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
   
@@ -33,17 +33,9 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="parser-parser">
-<h1>parser.parser<a class="headerlink" href="#parser-parser" title="Permalink to this headline">¶</a></h1>
-<table class="longtable docutils align-default">
-<colgroup>
-<col style="width: 10%" />
-<col style="width: 90%" />
-</colgroup>
-<tbody>
-</tbody>
-</table>
-<span class="target" id="module-beancount.parser.parser"></span><p>Beancount syntax parser.</p>
+  <div class="section" id="module-beancount.parser.parser">
+<span id="beancount-parser-parser"></span><h1>beancount.parser.parser<a class="headerlink" href="#module-beancount.parser.parser" title="Permalink to this headline">¶</a></h1>
+<p>Beancount syntax parser.</p>
 <div class="topic">
 <p class="topic-title first">Incomplete Transaction Objects</p>
 <p>The parser (and its grammar builder) produces “incomplete”
@@ -156,6 +148,36 @@ the date or label:</p>
 <p>See the test beancount.parser.grammar_test.TestIncompleteInputs
 for examples and corresponding expected values.</p>
 </div>
+<p class="rubric">Functions</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="parser.html#beancount.parser.parser.is_entry_incomplete" title="beancount.parser.parser.is_entry_incomplete"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_entry_incomplete</span></code></a>(entry)</p></td>
+<td><p>Detect the presence of elided amounts in Transactions.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="parser.html#beancount.parser.parser.is_posting_incomplete" title="beancount.parser.parser.is_posting_incomplete"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_posting_incomplete</span></code></a>(posting)</p></td>
+<td><p>Detect the presence of any elided amounts in a Posting.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="parser.html#beancount.parser.parser.parse_doc" title="beancount.parser.parser.parse_doc"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_doc</span></code></a>([expect_errors, allow_incomplete])</p></td>
+<td><p>Factory of decorators that parse the function’s docstring as an argument.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="parser.html#beancount.parser.parser.parse_file" title="beancount.parser.parser.parse_file"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_file</span></code></a>(filename, **kw)</p></td>
+<td><p>Parse a beancount input file and return Ledger with the list of transactions and tree of accounts.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="parser.html#beancount.parser.parser.parse_many" title="beancount.parser.parser.parse_many"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_many</span></code></a>(string[, level])</p></td>
+<td><p>Parse a string with a snippet of Beancount input and replace vars from caller.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="parser.html#beancount.parser.parser.parse_one" title="beancount.parser.parser.parse_one"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_one</span></code></a>(string)</p></td>
+<td><p>Parse a string with single Beancount directive and replace vars from caller.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="parser.html#beancount.parser.parser.parse_string" title="beancount.parser.parser.parse_string"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_string</span></code></a>(string[, report_filename])</p></td>
+<td><p>Parse a beancount input file and return Ledger with the list of transactions and tree of accounts.</p></td>
+</tr>
+</tbody>
+</table>
 <dl class="function">
 <dt id="beancount.parser.parser.is_posting_incomplete">
 <code class="sig-prename descclassname">beancount.parser.parser.</code><code class="sig-name descname">is_posting_incomplete</code><span class="sig-paren">(</span><em class="sig-param">posting</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/parser.html#is_posting_incomplete"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.parser.is_posting_incomplete" title="Permalink to this definition">¶</a></dt>
@@ -330,8 +352,8 @@ not to allow it because we want to minimize the features tests depend on.</p></l
   <li><a href="../../index.html">Documentation overview</a><ul>
   <li><a href="../index.html">Beancount Modules</a><ul>
   <li><a href="index.html">Parser</a><ul>
-      <li>Previous: <a href="index.html" title="previous chapter">Parser</a></li>
-      <li>Next: <a href="beancount.parser.booking_full.html" title="next chapter">beancount.parser.booking_full</a></li>
+      <li>Previous: <a href="beancount.parser.options.html" title="previous chapter">beancount.parser.options</a></li>
+      <li>Next: <a href="beancount.parser.printer.html" title="next chapter">beancount.parser.printer</a></li>
   </ul></li>
   </ul></li>
   </ul></li>
@@ -367,7 +389,7 @@ not to allow it because we want to minimize the features tests depend on.</p></l
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |
-      <a href="../../_sources/modules/parser/parser.rst.txt"
+      <a href="../../_sources/modules/parser/beancount.parser.parser.rst.txt"
           rel="nofollow">Page source</a>
     </div>
 

@@ -136,7 +136,8 @@
 <span class="sd">    .. code:: python</span>
 
 <span class="sd">        # INPUT: Assets:Account  1 HOOL {100 USD}</span>
-<span class="sd">        posting.cost = CostSpec(Decimal(&quot;100&quot;), None, &quot;USD&quot;, None, None, False))</span>
+<span class="sd">        posting.cost = CostSpec(Decimal(&quot;100&quot;), None, &quot;USD&quot;,</span>
+<span class="sd">                                None, None, False))</span>
 
 <span class="sd">    Both per-unit and total numbers may be omitted as well, in which case,</span>
 <span class="sd">    only the number-per-unit portion of the CostSpec will appear as MISSING:</span>
@@ -184,7 +185,7 @@
 <span class="kn">import</span> <span class="nn">io</span>
 <span class="kn">from</span> <span class="nn">os</span> <span class="k">import</span> <span class="n">path</span>
 
-<span class="c1"># from beancount.parser import _parser</span>
+<span class="kn">from</span> <span class="nn">beancount.parser</span> <span class="k">import</span> <span class="n">_parser</span>
 <span class="kn">from</span> <span class="nn">beancount.parser</span> <span class="k">import</span> <span class="n">grammar</span>
 <span class="kn">from</span> <span class="nn">beancount.parser</span> <span class="k">import</span> <span class="n">printer</span>
 <span class="kn">from</span> <span class="nn">beancount.parser</span> <span class="k">import</span> <span class="n">hashsrc</span>

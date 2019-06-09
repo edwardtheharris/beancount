@@ -1,0 +1,346 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>beancount.parser.booking_method &#8212; Beancount 2.2.1 documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for beancount.parser.booking_method</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Implementations of all the particular booking methods.</span>
+<span class="sd">This code is used by the full booking algorithm.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="n">__copyright__</span> <span class="o">=</span> <span class="s2">&quot;Copyright (C) 2015-2017  Martin Blais&quot;</span>
+<span class="n">__license__</span> <span class="o">=</span> <span class="s2">&quot;GNU GPLv2&quot;</span>
+
+<span class="kn">import</span> <span class="nn">collections</span>
+
+<span class="kn">from</span> <span class="nn">beancount.core.number</span> <span class="k">import</span> <span class="n">ZERO</span>
+<span class="kn">from</span> <span class="nn">beancount.core.number</span> <span class="k">import</span> <span class="n">Decimal</span>
+<span class="kn">from</span> <span class="nn">beancount.core.data</span> <span class="k">import</span> <span class="n">Booking</span>
+<span class="kn">from</span> <span class="nn">beancount.core.amount</span> <span class="k">import</span> <span class="n">Amount</span>
+<span class="kn">from</span> <span class="nn">beancount.core.position</span> <span class="k">import</span> <span class="n">Cost</span>
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">flags</span>
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">position</span>
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">inventory</span>
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">convert</span>
+
+
+<span class="c1"># An error raised if we failed to reduce the inventory balance unambiguously.</span>
+<span class="n">AmbiguousMatchError</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;AmbiguousMatchError&#39;</span><span class="p">,</span> <span class="s1">&#39;source message entry&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="handle_ambiguous_matches"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.booking_method.html#beancount.parser.booking_method.handle_ambiguous_matches">[docs]</a><span class="k">def</span> <span class="nf">handle_ambiguous_matches</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">posting</span><span class="p">,</span> <span class="n">matches</span><span class="p">,</span> <span class="n">method</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Handle ambiguous matches by dispatching to a particular method.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      entry: The parent Transaction instance.</span>
+<span class="sd">      posting: An instance of Posting, the reducing posting which we&#39;re</span>
+<span class="sd">        attempting to match.</span>
+<span class="sd">      matches: A list of matching Position instances from the ante-inventory.</span>
+<span class="sd">        Those positions are known to already match the &#39;posting&#39; spec.</span>
+<span class="sd">      methods: A mapping of account name to their corresponding booking</span>
+<span class="sd">        method.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">      A pair of</span>
+<span class="sd">        booked_postings: A list of matched Posting instances, whose &#39;cost&#39;</span>
+<span class="sd">          attributes are ensured to be of type Cost.</span>
+<span class="sd">        errors: A list of errors to be generated.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="n">Booking</span><span class="p">),</span> <span class="p">(</span>
+        <span class="s2">&quot;Invalid type: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">method</span><span class="p">))</span>
+    <span class="k">assert</span> <span class="n">matches</span><span class="p">,</span> <span class="s2">&quot;Internal error: Invalid call with no matches&quot;</span>
+
+    <span class="c1">#method = globals()[&#39;booking_method_{}&#39;.format(method.name)]</span>
+    <span class="n">method</span> <span class="o">=</span> <span class="n">_BOOKING_METHODS</span><span class="p">[</span><span class="n">method</span><span class="p">]</span>
+    <span class="n">postings</span><span class="p">,</span> <span class="n">errors</span><span class="p">,</span> <span class="n">insufficient</span> <span class="o">=</span> <span class="n">method</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">posting</span><span class="p">,</span> <span class="n">matches</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">insufficient</span><span class="p">:</span>
+        <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">AmbiguousMatchError</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">meta</span><span class="p">,</span>
+                           <span class="s1">&#39;Not enough lots to reduce &quot;</span><span class="si">{}</span><span class="s1">&quot;: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                               <span class="n">position</span><span class="o">.</span><span class="n">to_string</span><span class="p">(</span><span class="n">posting</span><span class="p">),</span>
+                               <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">position</span><span class="o">.</span><span class="n">to_string</span><span class="p">(</span><span class="n">match_posting</span><span class="p">)</span>
+                                         <span class="k">for</span> <span class="n">match_posting</span> <span class="ow">in</span> <span class="n">matches</span><span class="p">)),</span>
+                           <span class="n">entry</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">postings</span><span class="p">,</span> <span class="n">errors</span></div>
+
+
+<div class="viewcode-block" id="booking_method_STRICT"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.booking_method.html#beancount.parser.booking_method.booking_method_STRICT">[docs]</a><span class="k">def</span> <span class="nf">booking_method_STRICT</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">posting</span><span class="p">,</span> <span class="n">matches</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Strict booking method.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      entry: The parent Transaction instance.</span>
+<span class="sd">      posting: An instance of Posting, the reducing posting which we&#39;re</span>
+<span class="sd">        attempting to match.</span>
+<span class="sd">      matches: A list of matching Position instances from the ante-inventory.</span>
+<span class="sd">        Those positions are known to already match the &#39;posting&#39; spec.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">      A triple of</span>
+<span class="sd">        booked_postings: A list of matched Posting instances, whose &#39;cost&#39;</span>
+<span class="sd">          attributes are ensured to be of type Cost.</span>
+<span class="sd">        errors: A list of errors to be generated.</span>
+<span class="sd">        insufficient: A boolean, true if we could not find enough matches</span>
+<span class="sd">          to fulfill the reduction.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">postings</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">errors</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">insufficient</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="c1"># In strict mode, we require at most a single matching posting.</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">matches</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="c1"># If the total requested to reduce matches the sum of all the</span>
+        <span class="c1"># ambiguous postings, match against all of them.</span>
+        <span class="n">sum_matches</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">number</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">matches</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">sum_matches</span> <span class="o">==</span> <span class="o">-</span><span class="n">posting</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">number</span><span class="p">:</span>
+            <span class="n">postings</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span>
+                <span class="n">posting</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">units</span><span class="o">=-</span><span class="n">match</span><span class="o">.</span><span class="n">units</span><span class="p">,</span> <span class="n">cost</span><span class="o">=</span><span class="n">match</span><span class="o">.</span><span class="n">cost</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">match</span> <span class="ow">in</span> <span class="n">matches</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">AmbiguousMatchError</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">meta</span><span class="p">,</span>
+                                    <span class="s1">&#39;Ambiguous matches for &quot;</span><span class="si">{}</span><span class="s1">&quot;: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                                        <span class="n">position</span><span class="o">.</span><span class="n">to_string</span><span class="p">(</span><span class="n">posting</span><span class="p">),</span>
+                                        <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">position</span><span class="o">.</span><span class="n">to_string</span><span class="p">(</span><span class="n">match_posting</span><span class="p">)</span>
+                                                  <span class="k">for</span> <span class="n">match_posting</span> <span class="ow">in</span> <span class="n">matches</span><span class="p">)),</span>
+                                    <span class="n">entry</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Replace the posting&#39;s units and cost values.</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">matches</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">sign</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span> <span class="k">if</span> <span class="n">posting</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">number</span> <span class="o">&lt;</span> <span class="n">ZERO</span> <span class="k">else</span> <span class="mi">1</span>
+        <span class="n">number</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">number</span><span class="p">),</span> <span class="nb">abs</span><span class="p">(</span><span class="n">posting</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">number</span><span class="p">))</span>
+        <span class="n">match_units</span> <span class="o">=</span> <span class="n">Amount</span><span class="p">(</span><span class="n">number</span> <span class="o">*</span> <span class="n">sign</span><span class="p">,</span> <span class="n">match</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">currency</span><span class="p">)</span>
+        <span class="n">postings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">posting</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">units</span><span class="o">=</span><span class="n">match_units</span><span class="p">,</span> <span class="n">cost</span><span class="o">=</span><span class="n">match</span><span class="o">.</span><span class="n">cost</span><span class="p">))</span>
+        <span class="n">insufficient</span> <span class="o">=</span> <span class="p">(</span><span class="n">match_units</span><span class="o">.</span><span class="n">number</span> <span class="o">!=</span> <span class="n">posting</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">number</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">postings</span><span class="p">,</span> <span class="n">errors</span><span class="p">,</span> <span class="n">insufficient</span></div>
+
+
+<div class="viewcode-block" id="booking_method_FIFO"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.booking_method.html#beancount.parser.booking_method.booking_method_FIFO">[docs]</a><span class="k">def</span> <span class="nf">booking_method_FIFO</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">posting</span><span class="p">,</span> <span class="n">matches</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;FIFO booking method implementation.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_booking_method_xifo</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">posting</span><span class="p">,</span> <span class="n">matches</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="booking_method_LIFO"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.booking_method.html#beancount.parser.booking_method.booking_method_LIFO">[docs]</a><span class="k">def</span> <span class="nf">booking_method_LIFO</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">posting</span><span class="p">,</span> <span class="n">matches</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;LIFO booking method implementation.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_booking_method_xifo</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">posting</span><span class="p">,</span> <span class="n">matches</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span></div>
+
+
+<span class="k">def</span> <span class="nf">_booking_method_xifo</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">posting</span><span class="p">,</span> <span class="n">matches</span><span class="p">,</span> <span class="n">reverse_order</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;FIFO and LIFO booking method implementations.&quot;&quot;&quot;</span>
+    <span class="n">postings</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">errors</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">insufficient</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="c1"># Each up the positions.</span>
+    <span class="n">sign</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span> <span class="k">if</span> <span class="n">posting</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">number</span> <span class="o">&lt;</span> <span class="n">ZERO</span> <span class="k">else</span> <span class="mi">1</span>
+    <span class="n">remaining</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">posting</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">number</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">match</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">matches</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="n">p</span><span class="o">.</span><span class="n">cost</span> <span class="ow">and</span> <span class="n">p</span><span class="o">.</span><span class="n">cost</span><span class="o">.</span><span class="n">date</span><span class="p">,</span>
+                        <span class="n">reverse</span><span class="o">=</span><span class="n">reverse_order</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">remaining</span> <span class="o">&lt;=</span> <span class="n">ZERO</span><span class="p">:</span>
+            <span class="k">break</span>
+
+        <span class="c1"># If the inventory somehow ended up with mixed lots, skip this one.</span>
+        <span class="k">if</span> <span class="n">match</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">number</span> <span class="o">*</span> <span class="n">sign</span> <span class="o">&gt;</span> <span class="n">ZERO</span><span class="p">:</span>
+            <span class="k">continue</span>
+
+        <span class="c1"># Compute the amount of units we can reduce from this leg.</span>
+        <span class="n">size</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">number</span><span class="p">),</span> <span class="n">remaining</span><span class="p">)</span>
+        <span class="n">postings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">posting</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">units</span><span class="o">=</span><span class="n">Amount</span><span class="p">(</span><span class="n">size</span> <span class="o">*</span> <span class="n">sign</span><span class="p">,</span> <span class="n">match</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">currency</span><span class="p">),</span>
+                             <span class="n">cost</span><span class="o">=</span><span class="n">match</span><span class="o">.</span><span class="n">cost</span><span class="p">))</span>
+        <span class="n">remaining</span> <span class="o">-=</span> <span class="n">size</span>
+
+    <span class="c1"># If we couldn&#39;t eat up all the requested reduction, return an error.</span>
+    <span class="n">insufficient</span> <span class="o">=</span> <span class="p">(</span><span class="n">remaining</span> <span class="o">&gt;</span> <span class="n">ZERO</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">postings</span><span class="p">,</span> <span class="n">errors</span><span class="p">,</span> <span class="n">insufficient</span>
+
+
+<div class="viewcode-block" id="booking_method_NONE"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.booking_method.html#beancount.parser.booking_method.booking_method_NONE">[docs]</a><span class="k">def</span> <span class="nf">booking_method_NONE</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">posting</span><span class="p">,</span> <span class="n">matches</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;NONE booking method implementation.&quot;&quot;&quot;</span>
+
+    <span class="c1"># This never needs to match against any existing positions... we</span>
+    <span class="c1"># disregard the matches, there&#39;s never any error. Note that this never</span>
+    <span class="c1"># gets called in practice, we want to treat NONE postings as</span>
+    <span class="c1"># augmentations. Default behaviour is to return them with their original</span>
+    <span class="c1"># CostSpec, and the augmentation code will handle signaling an error if</span>
+    <span class="c1"># there is insufficient detail to carry out the conversion to an</span>
+    <span class="c1"># instance of Cost.</span>
+
+    <span class="c1"># Note that it&#39;s an interesting question whether a reduction on an</span>
+    <span class="c1"># account with NONE method which happens to match a single position</span>
+    <span class="c1"># ought to be matched against it. We don&#39;t allow it for now.</span>
+
+    <span class="k">return</span> <span class="p">[</span><span class="n">posting</span><span class="p">],</span> <span class="p">[],</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="booking_method_AVERAGE"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.booking_method.html#beancount.parser.booking_method.booking_method_AVERAGE">[docs]</a><span class="k">def</span> <span class="nf">booking_method_AVERAGE</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">posting</span><span class="p">,</span> <span class="n">matches</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;AVERAGE booking method implementation.&quot;&quot;&quot;</span>
+    <span class="n">postings</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">errors</span> <span class="o">=</span> <span class="p">[</span><span class="n">AmbiguousMatchError</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">meta</span><span class="p">,</span> <span class="s2">&quot;AVERAGE method is not supported&quot;</span><span class="p">,</span> <span class="n">entry</span><span class="p">)]</span>
+    <span class="k">return</span> <span class="n">postings</span><span class="p">,</span> <span class="n">errors</span><span class="p">,</span> <span class="kc">False</span>
+
+    <span class="c1"># FIXME: Future implementation here.</span>
+    <span class="c1"># pylint: disable=unreachable</span>
+    <span class="k">if</span> <span class="kc">False</span><span class="p">:</span> <span class="c1"># pylint: disable=using-constant-test</span>
+        <span class="c1"># DISABLED - This is the code for AVERAGE, which is currently disabled.</span>
+
+        <span class="c1"># If there is more than a single match we need to ultimately merge the</span>
+        <span class="c1"># postings. Also, if the reducing posting provides a specific cost, we</span>
+        <span class="c1"># need to update the cost basis as well. Both of these cases are carried</span>
+        <span class="c1"># out by removing all the matches and readding them later on.</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">matches</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="p">(</span>
+                <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">posting</span><span class="o">.</span><span class="n">cost</span><span class="o">.</span><span class="n">number_per</span><span class="p">,</span> <span class="n">Decimal</span><span class="p">)</span> <span class="ow">and</span>
+                <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">posting</span><span class="o">.</span><span class="n">cost</span><span class="o">.</span><span class="n">number_total</span><span class="p">,</span> <span class="n">Decimal</span><span class="p">)):</span>
+            <span class="c1"># There is no cost. Just reduce the one leg. This should be the</span>
+            <span class="c1"># normal case if we always merge augmentations and the user lets</span>
+            <span class="c1"># Beancount deal with the cost.</span>
+            <span class="n">match</span> <span class="o">=</span> <span class="n">matches</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">sign</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span> <span class="k">if</span> <span class="n">posting</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">number</span> <span class="o">&lt;</span> <span class="n">ZERO</span> <span class="k">else</span> <span class="mi">1</span>
+            <span class="n">number</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">number</span><span class="p">),</span> <span class="nb">abs</span><span class="p">(</span><span class="n">posting</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">number</span><span class="p">))</span>
+            <span class="n">match_units</span> <span class="o">=</span> <span class="n">Amount</span><span class="p">(</span><span class="n">number</span> <span class="o">*</span> <span class="n">sign</span><span class="p">,</span> <span class="n">match</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">currency</span><span class="p">)</span>
+            <span class="n">postings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">posting</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">units</span><span class="o">=</span><span class="n">match_units</span><span class="p">,</span> <span class="n">cost</span><span class="o">=</span><span class="n">match</span><span class="o">.</span><span class="n">cost</span><span class="p">))</span>
+            <span class="n">insufficient</span> <span class="o">=</span> <span class="p">(</span><span class="n">match_units</span><span class="o">.</span><span class="n">number</span> <span class="o">!=</span> <span class="n">posting</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">number</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Merge the matching postings to a single one.</span>
+            <span class="n">merged_units</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">Inventory</span><span class="p">()</span>
+            <span class="n">merged_cost</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">Inventory</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">match</span> <span class="ow">in</span> <span class="n">matches</span><span class="p">:</span>
+                <span class="n">merged_units</span><span class="o">.</span><span class="n">add_amount</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">units</span><span class="p">)</span>
+                <span class="n">merged_cost</span><span class="o">.</span><span class="n">add_amount</span><span class="p">(</span><span class="n">convert</span><span class="o">.</span><span class="n">get_weight</span><span class="p">(</span><span class="n">match</span><span class="p">))</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">merged_units</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">merged_cost</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="n">AmbiguousMatchError</span><span class="p">(</span>
+                        <span class="n">entry</span><span class="o">.</span><span class="n">meta</span><span class="p">,</span>
+                        <span class="s1">&#39;Cannot merge positions in multiple currencies: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                            <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">position</span><span class="o">.</span><span class="n">to_string</span><span class="p">(</span><span class="n">match_posting</span><span class="p">)</span>
+                                      <span class="k">for</span> <span class="n">match_posting</span> <span class="ow">in</span> <span class="n">matches</span><span class="p">)),</span> <span class="n">entry</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">posting</span><span class="o">.</span><span class="n">cost</span><span class="o">.</span><span class="n">number_per</span><span class="p">,</span> <span class="n">Decimal</span><span class="p">)</span> <span class="ow">or</span>
+                    <span class="nb">isinstance</span><span class="p">(</span><span class="n">posting</span><span class="o">.</span><span class="n">cost</span><span class="o">.</span><span class="n">number_total</span><span class="p">,</span> <span class="n">Decimal</span><span class="p">)):</span>
+                    <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="n">AmbiguousMatchError</span><span class="p">(</span>
+                            <span class="n">entry</span><span class="o">.</span><span class="n">meta</span><span class="p">,</span>
+                            <span class="s2">&quot;Explicit cost reductions aren&#39;t supported yet: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                                <span class="n">position</span><span class="o">.</span><span class="n">to_string</span><span class="p">(</span><span class="n">posting</span><span class="p">)),</span> <span class="n">entry</span><span class="p">))</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># Insert postings to remove all the matches.</span>
+                    <span class="n">postings</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">posting</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">units</span><span class="o">=-</span><span class="n">match</span><span class="o">.</span><span class="n">units</span><span class="p">,</span> <span class="n">cost</span><span class="o">=</span><span class="n">match</span><span class="o">.</span><span class="n">cost</span><span class="p">,</span>
+                                                     <span class="n">flag</span><span class="o">=</span><span class="n">flags</span><span class="o">.</span><span class="n">FLAG_MERGING</span><span class="p">)</span>
+                                    <span class="k">for</span> <span class="n">match</span> <span class="ow">in</span> <span class="n">matches</span><span class="p">)</span>
+                    <span class="n">units</span> <span class="o">=</span> <span class="n">merged_units</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">units</span>
+                    <span class="n">date</span> <span class="o">=</span> <span class="n">matches</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">cost</span><span class="o">.</span><span class="n">date</span>  <span class="c1">## FIXME: Select which one,</span>
+                                                 <span class="c1">## oldest or latest.</span>
+                    <span class="n">cost_units</span> <span class="o">=</span> <span class="n">merged_cost</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">units</span>
+                    <span class="n">cost</span> <span class="o">=</span> <span class="n">Cost</span><span class="p">(</span><span class="n">cost_units</span><span class="o">.</span><span class="n">number</span><span class="o">/</span><span class="n">units</span><span class="o">.</span><span class="n">number</span><span class="p">,</span> <span class="n">cost_units</span><span class="o">.</span><span class="n">currency</span><span class="p">,</span>
+                                <span class="n">date</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+                    <span class="c1"># Insert a posting to refill those with a replacement match.</span>
+                    <span class="n">postings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">posting</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">units</span><span class="o">=</span><span class="n">units</span><span class="p">,</span> <span class="n">cost</span><span class="o">=</span><span class="n">cost</span><span class="p">,</span>
+                                                     <span class="n">flag</span><span class="o">=</span><span class="n">flags</span><span class="o">.</span><span class="n">FLAG_MERGING</span><span class="p">))</span>
+
+                    <span class="c1"># Now, match the reducing request against this lot.</span>
+                    <span class="n">postings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">posting</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">units</span><span class="o">=</span><span class="n">posting</span><span class="o">.</span><span class="n">units</span><span class="p">,</span> <span class="n">cost</span><span class="o">=</span><span class="n">cost</span><span class="p">))</span>
+                    <span class="n">insufficient</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">posting</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">number</span><span class="p">)</span> <span class="o">&gt;</span> <span class="nb">abs</span><span class="p">(</span><span class="n">units</span><span class="o">.</span><span class="n">number</span><span class="p">)</span></div>
+
+
+<span class="n">_BOOKING_METHODS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">Booking</span><span class="o">.</span><span class="n">STRICT</span> <span class="p">:</span> <span class="n">booking_method_STRICT</span><span class="p">,</span>
+    <span class="n">Booking</span><span class="o">.</span><span class="n">FIFO</span>   <span class="p">:</span> <span class="n">booking_method_FIFO</span><span class="p">,</span>
+    <span class="n">Booking</span><span class="o">.</span><span class="n">LIFO</span>   <span class="p">:</span> <span class="n">booking_method_LIFO</span><span class="p">,</span>
+    <span class="n">Booking</span><span class="o">.</span><span class="n">NONE</span>   <span class="p">:</span> <span class="n">booking_method_NONE</span><span class="p">,</span>
+    <span class="n">Booking</span><span class="o">.</span><span class="n">AVERAGE</span><span class="p">:</span> <span class="n">booking_method_AVERAGE</span><span class="p">,</span>
+<span class="p">}</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">Beancount</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/index.html">Beancount Modules</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Martin Blais.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

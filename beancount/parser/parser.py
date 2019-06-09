@@ -102,7 +102,8 @@
     .. code:: python
 
         # INPUT: Assets:Account  1 HOOL {100 USD}
-        posting.cost = CostSpec(Decimal("100"), None, "USD", None, None, False))
+        posting.cost = CostSpec(Decimal("100"), None, "USD",
+                                None, None, False))
 
     Both per-unit and total numbers may be omitted as well, in which case,
     only the number-per-unit portion of the CostSpec will appear as MISSING:
@@ -150,7 +151,7 @@ import textwrap
 import io
 from os import path
 
-# from beancount.parser import _parser
+from beancount.parser import _parser
 from beancount.parser import grammar
 from beancount.parser import printer
 from beancount.parser import hashsrc
