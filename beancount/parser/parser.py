@@ -240,6 +240,7 @@ def parse_file(filename, **kw):
 
 def parse_string(string, report_filename=None, **kw):
     """Parse a beancount input string.
+
     Return Ledger with the list of
     transactions and tree of accounts.
 

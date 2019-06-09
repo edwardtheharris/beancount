@@ -3,8 +3,6 @@ parser.parser
 
 .. automodule:: beancount.parser.printer
 
-
-
    .. rubric:: Functions
 
    .. autosummary::
@@ -16,12 +14,3 @@ parser.parser
       parse_doc
       parse_many
       parse_one
-
-
-
-
-   .. rubric:: Classes
-
-   .. autosummary::
-
-      EntryPrinter
