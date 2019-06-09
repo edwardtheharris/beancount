@@ -1,14 +1,16 @@
-beancount.parser.printer
+parser.printer
 ========================
+
+.. currentmodule:: beancount.parser.printer
 
 .. automodule:: beancount.parser.printer
 
-   
-   
+
+
    .. rubric:: Functions
 
    .. autosummary::
-   
+
       align_position_strings
       format_entry
       format_error
@@ -17,19 +19,13 @@ beancount.parser.printer
       print_error
       print_errors
       render_source
-   
-   
 
-   
-   
+
+
+
+
    .. rubric:: Classes
 
    .. autosummary::
-   
-      EntryPrinter
-   
-   
 
-   
-   
-   
+      EntryPrinter

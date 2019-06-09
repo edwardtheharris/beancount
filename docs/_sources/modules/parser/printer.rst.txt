@@ -1,6 +1,8 @@
 parser.printer
 ========================
 
+.. currentmodule:: beancount.parser.printer
+
 .. automodule:: beancount.parser.printer
 
 
