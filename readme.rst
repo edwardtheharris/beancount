@@ -2,6 +2,8 @@
    beancount: Double-Entry Accounting from Text Files
 ========================================================
 
+`API Docs available here <https://edwardtheharris.github.io/beancount/>`_.
+
 .. contents::
 ..
     1  Description
@@ -28,12 +30,10 @@ documents here:
 
   http://furius.ca/beancount/doc/index
 
-There's a `mailing-list dedicated to Beancount
-<https://groups.google.com/forum/#!forum/beancount>`_, please post questions
-there, so others can share in the responses. More general discussions about
-command-line accounting also occur on the `Ledger mailing-list
-<https://groups.google.com/forum/#!forum/ledger-cli>`_ so you might be
-interested in that group as well.
+There's a
+`mailing-list dedicated to Beancount <https://groups.google.com/forum/#!forum/beancount>`_,
+please post questions there, so others can share in the responses.
+More general discussions about command-line accounting also occur on the `Ledger mailing-list <https://groups.google.com/forum/#!forum/ledger-cli>`_ so you might be interested in that group as well.
 
 
 Download & Installation
