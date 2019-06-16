@@ -6,18 +6,14 @@ drastically.
 __copyright__ = "Copyright (C) 2013-2014, 2016-2018  Martin Blais"
 __license__ = "GNU GPLv2"
 
-
-# Check the version requirements.
 import sys
+import warnings
+
 if (sys.version_info.major, sys.version_info.minor) < (3, 3):
     raise ImportError("Python 3.3 or above is required")
 
-
 __version__ = '2.2.1-dev'
 
-
-# Remove annoying warnings in third-party modules.
-import warnings
 warnings.filterwarnings(
     'ignore', module='lxml', category=DeprecationWarning,
     message='Using or importing the ABCs from')

@@ -1,0 +1,405 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>beancount.parser.parser &#8212; Beancount 2.2.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="beancount.parser.printer" href="beancount.parser.printer.html" />
+    <link rel="prev" title="beancount.parser.options" href="beancount.parser.options.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-beancount.parser.parser">
+<span id="beancount-parser-parser"></span><h1>beancount.parser.parser<a class="headerlink" href="#module-beancount.parser.parser" title="Permalink to this headline">¶</a></h1>
+<p>Beancount syntax parser.</p>
+<div class="topic">
+<p class="topic-title first">Incomplete Transaction Objects</p>
+<p>The parser (and its grammar builder) produces “incomplete”
+Transaction objects.
+This means that some of the data can be found missing from
+the output of the parser and some of the data types vary slightly.
+Missing
+components are replaced not by None, but by a special constant ‘NA’
+which helps
+diagnose problems if a user inadvertently attempts to work on an incomplete
+posting instead of a complete one. Those incomplete entries are then
+run through
+the “booking” routines which do two things simultaneously:</p>
+<ul class="simple">
+<li><p>They find matching lots for reducing inventory positions, and</p></li>
+<li><p>They interpolate missing numbers.</p></li>
+</ul>
+<p>In doing so they normalize the entries to “complete” entries by converting
+a position/lot’s “cost” attribute from a CostSpec to a Cost. A Cost
+is similar to an Amount in that it shares “number” and
+“currency” attributes, but also has a label and a lot date.
+A CostSpec is similar to a Cost, but has all optional
+data; it consists in a specification for matching against a
+particular inventory lot.</p>
+<p>Other parts of a posting may also be missing, not just parts of the cost.
+Leaving out some parts of the input is used to invoke interpolation, to
+tell Beancount to automatically compute the missing numbers (if possible).</p>
+<p>Missing components will be set to the special value
+“beancount.core.number.MISSING” until inventory booking and
+number interpolation has been completed.
+The “MISSING” value should never appear in completed, loaded
+transaction postings.</p>
+<p>For instance, all of the units may be missing:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># INPUT: Assets:Account</span>
+<span class="n">posting</span><span class="o">.</span><span class="n">units</span> <span class="o">=</span> <span class="n">MISSING</span>
+</pre></div>
+</div>
+<p>Or just the number of the units:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># INPUT: Assets:Account                    USD</span>
+<span class="n">posting</span><span class="o">.</span><span class="n">units</span> <span class="o">=</span> <span class="n">Amount</span><span class="p">(</span><span class="n">MISSING</span><span class="p">,</span> <span class="s2">&quot;USD&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>You must always specify the currency.</p>
+<p>If a price annotation is simply absent, it appears as None:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># INPUT: Assets:Account                 2 MXN</span>
+<span class="n">posting</span><span class="o">.</span><span class="n">price</span> <span class="o">=</span> <span class="bp">None</span>
+</pre></div>
+</div>
+<p>However, you may indicate that there is a price but have Beancount
+compute it automatically:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># INPUT: Assets:Account                 2 MXN @</span>
+<span class="n">posting</span><span class="o">.</span><span class="n">price</span> <span class="o">=</span> <span class="n">Amount</span><span class="p">(</span><span class="n">MISSING</span><span class="p">,</span> <span class="n">MISSING</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Indicating the conversion currency is also possible (and recommended):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># INPUT: Assets:Account                 2 MXN @ USD</span>
+<span class="n">posting</span><span class="o">.</span><span class="n">price</span> <span class="o">=</span> <span class="n">Amount</span><span class="p">(</span><span class="n">MISSING</span><span class="p">,</span> <span class="s2">&quot;USD&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If a cost specification is provided, a “cost” attribute it set
+but it does not refer to a Cost instance (as in complete entries)
+but rather to a CostSpec instance. Some of the fields of a CostSpec
+may be MISSING if they were not specified in the input. For exammple:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># INPUT: Assets:Account  1 HOOL {100 # 5 USD}</span>
+<span class="n">posting</span><span class="o">.</span><span class="n">cost</span> <span class="o">=</span> <span class="n">CostSpec</span><span class="p">(</span><span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;100&quot;</span><span class="p">),</span> <span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;5&quot;</span><span class="p">),</span> <span class="s2">&quot;USD&quot;</span><span class="p">,</span>
+                        <span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">False</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>Note how we never consider the label of date override to be MISSING; this
+is because those inputs are optional: A missing label is simply left
+unset in the computed Cost, and a missing date override uses the date
+of the transaction that contains the posting.</p>
+<p>You can indicate that there is a total number to be filled in like this:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># INPUT: Assets:Account  1 HOOL {100 # USD}</span>
+<span class="n">posting</span><span class="o">.</span><span class="n">cost</span> <span class="o">=</span> <span class="n">CostSpec</span><span class="p">(</span><span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;100&quot;</span><span class="p">),</span> <span class="n">MISSING</span><span class="p">,</span> <span class="s2">&quot;USD&quot;</span><span class="p">,</span>
+                        <span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">False</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>This is in contrast to the total value simple not being used:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># INPUT: Assets:Account  1 HOOL {100 USD}</span>
+<span class="n">posting</span><span class="o">.</span><span class="n">cost</span> <span class="o">=</span> <span class="n">CostSpec</span><span class="p">(</span><span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;100&quot;</span><span class="p">),</span> <span class="bp">None</span><span class="p">,</span> <span class="s2">&quot;USD&quot;</span><span class="p">,</span>
+                        <span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">False</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>Both per-unit and total numbers may be omitted as well, in which case,
+only the number-per-unit portion of the CostSpec will appear as MISSING:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># INPUT: Assets:Account  1 HOOL {USD}</span>
+<span class="n">posting</span><span class="o">.</span><span class="n">cost</span> <span class="o">=</span> <span class="n">CostSpec</span><span class="p">(</span><span class="n">MISSING</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="s2">&quot;USD&quot;</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">False</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>And furthermore, all the cost basis may be missing:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># INPUT: Assets:Account  1 HOOL {}</span>
+<span class="n">posting</span><span class="o">.</span><span class="n">cost</span> <span class="o">=</span> <span class="n">CostSpec</span><span class="p">(</span><span class="n">MISSING</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="n">MISSING</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">False</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>If you ask for the lots to be merged, you get this:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># INPUT: Assets:Account  1 HOOL {*}</span>
+<span class="n">posting</span><span class="o">.</span><span class="n">cost</span> <span class="o">=</span> <span class="n">CostSpec</span><span class="p">(</span><span class="n">MISSING</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="n">MISSING</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">True</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>The numbers have to be computed by Beancount, so we output this
+with MISSING values.</p>
+<p>Of course, you can provide only the non-basis informations, like just
+the date or label:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># INPUT: Assets:Account  1 HOOL {2015-09-21}</span>
+<span class="n">posting</span><span class="o">.</span><span class="n">cost</span> <span class="o">=</span> <span class="n">CostSpec</span><span class="p">(</span><span class="n">MISSING</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="n">MISSING</span><span class="p">,</span>
+                        <span class="n">date</span><span class="p">(</span><span class="mi">2015</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">21</span><span class="p">),</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>See the test beancount.parser.grammar_test.TestIncompleteInputs
+for examples and corresponding expected values.</p>
+</div>
+<p class="rubric">Functions</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.parser.parser.is_entry_incomplete" title="beancount.parser.parser.is_entry_incomplete"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_entry_incomplete</span></code></a>(entry)</p></td>
+<td><p>Detect the presence of elided amounts in Transactions.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.parser.parser.is_posting_incomplete" title="beancount.parser.parser.is_posting_incomplete"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_posting_incomplete</span></code></a>(posting)</p></td>
+<td><p>Detect the presence of any elided amounts in a Posting.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.parser.parser.parse_doc" title="beancount.parser.parser.parse_doc"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_doc</span></code></a>([expect_errors, allow_incomplete])</p></td>
+<td><p>Factory of decorators that parse a function’s docstring as an argument.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.parser.parser.parse_file" title="beancount.parser.parser.parse_file"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_file</span></code></a>(filename, **kw)</p></td>
+<td><p>Parse a beancount input file.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.parser.parser.parse_many" title="beancount.parser.parser.parse_many"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_many</span></code></a>(string[, level])</p></td>
+<td><p>Parse a string with a snippet of Beancount input.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.parser.parser.parse_one" title="beancount.parser.parser.parse_one"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_one</span></code></a>(string)</p></td>
+<td><p>Parse a string with single Beancount directive.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.parser.parser.parse_string" title="beancount.parser.parser.parse_string"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_string</span></code></a>(string[, report_filename])</p></td>
+<td><p>Parse a beancount input string.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="function">
+<dt id="beancount.parser.parser.is_posting_incomplete">
+<code class="sig-prename descclassname">beancount.parser.parser.</code><code class="sig-name descname">is_posting_incomplete</code><span class="sig-paren">(</span><em class="sig-param">posting</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/parser.html#is_posting_incomplete"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.parser.is_posting_incomplete" title="Permalink to this definition">¶</a></dt>
+<dd><p>Detect the presence of any elided amounts in a Posting.</p>
+<p>If any of the possible amounts are missing, this returns True.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>entries</strong> – A directive.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A boolean, true if there are some missing portions of any postings found.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.parser.parser.is_entry_incomplete">
+<code class="sig-prename descclassname">beancount.parser.parser.</code><code class="sig-name descname">is_entry_incomplete</code><span class="sig-paren">(</span><em class="sig-param">entry</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/parser.html#is_entry_incomplete"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.parser.is_entry_incomplete" title="Permalink to this definition">¶</a></dt>
+<dd><p>Detect the presence of elided amounts in Transactions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>entries</strong> – A directive.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A boolean, true if there are some missing portions of any postings found.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.parser.parser.parse_file">
+<code class="sig-prename descclassname">beancount.parser.parser.</code><code class="sig-name descname">parse_file</code><span class="sig-paren">(</span><em class="sig-param">filename</em>, <em class="sig-param">**kw</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/parser.html#parse_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.parser.parse_file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Parse a beancount input file.</p>
+<p>Returns a Ledger with the list of
+transactions and tree of accounts.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filename</strong> – the name of the file to be parsed.</p></li>
+<li><p><strong>kw</strong> – a dict of keywords to be applied to the C parser.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>A tuple of (</dt><dd><p>list of entries parsed in the file,
+list of errors that were encountered during parsing, and
+a dict of the option values that were parsed from the file.)</p>
+</dd>
+</dl>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.parser.parser.parse_string">
+<code class="sig-prename descclassname">beancount.parser.parser.</code><code class="sig-name descname">parse_string</code><span class="sig-paren">(</span><em class="sig-param">string</em>, <em class="sig-param">report_filename=None</em>, <em class="sig-param">**kw</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/parser.html#parse_string"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.parser.parse_string" title="Permalink to this definition">¶</a></dt>
+<dd><p>Parse a beancount input string.</p>
+<p>Return Ledger with the list of
+transactions and tree of accounts.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>string</strong> – A string, the contents to be parsed instead of a file’s.</p></li>
+<li><p><strong>report_filename</strong> – A string, the source filename from which this string
+has been extracted, if any. This is stored in the metadata of the
+parsed entries.</p></li>
+<li><p><strong>**kw</strong> – See parse.c. This function parses out ‘dedent’ which removes
+whitespace from the front of the text (default is False).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Same as the output of parse_file().</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.parser.parser.parse_doc">
+<code class="sig-prename descclassname">beancount.parser.parser.</code><code class="sig-name descname">parse_doc</code><span class="sig-paren">(</span><em class="sig-param">expect_errors=False</em>, <em class="sig-param">allow_incomplete=False</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/parser.html#parse_doc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.parser.parse_doc" title="Permalink to this definition">¶</a></dt>
+<dd><p>Factory of decorators that parse a function’s docstring as an argument.</p>
+<p>Note that the decorators thus generated only run the parser on the tests,
+not the loader, so is no validation, balance checks, nor plugins applied to
+the parsed text.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>expect_errors</strong> – A boolean or None, with the following semantics,
+* True: Expect errors and fail if there are none.
+* False: Expect no errors and fail if there are some.
+* None: Do nothing, no check.</p></li>
+<li><p><strong>allow_incomplete</strong> – A boolean, if true, allow incomplete input.
+Otherwise barf if the input would require interpolation.
+The default value is set not to allow it because we want to
+minimize the features tests depend on.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A decorator for test functions.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.parser.parser.parse_many">
+<code class="sig-prename descclassname">beancount.parser.parser.</code><code class="sig-name descname">parse_many</code><span class="sig-paren">(</span><em class="sig-param">string</em>, <em class="sig-param">level=0</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/parser.html#parse_many"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.parser.parse_many" title="Permalink to this definition">¶</a></dt>
+<dd><p>Parse a string with a snippet of Beancount input.</p>
+<p>Replaces vars from caller.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>string</strong> – A string with some Beancount input.</p></li>
+<li><p><strong>level</strong> – The number of extra stacks to ignore.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A list of entries.</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><strong>AssertionError</strong> – If there are any errors.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.parser.parser.parse_one">
+<code class="sig-prename descclassname">beancount.parser.parser.</code><code class="sig-name descname">parse_one</code><span class="sig-paren">(</span><em class="sig-param">string</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/parser.html#parse_one"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.parser.parse_one" title="Permalink to this definition">¶</a></dt>
+<dd><p>Parse a string with single Beancount directive.</p>
+<p>Replaces vars from caller.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>string</strong> – A string with some Beancount input.</p></li>
+<li><p><strong>level</strong> – The number of extra stacks to ignore.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A list of entries.</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><strong>AssertionError</strong> – If there are any errors.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">Beancount</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Beancount Modules</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../core/index.html">Beancount Core</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Parser</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Beancount Modules</a><ul>
+  <li><a href="index.html">Parser</a><ul>
+      <li>Previous: <a href="beancount.parser.options.html" title="previous chapter">beancount.parser.options</a></li>
+      <li>Next: <a href="beancount.parser.printer.html" title="next chapter">beancount.parser.printer</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Martin Blais.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../../_sources/modules/parser/beancount.parser.parser.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

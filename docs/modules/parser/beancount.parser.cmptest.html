@@ -1,0 +1,292 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>beancount.parser.cmptest &#8212; Beancount 2.2.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="beancount.parser.grammar" href="beancount.parser.grammar.html" />
+    <link rel="prev" title="beancount.parser.booking" href="beancount.parser.booking.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-beancount.parser.cmptest">
+<span id="beancount-parser-cmptest"></span><h1>beancount.parser.cmptest<a class="headerlink" href="#module-beancount.parser.cmptest" title="Permalink to this headline">¶</a></h1>
+<p>Support utillities for testing scripts.</p>
+<p class="rubric">Functions</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.parser.cmptest.assertEqualEntries" title="beancount.parser.cmptest.assertEqualEntries"><code class="xref py py-obj docutils literal notranslate"><span class="pre">assertEqualEntries</span></code></a>(expected_entries, …[, …])</p></td>
+<td><p>Compare two lists of entries exactly and print missing entries verbosely if they occur.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.parser.cmptest.assertExcludesEntries" title="beancount.parser.cmptest.assertExcludesEntries"><code class="xref py py-obj docutils literal notranslate"><span class="pre">assertExcludesEntries</span></code></a>(subset_entries, entries)</p></td>
+<td><p>Check that subset_entries is not included in entries and print extra entries.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.parser.cmptest.assertIncludesEntries" title="beancount.parser.cmptest.assertIncludesEntries"><code class="xref py py-obj docutils literal notranslate"><span class="pre">assertIncludesEntries</span></code></a>(subset_entries, entries)</p></td>
+<td><p>Check that subset_entries is included in entries and print missing entries.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.parser.cmptest.read_string_or_entries" title="beancount.parser.cmptest.read_string_or_entries"><code class="xref py py-obj docutils literal notranslate"><span class="pre">read_string_or_entries</span></code></a>(entries_or_str[, …])</p></td>
+<td><p>Read a string of entries or just entries.</p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Classes</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.parser.cmptest.TestCase" title="beancount.parser.cmptest.TestCase"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TestCase</span></code></a>([methodName])</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Exceptions</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.parser.cmptest.TestError" title="beancount.parser.cmptest.TestError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TestError</span></code></a></p></td>
+<td><p>Errors within the test implementation itself.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="exception">
+<dt id="beancount.parser.cmptest.TestError">
+<em class="property">exception </em><code class="sig-prename descclassname">beancount.parser.cmptest.</code><code class="sig-name descname">TestError</code><a class="reference internal" href="../../_modules/beancount/parser/cmptest.html#TestError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.cmptest.TestError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Errors within the test implementation itself. These should never occur.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.parser.cmptest.read_string_or_entries">
+<code class="sig-prename descclassname">beancount.parser.cmptest.</code><code class="sig-name descname">read_string_or_entries</code><span class="sig-paren">(</span><em class="sig-param">entries_or_str</em>, <em class="sig-param">allow_incomplete=False</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/cmptest.html#read_string_or_entries"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.cmptest.read_string_or_entries" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read a string of entries or just entries.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>entries_or_str</strong> – Either a list of directives, or a string containing directives.</p></li>
+<li><p><strong>allow_incomplete</strong> – A boolean, true if we allow incomplete inputs and perform
+light-weight booking.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A list of directives.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="class">
+<dt id="beancount.parser.cmptest.TestCase">
+<em class="property">class </em><code class="sig-prename descclassname">beancount.parser.cmptest.</code><code class="sig-name descname">TestCase</code><span class="sig-paren">(</span><em class="sig-param">methodName='runTest'</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/cmptest.html#TestCase"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.cmptest.TestCase" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="beancount.parser.cmptest.TestCase.assertEqualEntries">
+<code class="sig-name descname">assertEqualEntries</code><span class="sig-paren">(</span><em class="sig-param">expected_entries</em>, <em class="sig-param">actual_entries</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/cmptest.html#TestCase.assertEqualEntries"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.cmptest.TestCase.assertEqualEntries" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.cmptest.TestCase.assertIncludesEntries">
+<code class="sig-name descname">assertIncludesEntries</code><span class="sig-paren">(</span><em class="sig-param">subset_entries</em>, <em class="sig-param">entries</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/cmptest.html#TestCase.assertIncludesEntries"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.cmptest.TestCase.assertIncludesEntries" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="beancount.parser.cmptest.TestCase.assertExcludesEntries">
+<code class="sig-name descname">assertExcludesEntries</code><span class="sig-paren">(</span><em class="sig-param">subset_entries</em>, <em class="sig-param">entries</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/cmptest.html#TestCase.assertExcludesEntries"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.cmptest.TestCase.assertExcludesEntries" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.parser.cmptest.DEFAULT_FAILFUNC">
+<code class="sig-prename descclassname">beancount.parser.cmptest.</code><code class="sig-name descname">DEFAULT_FAILFUNC</code><span class="sig-paren">(</span><em class="sig-param">msg=''</em>, <em class="sig-param">pytrace=True</em><span class="sig-paren">)</span><a class="headerlink" href="#beancount.parser.cmptest.DEFAULT_FAILFUNC" title="Permalink to this definition">¶</a></dt>
+<dd><p>Explicitly fail an executing test with the given message.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>msg</strong> (<em>str</em>) – the message to show the user as reason for the failure.</p></li>
+<li><p><strong>pytrace</strong> (<em>bool</em>) – if false the msg represents the full failure information and no
+python traceback will be reported.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.parser.cmptest.assertEqualEntries">
+<code class="sig-prename descclassname">beancount.parser.cmptest.</code><code class="sig-name descname">assertEqualEntries</code><span class="sig-paren">(</span><em class="sig-param">expected_entries</em>, <em class="sig-param">actual_entries</em>, <em class="sig-param">failfunc=&lt;function fail&gt;</em>, <em class="sig-param">allow_incomplete=False</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/cmptest.html#assertEqualEntries"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.cmptest.assertEqualEntries" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compare two lists of entries exactly and print missing entries verbosely if
+they occur.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>expected_entries</strong> – Either a list of directives or a string, in which case the
+string is run through beancount.parser.parse_string() and the resulting
+list is used.</p></li>
+<li><p><strong>actual_entries</strong> – Same treatment as expected_entries, the other list of
+directives to compare to.</p></li>
+<li><p><strong>failfunc</strong> – A function to call on failure.</p></li>
+<li><p><strong>allow_incomplete</strong> – A boolean, true if we allow incomplete inputs and perform
+light-weight booking.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><strong>AssertionError</strong> – If the exception fails.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.parser.cmptest.assertIncludesEntries">
+<code class="sig-prename descclassname">beancount.parser.cmptest.</code><code class="sig-name descname">assertIncludesEntries</code><span class="sig-paren">(</span><em class="sig-param">subset_entries</em>, <em class="sig-param">entries</em>, <em class="sig-param">failfunc=&lt;function fail&gt;</em>, <em class="sig-param">allow_incomplete=False</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/cmptest.html#assertIncludesEntries"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.cmptest.assertIncludesEntries" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check that subset_entries is included in entries and print missing entries.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>subset_entries</strong> – Either a list of directives or a string, in which case the
+string is run through beancount.parser.parse_string() and the resulting
+list is used.</p></li>
+<li><p><strong>entries</strong> – Same treatment as subset_entries, the other list of
+directives to compare to.</p></li>
+<li><p><strong>failfunc</strong> – A function to call on failure.</p></li>
+<li><p><strong>allow_incomplete</strong> – A boolean, true if we allow incomplete inputs and perform
+light-weight booking.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><strong>AssertionError</strong> – If the exception fails.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.parser.cmptest.assertExcludesEntries">
+<code class="sig-prename descclassname">beancount.parser.cmptest.</code><code class="sig-name descname">assertExcludesEntries</code><span class="sig-paren">(</span><em class="sig-param">subset_entries</em>, <em class="sig-param">entries</em>, <em class="sig-param">failfunc=&lt;function fail&gt;</em>, <em class="sig-param">allow_incomplete=False</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/parser/cmptest.html#assertExcludesEntries"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.parser.cmptest.assertExcludesEntries" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check that subset_entries is not included in entries and print extra entries.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>subset_entries</strong> – Either a list of directives or a string, in which case the
+string is run through beancount.parser.parse_string() and the resulting
+list is used.</p></li>
+<li><p><strong>entries</strong> – Same treatment as subset_entries, the other list of
+directives to compare to.</p></li>
+<li><p><strong>failfunc</strong> – A function to call on failure.</p></li>
+<li><p><strong>allow_incomplete</strong> – A boolean, true if we allow incomplete inputs and perform
+light-weight booking.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><strong>AssertionError</strong> – If the exception fails.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">Beancount</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Beancount Modules</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../core/index.html">Beancount Core</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Parser</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Beancount Modules</a><ul>
+  <li><a href="index.html">Parser</a><ul>
+      <li>Previous: <a href="beancount.parser.booking.html" title="previous chapter">beancount.parser.booking</a></li>
+      <li>Next: <a href="beancount.parser.grammar.html" title="next chapter">beancount.parser.grammar</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Martin Blais.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../../_sources/modules/parser/beancount.parser.cmptest.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

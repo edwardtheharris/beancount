@@ -1,0 +1,220 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>beancount.parser.booking &#8212; Beancount 2.2.1 documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for beancount.parser.booking</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Algorithms for &#39;booking&#39; inventory, that is, the process of finding a</span>
+<span class="sd">matching lot when reducing the content of an inventory.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="n">__copyright__</span> <span class="o">=</span> <span class="s2">&quot;Copyright (C) 2015-2016  Martin Blais&quot;</span>
+<span class="n">__license__</span> <span class="o">=</span> <span class="s2">&quot;GNU GPLv2&quot;</span>
+
+<span class="kn">import</span> <span class="nn">collections</span>
+
+<span class="kn">from</span> <span class="nn">beancount.core.number</span> <span class="k">import</span> <span class="n">MISSING</span>
+<span class="kn">from</span> <span class="nn">beancount.parser</span> <span class="k">import</span> <span class="n">booking_full</span>
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">data</span>
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">inventory</span>
+
+
+<span class="n">BookingError</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;BookingError&#39;</span><span class="p">,</span> <span class="s1">&#39;source message entry&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="book"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.booking.html#beancount.parser.booking.book">[docs]</a><span class="k">def</span> <span class="nf">book</span><span class="p">(</span><span class="n">incomplete_entries</span><span class="p">,</span> <span class="n">options_map</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Book inventory lots and complete all positions with incomplete numbers.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      incomplete_entries: A list of directives, with some postings possibly left</span>
+<span class="sd">        with incomplete amounts as produced by the parser.</span>
+<span class="sd">      options_map: An options dict as produced by the parser.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">      A pair of</span>
+<span class="sd">        entries: A list of completed entries with all their postings completed.</span>
+<span class="sd">        errors: New errors produced during interpolation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Get the list of booking methods for each account.</span>
+    <span class="n">booking_methods</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">options_map</span><span class="p">[</span><span class="s2">&quot;booking_method&quot;</span><span class="p">])</span>
+    <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">incomplete_entries</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">Open</span><span class="p">)</span> <span class="ow">and</span> <span class="n">entry</span><span class="o">.</span><span class="n">booking</span><span class="p">:</span>
+            <span class="n">booking_methods</span><span class="p">[</span><span class="n">entry</span><span class="o">.</span><span class="n">account</span><span class="p">]</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">booking</span>
+
+    <span class="c1"># Do the booking here!</span>
+    <span class="n">entries</span><span class="p">,</span> <span class="n">booking_errors</span> <span class="o">=</span> <span class="n">booking_full</span><span class="o">.</span><span class="n">book</span><span class="p">(</span><span class="n">incomplete_entries</span><span class="p">,</span> <span class="n">options_map</span><span class="p">,</span>
+                                                <span class="n">booking_methods</span><span class="p">)</span>
+
+    <span class="c1"># Check for MISSING elements remaining.</span>
+    <span class="n">missing_errors</span> <span class="o">=</span> <span class="n">validate_missing_eliminated</span><span class="p">(</span><span class="n">entries</span><span class="p">,</span> <span class="n">options_map</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">entries</span><span class="p">,</span> <span class="p">(</span><span class="n">booking_errors</span> <span class="o">+</span> <span class="n">missing_errors</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="validate_missing_eliminated"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.booking.html#beancount.parser.booking.validate_missing_eliminated">[docs]</a><span class="k">def</span> <span class="nf">validate_missing_eliminated</span><span class="p">(</span><span class="n">entries</span><span class="p">,</span> <span class="n">unused_options_map</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Validate that all the missing bits of postings have been eliminated.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      entries: A list of directives.</span>
+<span class="sd">      unused_options_map: An options map.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">      A list of errors.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">errors</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">entries</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">Transaction</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">posting</span> <span class="ow">in</span> <span class="n">entry</span><span class="o">.</span><span class="n">postings</span><span class="p">:</span>
+                <span class="n">units</span> <span class="o">=</span> <span class="n">posting</span><span class="o">.</span><span class="n">units</span>
+                <span class="n">cost</span> <span class="o">=</span> <span class="n">posting</span><span class="o">.</span><span class="n">cost</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">MISSING</span> <span class="ow">in</span> <span class="p">(</span><span class="n">units</span><span class="o">.</span><span class="n">number</span><span class="p">,</span> <span class="n">units</span><span class="o">.</span><span class="n">currency</span><span class="p">)</span> <span class="ow">or</span>
+                    <span class="n">cost</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">MISSING</span> <span class="ow">in</span> <span class="p">(</span><span class="n">cost</span><span class="o">.</span><span class="n">number</span><span class="p">,</span> <span class="n">cost</span><span class="o">.</span><span class="n">currency</span><span class="p">,</span>
+                                                     <span class="n">cost</span><span class="o">.</span><span class="n">date</span><span class="p">,</span> <span class="n">cost</span><span class="o">.</span><span class="n">label</span><span class="p">)):</span>
+                    <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="n">BookingError</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">meta</span><span class="p">,</span>
+                                     <span class="s2">&quot;Transaction has incomplete elements&quot;</span><span class="p">,</span>
+                                     <span class="n">entry</span><span class="p">))</span>
+                    <span class="k">break</span>
+    <span class="k">return</span> <span class="n">errors</span></div>
+
+
+<span class="c1"># FIXME: This goes away. Maybe moves to a pedantic plugin.</span>
+<div class="viewcode-block" id="validate_inventory_booking"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.booking.html#beancount.parser.booking.validate_inventory_booking">[docs]</a><span class="k">def</span> <span class="nf">validate_inventory_booking</span><span class="p">(</span><span class="n">entries</span><span class="p">,</span> <span class="n">unused_options_map</span><span class="p">,</span> <span class="n">booking_methods</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Validate that no position at cost is allowed to go negative.</span>
+
+<span class="sd">    This routine checks that when a posting reduces a position, existing or not,</span>
+<span class="sd">    that the subsequent inventory does not result in a position with a negative</span>
+<span class="sd">    number of units. A negative number of units would only be required for short</span>
+<span class="sd">    trades of trading spreads on futures, and right now this is not supported.</span>
+<span class="sd">    It would not be difficult to support this, however, but we want to be strict</span>
+<span class="sd">    about it, because being pedantic about this is otherwise a great way to</span>
+<span class="sd">    detect user data entry mistakes.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      entries: A list of directives.</span>
+<span class="sd">      unused_options_map: An options map.</span>
+<span class="sd">      booking_methods: A mapping of account name to booking method, accumulated</span>
+<span class="sd">        in the main loop.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">      A list of errors.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">errors</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">balances</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">(</span><span class="n">inventory</span><span class="o">.</span><span class="n">Inventory</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">entries</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">Transaction</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">posting</span> <span class="ow">in</span> <span class="n">entry</span><span class="o">.</span><span class="n">postings</span><span class="p">:</span>
+                <span class="c1"># Update the balance of each posting on its respective account</span>
+                <span class="c1"># without allowing booking to a negative position, and if an error</span>
+                <span class="c1"># is encountered, catch it and return it.</span>
+                <span class="n">running_balance</span> <span class="o">=</span> <span class="n">balances</span><span class="p">[</span><span class="n">posting</span><span class="o">.</span><span class="n">account</span><span class="p">]</span>
+                <span class="n">position_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">running_balance</span><span class="o">.</span><span class="n">add_position</span><span class="p">(</span><span class="n">posting</span><span class="p">)</span>
+
+                <span class="c1"># Skip this check if the booking method is set to ignore it.</span>
+                <span class="k">if</span> <span class="n">booking_methods</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">posting</span><span class="o">.</span><span class="n">account</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">==</span> <span class="n">data</span><span class="o">.</span><span class="n">Booking</span><span class="o">.</span><span class="n">NONE</span><span class="p">:</span>
+                    <span class="k">continue</span>
+
+                <span class="c1"># Check if the resulting inventory is mixed, which is not</span>
+                <span class="c1"># allowed under the STRICT method.</span>
+                <span class="k">if</span> <span class="n">running_balance</span><span class="o">.</span><span class="n">is_mixed</span><span class="p">():</span>
+                    <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="n">BookingError</span><span class="p">(</span>
+                            <span class="n">entry</span><span class="o">.</span><span class="n">meta</span><span class="p">,</span>
+                            <span class="p">(</span><span class="s2">&quot;Reducing position results in inventory with positive &quot;</span>
+                             <span class="s2">&quot;and negative lots: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">position_</span><span class="p">),</span>
+                            <span class="n">entry</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">errors</span></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">Beancount</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/index.html">Beancount Modules</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Martin Blais.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,356 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>beancount.parser.cmptest &#8212; Beancount 2.2.1 documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for beancount.parser.cmptest</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Support utillities for testing scripts.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="n">__copyright__</span> <span class="o">=</span> <span class="s2">&quot;Copyright (C) 2014-2017  Martin Blais&quot;</span>
+<span class="n">__license__</span> <span class="o">=</span> <span class="s2">&quot;GNU GPLv2&quot;</span>
+
+<span class="kn">import</span> <span class="nn">unittest</span>
+<span class="kn">import</span> <span class="nn">io</span>
+<span class="kn">import</span> <span class="nn">textwrap</span>
+
+<span class="kn">import</span> <span class="nn">pytest</span>
+
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">amount</span>
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">compare</span>
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">data</span>
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">position</span>
+<span class="kn">from</span> <span class="nn">beancount.core.number</span> <span class="k">import</span> <span class="n">MISSING</span>
+<span class="kn">from</span> <span class="nn">beancount.core.number</span> <span class="k">import</span> <span class="n">ZERO</span>
+<span class="kn">from</span> <span class="nn">beancount.parser</span> <span class="k">import</span> <span class="n">booking</span>
+<span class="kn">from</span> <span class="nn">beancount.parser</span> <span class="k">import</span> <span class="n">parser</span>
+<span class="kn">from</span> <span class="nn">beancount.parser</span> <span class="k">import</span> <span class="n">printer</span>
+
+
+<div class="viewcode-block" id="TestError"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.cmptest.html#beancount.parser.cmptest.TestError">[docs]</a><span class="k">class</span> <span class="nc">TestError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Errors within the test implementation itself. These should never occur.&quot;&quot;&quot;</span></div>
+
+
+<div class="viewcode-block" id="read_string_or_entries"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.cmptest.html#beancount.parser.cmptest.read_string_or_entries">[docs]</a><span class="k">def</span> <span class="nf">read_string_or_entries</span><span class="p">(</span><span class="n">entries_or_str</span><span class="p">,</span> <span class="n">allow_incomplete</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Read a string of entries or just entries.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      entries_or_str: Either a list of directives, or a string containing directives.</span>
+<span class="sd">      allow_incomplete: A boolean, true if we allow incomplete inputs and perform</span>
+<span class="sd">        light-weight booking.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">      A list of directives.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">entries_or_str</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">entries</span><span class="p">,</span> <span class="n">errors</span><span class="p">,</span> <span class="n">options_map</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_string</span><span class="p">(</span>
+            <span class="n">textwrap</span><span class="o">.</span><span class="n">dedent</span><span class="p">(</span><span class="n">entries_or_str</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">allow_incomplete</span><span class="p">:</span>
+            <span class="c1"># Do a simplistic local conversion in order to call the comparison.</span>
+            <span class="n">entries</span> <span class="o">=</span> <span class="p">[</span><span class="n">_local_booking</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">entries</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Don&#39;t accept incomplete entries either.</span>
+            <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">parser</span><span class="o">.</span><span class="n">is_entry_incomplete</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">entries</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="n">TestError</span><span class="p">(</span><span class="s2">&quot;Entries in assertions may not use interpolation.&quot;</span><span class="p">)</span>
+
+            <span class="n">entries</span><span class="p">,</span> <span class="n">booking_errors</span> <span class="o">=</span> <span class="n">booking</span><span class="o">.</span><span class="n">book</span><span class="p">(</span><span class="n">entries</span><span class="p">,</span> <span class="n">options_map</span><span class="p">)</span>
+            <span class="n">errors</span> <span class="o">=</span> <span class="n">errors</span> <span class="o">+</span> <span class="n">booking_errors</span>
+
+        <span class="c1"># Don&#39;t tolerate errors.</span>
+        <span class="k">if</span> <span class="n">errors</span><span class="p">:</span>
+            <span class="n">oss</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">StringIO</span><span class="p">()</span>
+            <span class="n">printer</span><span class="o">.</span><span class="n">print_errors</span><span class="p">(</span><span class="n">errors</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">oss</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">TestError</span><span class="p">(</span><span class="s2">&quot;Unexpected errors in expected: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">oss</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()))</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">entries_or_str</span><span class="p">,</span> <span class="nb">list</span><span class="p">),</span> <span class="s2">&quot;Expecting list: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">entries_or_str</span><span class="p">)</span>
+        <span class="n">entries</span> <span class="o">=</span> <span class="n">entries_or_str</span>
+
+    <span class="k">return</span> <span class="n">entries</span></div>
+
+
+<span class="k">def</span> <span class="nf">_local_booking</span><span class="p">(</span><span class="n">entry</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Transform incompolete entries as booked.</span>
+
+<span class="sd">    This method converts incomplete entries with positions that sport CostSpec</span>
+<span class="sd">    instances and missing portions to using Cost and replacing MISSING instances</span>
+<span class="sd">    to None. No booking is carried out on account inventories. The purpose of</span>
+<span class="sd">    this degenerate booking is simply to transform parsed transactions for the</span>
+<span class="sd">    purpose of comparison in tests.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      entry: An instance of a directive.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">      A transformed list of directives.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">Transaction</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">entry</span>
+
+    <span class="n">new_postings</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">posting</span> <span class="ow">in</span> <span class="n">entry</span><span class="o">.</span><span class="n">postings</span><span class="p">:</span>
+        <span class="n">orig_posting</span> <span class="o">=</span> <span class="n">posting</span>
+
+        <span class="c1"># Fixup units.</span>
+        <span class="k">if</span> <span class="n">posting</span><span class="o">.</span><span class="n">units</span> <span class="ow">is</span> <span class="n">MISSING</span><span class="p">:</span>
+            <span class="n">posting</span> <span class="o">=</span> <span class="n">posting</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">units</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">posting</span><span class="o">.</span><span class="n">units</span><span class="p">:</span>
+            <span class="n">posting</span> <span class="o">=</span> <span class="n">posting</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span>
+                <span class="n">units</span><span class="o">=</span><span class="n">_transform_incomplete_amount</span><span class="p">(</span><span class="n">posting</span><span class="o">.</span><span class="n">units</span><span class="p">))</span>
+
+        <span class="c1"># Fixup cost.</span>
+        <span class="n">cost</span> <span class="o">=</span> <span class="n">posting</span><span class="o">.</span><span class="n">cost</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cost</span><span class="p">,</span> <span class="n">position</span><span class="o">.</span><span class="n">CostSpec</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">cost</span><span class="o">.</span><span class="n">number_per</span> <span class="ow">is</span> <span class="n">MISSING</span><span class="p">:</span>
+                <span class="n">cost</span> <span class="o">=</span> <span class="n">cost</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">number_per</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">cost</span><span class="o">.</span><span class="n">number_total</span> <span class="ow">is</span> <span class="n">MISSING</span><span class="p">:</span>
+                <span class="n">cost</span> <span class="o">=</span> <span class="n">cost</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">number_total</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">cost</span><span class="o">.</span><span class="n">currency</span> <span class="ow">is</span> <span class="n">MISSING</span><span class="p">:</span>
+                <span class="n">cost</span> <span class="o">=</span> <span class="n">cost</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">currency</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">cost</span><span class="o">.</span><span class="n">date</span> <span class="ow">is</span> <span class="n">MISSING</span><span class="p">:</span>
+                <span class="n">cost</span> <span class="o">=</span> <span class="n">cost</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">date</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">cost</span><span class="o">.</span><span class="n">label</span> <span class="ow">is</span> <span class="n">MISSING</span><span class="p">:</span>
+                <span class="n">cost</span> <span class="o">=</span> <span class="n">cost</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">cost</span><span class="o">.</span><span class="n">number_total</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">MISSING</span><span class="p">):</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">posting</span><span class="o">.</span><span class="n">units</span><span class="p">,</span> <span class="n">amount</span><span class="o">.</span><span class="n">Amount</span><span class="p">):</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Cannot convert posting without units: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                        <span class="n">orig_posting</span><span class="p">))</span>
+                <span class="n">number</span> <span class="o">=</span> <span class="n">posting</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">number</span>
+                <span class="n">total</span> <span class="o">=</span> <span class="p">((</span><span class="n">cost</span><span class="o">.</span><span class="n">number_per</span> <span class="ow">or</span> <span class="n">ZERO</span><span class="p">)</span> <span class="o">*</span> <span class="n">number</span> <span class="o">+</span>
+                         <span class="p">(</span><span class="n">cost</span><span class="o">.</span><span class="n">number_total</span> <span class="ow">or</span> <span class="n">ZERO</span><span class="p">))</span>
+                <span class="n">cost_number</span> <span class="o">=</span> <span class="p">(</span><span class="n">total</span> <span class="o">/</span> <span class="n">number</span><span class="p">)</span> <span class="ow">or</span> <span class="kc">None</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">cost_number</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">cost</span><span class="o">.</span><span class="n">number_per</span> <span class="ow">is</span> <span class="n">MISSING</span> <span class="k">else</span> <span class="n">cost</span><span class="o">.</span><span class="n">number_per</span>
+            <span class="n">posting</span> <span class="o">=</span> <span class="n">posting</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">cost</span><span class="o">=</span><span class="n">position</span><span class="o">.</span><span class="n">Cost</span><span class="p">(</span>
+                <span class="n">cost_number</span><span class="p">,</span> <span class="n">cost</span><span class="o">.</span><span class="n">currency</span><span class="p">,</span> <span class="n">cost</span><span class="o">.</span><span class="n">date</span><span class="p">,</span> <span class="n">cost</span><span class="o">.</span><span class="n">label</span><span class="p">))</span>
+            <span class="k">assert</span> <span class="n">cost</span><span class="o">.</span><span class="n">date</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">MISSING</span>
+            <span class="k">assert</span> <span class="n">cost</span><span class="o">.</span><span class="n">label</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">MISSING</span>
+
+        <span class="c1"># Fixup price.</span>
+        <span class="k">if</span> <span class="n">posting</span><span class="o">.</span><span class="n">price</span> <span class="ow">is</span> <span class="n">MISSING</span><span class="p">:</span>
+            <span class="n">posting</span> <span class="o">=</span> <span class="n">posting</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">price</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">posting</span><span class="o">.</span><span class="n">price</span><span class="p">:</span>
+            <span class="n">posting</span> <span class="o">=</span> <span class="n">posting</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span>
+                <span class="n">price</span><span class="o">=</span><span class="n">_transform_incomplete_amount</span><span class="p">(</span><span class="n">posting</span><span class="o">.</span><span class="n">price</span><span class="p">))</span>
+
+        <span class="n">new_postings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">posting</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">entry</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">postings</span><span class="o">=</span><span class="n">new_postings</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_transform_incomplete_amount</span><span class="p">(</span><span class="n">amt</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Remove MISSING parts from an incomplete amount.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">amt</span><span class="o">.</span><span class="n">number</span> <span class="ow">is</span> <span class="n">MISSING</span><span class="p">:</span>
+        <span class="n">amt</span> <span class="o">=</span> <span class="n">amt</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">number</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">amt</span><span class="o">.</span><span class="n">currency</span> <span class="ow">is</span> <span class="n">MISSING</span><span class="p">:</span>
+        <span class="n">amt</span> <span class="o">=</span> <span class="n">amt</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">currency</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">amt</span>
+
+
+
+
+<div class="viewcode-block" id="TestCase"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.cmptest.html#beancount.parser.cmptest.TestCase">[docs]</a><span class="k">class</span> <span class="nc">TestCase</span><span class="p">(</span><span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="p">):</span>
+
+<div class="viewcode-block" id="TestCase.assertEqualEntries"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.cmptest.html#beancount.parser.cmptest.TestCase.assertEqualEntries">[docs]</a>    <span class="k">def</span> <span class="nf">assertEqualEntries</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">expected_entries</span><span class="p">,</span> <span class="n">actual_entries</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">assertEqualEntries</span><span class="p">(</span><span class="n">expected_entries</span><span class="p">,</span> <span class="n">actual_entries</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">fail</span><span class="p">)</span></div>
+<div class="viewcode-block" id="TestCase.assertIncludesEntries"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.cmptest.html#beancount.parser.cmptest.TestCase.assertIncludesEntries">[docs]</a>    <span class="k">def</span> <span class="nf">assertIncludesEntries</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subset_entries</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">assertIncludesEntries</span><span class="p">(</span><span class="n">subset_entries</span><span class="p">,</span> <span class="n">entries</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">fail</span><span class="p">)</span></div>
+<div class="viewcode-block" id="TestCase.assertExcludesEntries"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.cmptest.html#beancount.parser.cmptest.TestCase.assertExcludesEntries">[docs]</a>    <span class="k">def</span> <span class="nf">assertExcludesEntries</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subset_entries</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">assertExcludesEntries</span><span class="p">(</span><span class="n">subset_entries</span><span class="p">,</span> <span class="n">entries</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">fail</span><span class="p">)</span></div></div>
+
+
+<span class="n">DEFAULT_FAILFUNC</span> <span class="o">=</span> <span class="n">pytest</span><span class="o">.</span><span class="n">fail</span>
+
+
+<div class="viewcode-block" id="assertEqualEntries"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.cmptest.html#beancount.parser.cmptest.assertEqualEntries">[docs]</a><span class="k">def</span> <span class="nf">assertEqualEntries</span><span class="p">(</span><span class="n">expected_entries</span><span class="p">,</span> <span class="n">actual_entries</span><span class="p">,</span>
+                       <span class="n">failfunc</span><span class="o">=</span><span class="n">DEFAULT_FAILFUNC</span><span class="p">,</span> <span class="n">allow_incomplete</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Compare two lists of entries exactly and print missing entries verbosely if</span>
+<span class="sd">    they occur.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      expected_entries: Either a list of directives or a string, in which case the</span>
+<span class="sd">        string is run through beancount.parser.parse_string() and the resulting</span>
+<span class="sd">        list is used.</span>
+<span class="sd">      actual_entries: Same treatment as expected_entries, the other list of</span>
+<span class="sd">        directives to compare to.</span>
+<span class="sd">      failfunc: A function to call on failure.</span>
+<span class="sd">      allow_incomplete: A boolean, true if we allow incomplete inputs and perform</span>
+<span class="sd">        light-weight booking.</span>
+<span class="sd">    Raises:</span>
+<span class="sd">      AssertionError: If the exception fails.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">expected_entries</span> <span class="o">=</span> <span class="n">read_string_or_entries</span><span class="p">(</span><span class="n">expected_entries</span><span class="p">,</span> <span class="n">allow_incomplete</span><span class="p">)</span>
+    <span class="n">actual_entries</span> <span class="o">=</span> <span class="n">read_string_or_entries</span><span class="p">(</span><span class="n">actual_entries</span><span class="p">,</span> <span class="n">allow_incomplete</span><span class="p">)</span>
+
+    <span class="n">same</span><span class="p">,</span> <span class="n">expected_missing</span><span class="p">,</span> <span class="n">actual_missing</span> <span class="o">=</span> <span class="n">compare</span><span class="o">.</span><span class="n">compare_entries</span><span class="p">(</span><span class="n">expected_entries</span><span class="p">,</span>
+                                                                     <span class="n">actual_entries</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">same</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="n">expected_missing</span> <span class="ow">or</span> <span class="n">actual_missing</span><span class="p">,</span> <span class="s2">&quot;Missing is missing: </span><span class="si">{}</span><span class="s2">, </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">expected_missing</span><span class="p">,</span> <span class="n">actual_missing</span><span class="p">)</span>
+        <span class="n">oss</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">StringIO</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">expected_missing</span><span class="p">:</span>
+            <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Present in expected set and not in actual set:</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">expected_missing</span><span class="p">:</span>
+                <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">printer</span><span class="o">.</span><span class="n">format_entry</span><span class="p">(</span><span class="n">entry</span><span class="p">))</span>
+                <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">actual_missing</span><span class="p">:</span>
+            <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Present in actual set and not in expected set:</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">actual_missing</span><span class="p">:</span>
+                <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">printer</span><span class="o">.</span><span class="n">format_entry</span><span class="p">(</span><span class="n">entry</span><span class="p">))</span>
+                <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">failfunc</span><span class="p">(</span><span class="n">oss</span><span class="o">.</span><span class="n">getvalue</span><span class="p">())</span></div>
+
+
+<div class="viewcode-block" id="assertIncludesEntries"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.cmptest.html#beancount.parser.cmptest.assertIncludesEntries">[docs]</a><span class="k">def</span> <span class="nf">assertIncludesEntries</span><span class="p">(</span><span class="n">subset_entries</span><span class="p">,</span> <span class="n">entries</span><span class="p">,</span>
+                          <span class="n">failfunc</span><span class="o">=</span><span class="n">DEFAULT_FAILFUNC</span><span class="p">,</span> <span class="n">allow_incomplete</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Check that subset_entries is included in entries and print missing entries.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      subset_entries: Either a list of directives or a string, in which case the</span>
+<span class="sd">        string is run through beancount.parser.parse_string() and the resulting</span>
+<span class="sd">        list is used.</span>
+<span class="sd">      entries: Same treatment as subset_entries, the other list of</span>
+<span class="sd">        directives to compare to.</span>
+<span class="sd">      failfunc: A function to call on failure.</span>
+<span class="sd">      allow_incomplete: A boolean, true if we allow incomplete inputs and perform</span>
+<span class="sd">        light-weight booking.</span>
+<span class="sd">    Raises:</span>
+<span class="sd">      AssertionError: If the exception fails.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">subset_entries</span> <span class="o">=</span> <span class="n">read_string_or_entries</span><span class="p">(</span><span class="n">subset_entries</span><span class="p">,</span> <span class="n">allow_incomplete</span><span class="p">)</span>
+    <span class="n">entries</span> <span class="o">=</span> <span class="n">read_string_or_entries</span><span class="p">(</span><span class="n">entries</span><span class="p">)</span>
+
+    <span class="n">includes</span><span class="p">,</span> <span class="n">missing</span> <span class="o">=</span> <span class="n">compare</span><span class="o">.</span><span class="n">includes_entries</span><span class="p">(</span><span class="n">subset_entries</span><span class="p">,</span> <span class="n">entries</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">includes</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="n">missing</span><span class="p">,</span> <span class="s2">&quot;Missing is empty: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">missing</span><span class="p">)</span>
+        <span class="n">oss</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">StringIO</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
+            <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Missing from from expected set:</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">missing</span><span class="p">:</span>
+                <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">printer</span><span class="o">.</span><span class="n">format_entry</span><span class="p">(</span><span class="n">entry</span><span class="p">))</span>
+                <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">failfunc</span><span class="p">(</span><span class="n">oss</span><span class="o">.</span><span class="n">getvalue</span><span class="p">())</span></div>
+
+
+<div class="viewcode-block" id="assertExcludesEntries"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.cmptest.html#beancount.parser.cmptest.assertExcludesEntries">[docs]</a><span class="k">def</span> <span class="nf">assertExcludesEntries</span><span class="p">(</span><span class="n">subset_entries</span><span class="p">,</span> <span class="n">entries</span><span class="p">,</span>
+                          <span class="n">failfunc</span><span class="o">=</span><span class="n">DEFAULT_FAILFUNC</span><span class="p">,</span> <span class="n">allow_incomplete</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Check that subset_entries is not included in entries and print extra entries.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      subset_entries: Either a list of directives or a string, in which case the</span>
+<span class="sd">        string is run through beancount.parser.parse_string() and the resulting</span>
+<span class="sd">        list is used.</span>
+<span class="sd">      entries: Same treatment as subset_entries, the other list of</span>
+<span class="sd">        directives to compare to.</span>
+<span class="sd">      failfunc: A function to call on failure.</span>
+<span class="sd">      allow_incomplete: A boolean, true if we allow incomplete inputs and perform</span>
+<span class="sd">        light-weight booking.</span>
+<span class="sd">    Raises:</span>
+<span class="sd">      AssertionError: If the exception fails.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">subset_entries</span> <span class="o">=</span> <span class="n">read_string_or_entries</span><span class="p">(</span><span class="n">subset_entries</span><span class="p">,</span> <span class="n">allow_incomplete</span><span class="p">)</span>
+    <span class="n">entries</span> <span class="o">=</span> <span class="n">read_string_or_entries</span><span class="p">(</span><span class="n">entries</span><span class="p">)</span>
+
+    <span class="n">excludes</span><span class="p">,</span> <span class="n">extra</span> <span class="o">=</span> <span class="n">compare</span><span class="o">.</span><span class="n">excludes_entries</span><span class="p">(</span><span class="n">subset_entries</span><span class="p">,</span> <span class="n">entries</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">excludes</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="n">extra</span><span class="p">,</span> <span class="s2">&quot;Extra is empty: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">extra</span><span class="p">)</span>
+        <span class="n">oss</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">StringIO</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">extra</span><span class="p">:</span>
+            <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Extra from from first/excluded set:</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">extra</span><span class="p">:</span>
+                <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">printer</span><span class="o">.</span><span class="n">format_entry</span><span class="p">(</span><span class="n">entry</span><span class="p">))</span>
+                <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">failfunc</span><span class="p">(</span><span class="n">oss</span><span class="o">.</span><span class="n">getvalue</span><span class="p">())</span></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">Beancount</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/index.html">Beancount Modules</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Martin Blais.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

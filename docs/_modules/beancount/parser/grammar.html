@@ -1,0 +1,1143 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>beancount.parser.grammar &#8212; Beancount 2.2.1 documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for beancount.parser.grammar</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Builder for Beancount grammar.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="n">__copyright__</span> <span class="o">=</span> <span class="s2">&quot;Copyright (C) 2015-2016  Martin Blais&quot;</span>
+<span class="n">__license__</span> <span class="o">=</span> <span class="s2">&quot;GNU GPLv2&quot;</span>
+
+<span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">traceback</span>
+<span class="kn">from</span> <span class="nn">os</span> <span class="k">import</span> <span class="n">path</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="k">import</span> <span class="n">date</span>
+
+<span class="kn">from</span> <span class="nn">beancount.core.number</span> <span class="k">import</span> <span class="n">ZERO</span>
+<span class="kn">from</span> <span class="nn">beancount.core.number</span> <span class="k">import</span> <span class="n">MISSING</span>
+<span class="kn">from</span> <span class="nn">beancount.core.number</span> <span class="k">import</span> <span class="n">Decimal</span>
+<span class="kn">from</span> <span class="nn">beancount.core.amount</span> <span class="k">import</span> <span class="n">Amount</span>
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">display_context</span>
+<span class="kn">from</span> <span class="nn">beancount.core.position</span> <span class="k">import</span> <span class="n">CostSpec</span>
+<span class="kn">from</span> <span class="nn">beancount.core.data</span> <span class="k">import</span> <span class="n">Transaction</span>
+<span class="kn">from</span> <span class="nn">beancount.core.data</span> <span class="k">import</span> <span class="n">Balance</span>
+<span class="kn">from</span> <span class="nn">beancount.core.data</span> <span class="k">import</span> <span class="n">Open</span>
+<span class="kn">from</span> <span class="nn">beancount.core.data</span> <span class="k">import</span> <span class="n">Close</span>
+<span class="kn">from</span> <span class="nn">beancount.core.data</span> <span class="k">import</span> <span class="n">Commodity</span>
+<span class="kn">from</span> <span class="nn">beancount.core.data</span> <span class="k">import</span> <span class="n">Pad</span>
+<span class="kn">from</span> <span class="nn">beancount.core.data</span> <span class="k">import</span> <span class="n">Event</span>
+<span class="kn">from</span> <span class="nn">beancount.core.data</span> <span class="k">import</span> <span class="n">Query</span>
+<span class="kn">from</span> <span class="nn">beancount.core.data</span> <span class="k">import</span> <span class="n">Price</span>
+<span class="kn">from</span> <span class="nn">beancount.core.data</span> <span class="k">import</span> <span class="n">Note</span>
+<span class="kn">from</span> <span class="nn">beancount.core.data</span> <span class="k">import</span> <span class="n">Document</span>
+<span class="kn">from</span> <span class="nn">beancount.core.data</span> <span class="k">import</span> <span class="n">Custom</span>
+<span class="kn">from</span> <span class="nn">beancount.core.data</span> <span class="k">import</span> <span class="n">new_metadata</span>
+<span class="kn">from</span> <span class="nn">beancount.core.data</span> <span class="k">import</span> <span class="n">Posting</span>
+<span class="kn">from</span> <span class="nn">beancount.core.data</span> <span class="k">import</span> <span class="n">Booking</span>
+<span class="kn">from</span> <span class="nn">beancount.core.data</span> <span class="k">import</span> <span class="n">EMPTY_SET</span>
+
+<span class="kn">from</span> <span class="nn">beancount.parser</span> <span class="k">import</span> <span class="n">lexer</span>
+<span class="kn">from</span> <span class="nn">beancount.parser</span> <span class="k">import</span> <span class="n">options</span>
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">account</span>
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">data</span>
+
+
+<span class="c1"># FIXME: This environment variable enables temporary support for negative</span>
+<span class="c1"># prices. If you&#39;ve updated across 2015-01-10 and you&#39;re getting a lot of</span>
+<span class="c1"># errors, you need to fix all the signs on your @@ total price values (they are</span>
+<span class="c1"># to be positive only). Just set this environment variable to disable this</span>
+<span class="c1"># change if you need to post-pone this.</span>
+<span class="n">__allow_negative_prices__</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;BEANCOUNT_ALLOW_NEGATIVE_PRICES&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+
+
+<span class="n">ParserError</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;ParserError&#39;</span><span class="p">,</span> <span class="s1">&#39;source message entry&#39;</span><span class="p">)</span>
+<span class="n">ParserSyntaxError</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;ParserSyntaxError&#39;</span><span class="p">,</span> <span class="s1">&#39;source message entry&#39;</span><span class="p">)</span>
+<span class="n">DeprecatedError</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;DeprecatedError&#39;</span><span class="p">,</span> <span class="s1">&#39;source message entry&#39;</span><span class="p">)</span>
+
+
+
+<span class="c1"># Key-value pairs. This is used to hold meta-data attachments temporarily.</span>
+<span class="c1">#</span>
+<span class="c1"># Attributes:</span>
+<span class="c1">#  key: A string, the name of the key.</span>
+<span class="c1">#  value: Any object.</span>
+<span class="n">KeyValue</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;KeyValue&#39;</span><span class="p">,</span> <span class="s1">&#39;key value&#39;</span><span class="p">)</span>
+
+<span class="c1"># Value-type pairs. This is used to represent custom values where the concrete</span>
+<span class="c1"># datatypes aren&#39;t matching those which are found in the parser.</span>
+<span class="c1">#</span>
+<span class="c1"># Attributes:</span>
+<span class="c1">#  value: Any object.</span>
+<span class="c1">#  dtype: The datatype of the object.</span>
+<span class="n">ValueType</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;ValueType&#39;</span><span class="p">,</span> <span class="s1">&#39;value dtype&#39;</span><span class="p">)</span>
+
+<span class="c1"># Convenience holding class for amounts with per-share and total value.</span>
+<span class="c1">#</span>
+<span class="c1"># Attributes:</span>
+<span class="c1">#   number_per: A Decimal instance, the cost/price per unit.</span>
+<span class="c1">#   number_total: A Decimal instance, the total cost/price.</span>
+<span class="c1">#   currency: A string, the commodity of the amount.</span>
+<span class="n">CompoundAmount</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;CompoundAmount&#39;</span><span class="p">,</span>
+                                        <span class="s1">&#39;number_per number_total currency&#39;</span><span class="p">)</span>
+
+
+<span class="c1"># A unique token used to indicate a merge of the lots of an inventory.</span>
+<span class="n">MERGE_COST</span> <span class="o">=</span> <span class="s1">&#39;***&#39;</span>
+
+
+<div class="viewcode-block" id="valid_account_regexp"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.valid_account_regexp">[docs]</a><span class="k">def</span> <span class="nf">valid_account_regexp</span><span class="p">(</span><span class="n">options</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Build a regexp to validate account names from the options.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      options: A dict of options, as per beancount.parser.options.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">      A string, a regular expression that will match all account names.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">names</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="fm">__getitem__</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;name_assets&#39;</span><span class="p">,</span>
+                                      <span class="s1">&#39;name_liabilities&#39;</span><span class="p">,</span>
+                                      <span class="s1">&#39;name_equity&#39;</span><span class="p">,</span>
+                                      <span class="s1">&#39;name_income&#39;</span><span class="p">,</span>
+                                      <span class="s1">&#39;name_expenses&#39;</span><span class="p">))</span>
+
+    <span class="c1"># Replace the first term of the account regular expression with the specific</span>
+    <span class="c1"># names allowed under the options configuration. This code is kept in sync</span>
+    <span class="c1"># with {5672c7270e1e}.</span>
+    <span class="k">return</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s2">&quot;(?:</span><span class="si">{}</span><span class="s2">)(?:</span><span class="si">{}{}</span><span class="s2">)+&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s1">&#39;|&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">names</span><span class="p">),</span>
+                                               <span class="n">account</span><span class="o">.</span><span class="n">sep</span><span class="p">,</span>
+                                               <span class="n">account</span><span class="o">.</span><span class="n">ACC_COMP_NAME_RE</span><span class="p">))</span></div>
+
+
+<span class="c1"># A temporary data structure used during parsing to hold and accumulate the</span>
+<span class="c1"># fields being parsed on a transaction line. Because we want to be able to parse</span>
+<span class="c1"># these in arbitrary order, we have to accumulate the fields and then unpack</span>
+<span class="c1"># them intelligently in the transaction callback.</span>
+<span class="c1">#</span>
+<span class="c1"># Attributes:</span>
+<span class="c1">#  tags: a set object  of the tags to be applied to this transaction.</span>
+<span class="c1">#  links: a set of link strings to be applied to this transaction.</span>
+<span class="n">TagsLinks</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;TagsLinks&#39;</span><span class="p">,</span> <span class="s1">&#39;tags links&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="Builder"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder">[docs]</a><span class="k">class</span> <span class="nc">Builder</span><span class="p">(</span><span class="n">lexer</span><span class="o">.</span><span class="n">LexBuilder</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;A builder used by the lexer and grammar parser as callbacks to create</span>
+<span class="sd">    the data objects corresponding to rules parsed from the input file.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="Builder.__init__"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+        <span class="n">lexer</span><span class="o">.</span><span class="n">LexBuilder</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="c1"># A stack of the current active tags.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tags</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># A dict of the current active metadata fields (not a stack).</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">meta</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+
+        <span class="c1"># The result from running the parser, a list of entries.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">entries</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Accumulated and unprocessed options.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">options</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">OPTIONS_DEFAULTS</span><span class="p">)</span>
+
+        <span class="c1"># Set the filename we&#39;re processing.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="p">[</span><span class="s1">&#39;filename&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">filename</span>
+
+        <span class="c1"># Make the account regexp more restrictive than the default: check</span>
+        <span class="c1"># types. Warning: This overrides the value in the base class.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">account_regexp</span> <span class="o">=</span> <span class="n">valid_account_regexp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="p">)</span>
+
+        <span class="c1"># A display context builder.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dcontext</span> <span class="o">=</span> <span class="n">display_context</span><span class="o">.</span><span class="n">DisplayContext</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dcupdate</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dcontext</span><span class="o">.</span><span class="n">update</span></div>
+
+<div class="viewcode-block" id="Builder.dcupdate"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.dcupdate">[docs]</a>    <span class="k">def</span> <span class="nf">dcupdate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">number</span><span class="p">,</span> <span class="n">currency</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Update the display context.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">number</span><span class="p">,</span> <span class="n">Decimal</span><span class="p">)</span> <span class="ow">and</span> <span class="n">currency</span> <span class="ow">and</span> <span class="n">currency</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">MISSING</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_dcupdate</span><span class="p">(</span><span class="n">number</span><span class="p">,</span> <span class="n">currency</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Builder.finalize"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.finalize">[docs]</a>    <span class="k">def</span> <span class="nf">finalize</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Finalize the parser, check for final errors and return the triple.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">          A triple of</span>
+<span class="sd">            entries: A list of parsed directives, which may need completion.</span>
+<span class="sd">            errors: A list of errors, hopefully empty.</span>
+<span class="sd">            options_map: A dict of options.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># If the user left some tags unbalanced, issue an error.</span>
+        <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="p">:</span>
+            <span class="n">meta</span> <span class="o">=</span> <span class="n">new_metadata</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="p">[</span><span class="s1">&#39;filename&#39;</span><span class="p">],</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">ParserError</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span> <span class="s2">&quot;Unbalanced pushed tag: &#39;</span><span class="si">{}</span><span class="s2">&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tag</span><span class="p">),</span> <span class="kc">None</span><span class="p">))</span>
+
+        <span class="c1"># If the user left some metadata unpopped, issue an error.</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value_list</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">meta</span> <span class="o">=</span> <span class="n">new_metadata</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="p">[</span><span class="s1">&#39;filename&#39;</span><span class="p">],</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">ParserError</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span> <span class="p">(</span>
+                    <span class="s2">&quot;Unbalanced metadata key &#39;</span><span class="si">{}</span><span class="s2">&#39;; leftover metadata &#39;</span><span class="si">{}</span><span class="s2">&#39;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                        <span class="n">key</span><span class="p">,</span> <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">value_list</span><span class="p">)),</span> <span class="kc">None</span><span class="p">))</span>
+
+        <span class="c1"># Weave the commas option in the DisplayContext itself, so it propagates</span>
+        <span class="c1"># everywhere it is used automatically.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dcontext</span><span class="o">.</span><span class="n">set_commas</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="p">[</span><span class="s1">&#39;render_commas&#39;</span><span class="p">])</span>
+
+        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_entries</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">errors</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_options</span><span class="p">())</span></div>
+
+<div class="viewcode-block" id="Builder.get_entries"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.get_entries">[docs]</a>    <span class="k">def</span> <span class="nf">get_entries</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return the accumulated entries.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">          A list of sorted directives.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">entries</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">entry_sortkey</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Builder.get_options"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.get_options">[docs]</a>    <span class="k">def</span> <span class="nf">get_options</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return the final options map.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">          A dict of option names to options.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Build and store the inferred DisplayContext instance.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="p">[</span><span class="s1">&#39;dcontext&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dcontext</span>
+
+        <span class="c1"># Add the full list of seen commodities.</span>
+        <span class="c1">#</span>
+        <span class="c1"># IMPORTANT: This is currently where the list of all commodities seen</span>
+        <span class="c1"># from the parser lives. The</span>
+        <span class="c1"># beancount.core.getters.get_commodities_map() routine uses this to</span>
+        <span class="c1"># automatically generate a full list of directives. An alternative would</span>
+        <span class="c1"># be to implement a plugin that enforces the generate of these</span>
+        <span class="c1"># post-parsing so that they are always guaranteed to live within the</span>
+        <span class="c1"># flow of entries. This would allow us to keep all the data in that list</span>
+        <span class="c1"># of entries and to avoid depending on the options to store that output.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="p">[</span><span class="s1">&#39;commodities&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">commodities</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">options</span></div>
+
+<div class="viewcode-block" id="Builder.get_invalid_account"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.get_invalid_account">[docs]</a>    <span class="k">def</span> <span class="nf">get_invalid_account</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;See base class.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">account</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="p">[</span><span class="s1">&#39;name_equity&#39;</span><span class="p">],</span> <span class="s1">&#39;InvalidAccountName&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Builder.get_long_string_maxlines"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.get_long_string_maxlines">[docs]</a>    <span class="k">def</span> <span class="nf">get_long_string_maxlines</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;See base class.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="p">[</span><span class="s1">&#39;long_string_maxlines&#39;</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="Builder.store_result"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.store_result">[docs]</a>    <span class="k">def</span> <span class="nf">store_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Start rule stores the final result here.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          entries: A list of entries to store.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">entries</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">entries</span> <span class="o">=</span> <span class="n">entries</span></div>
+
+<div class="viewcode-block" id="Builder.build_grammar_error"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.build_grammar_error">[docs]</a>    <span class="k">def</span> <span class="nf">build_grammar_error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">,</span> <span class="n">exc_value</span><span class="p">,</span>
+                            <span class="n">exc_type</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">exc_traceback</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Build a grammar error and appends it to the list of pending errors.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          filename: The current filename</span>
+<span class="sd">          lineno: The current line number</span>
+<span class="sd">          excvalue: The exception value, or a str, the message of the error.</span>
+<span class="sd">          exc_type: An exception type, if an exception occurred.</span>
+<span class="sd">          exc_traceback: A traceback object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">exc_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exc_value</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+            <span class="n">strings</span> <span class="o">=</span> <span class="n">traceback</span><span class="o">.</span><span class="n">format_exception_only</span><span class="p">(</span><span class="n">exc_type</span><span class="p">,</span> <span class="n">exc_value</span><span class="p">)</span>
+            <span class="n">tblist</span> <span class="o">=</span> <span class="n">traceback</span><span class="o">.</span><span class="n">extract_tb</span><span class="p">(</span><span class="n">exc_traceback</span><span class="p">)</span>
+            <span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">__</span> <span class="o">=</span> <span class="n">tblist</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">message</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1"> (</span><span class="si">{}</span><span class="s1">:</span><span class="si">{}</span><span class="s1">)&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">strings</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">message</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">exc_value</span><span class="p">)</span>
+        <span class="n">meta</span> <span class="o">=</span> <span class="n">new_metadata</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">ParserSyntaxError</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="Builder.pipe_deprecated_error"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.pipe_deprecated_error">[docs]</a>    <span class="k">def</span> <span class="nf">pipe_deprecated_error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Issue a &#39;Pipe deprecated&#39; error.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          filename: The current filename</span>
+<span class="sd">          lineno: The current line number</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="p">[</span><span class="s1">&#39;allow_pipe_separator&#39;</span><span class="p">]:</span>
+            <span class="k">return</span>
+        <span class="n">meta</span> <span class="o">=</span> <span class="n">new_metadata</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">ParserSyntaxError</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span> <span class="s2">&quot;Pipe symbol is deprecated.&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="Builder.pushtag"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.pushtag">[docs]</a>    <span class="k">def</span> <span class="nf">pushtag</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Push a tag on the current set of tags.</span>
+
+<span class="sd">        Note that this does not need to be stack ordered.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          tag: A string, a tag to be added.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Builder.poptag"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.poptag">[docs]</a>    <span class="k">def</span> <span class="nf">poptag</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Pop a tag off the current set of stacks.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          tag: A string, a tag to be removed from the current set of tags.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="n">meta</span> <span class="o">=</span> <span class="n">new_metadata</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="p">[</span><span class="s1">&#39;filename&#39;</span><span class="p">],</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">ParserError</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span> <span class="s2">&quot;Attempting to pop absent tag: &#39;</span><span class="si">{}</span><span class="s2">&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tag</span><span class="p">),</span> <span class="kc">None</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="Builder.pushmeta"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.pushmeta">[docs]</a>    <span class="k">def</span> <span class="nf">pushmeta</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Set a metadata field on the current key-value pairs to be added to transactions.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          key_value: A KeyValue instance, to be added to the dict of metadata.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Builder.popmeta"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.popmeta">[docs]</a>    <span class="k">def</span> <span class="nf">popmeta</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Removed a key off the current set of stacks.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          key: A string, a key to be removed from the meta dict.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">IndexError</span>
+            <span class="n">value_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+            <span class="n">value_list</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">value_list</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">IndexError</span><span class="p">:</span>
+            <span class="n">meta</span> <span class="o">=</span> <span class="n">new_metadata</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="p">[</span><span class="s1">&#39;filename&#39;</span><span class="p">],</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">ParserError</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span>
+                            <span class="s2">&quot;Attempting to pop absent metadata key: &#39;</span><span class="si">{}</span><span class="s2">&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">),</span>
+                            <span class="kc">None</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="Builder.option"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.option">[docs]</a>    <span class="k">def</span> <span class="nf">option</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Process an option directive.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          filename: current filename.</span>
+<span class="sd">          lineno: current line number.</span>
+<span class="sd">          key: option&#39;s key (str)</span>
+<span class="sd">          value: option&#39;s value</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="p">:</span>
+            <span class="n">meta</span> <span class="o">=</span> <span class="n">new_metadata</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">ParserError</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span> <span class="s2">&quot;Invalid option: &#39;</span><span class="si">{}</span><span class="s2">&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">),</span> <span class="kc">None</span><span class="p">))</span>
+
+        <span class="k">elif</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">options</span><span class="o">.</span><span class="n">READ_ONLY_OPTIONS</span><span class="p">:</span>
+            <span class="n">meta</span> <span class="o">=</span> <span class="n">new_metadata</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">ParserError</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span> <span class="s2">&quot;Option &#39;</span><span class="si">{}</span><span class="s2">&#39; may not be set&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">),</span> <span class="kc">None</span><span class="p">))</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">option_descriptor</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">OPTIONS</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+
+            <span class="c1"># Issue a warning if the option is deprecated.</span>
+            <span class="k">if</span> <span class="n">option_descriptor</span><span class="o">.</span><span class="n">deprecated</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">option_descriptor</span><span class="o">.</span><span class="n">deprecated</span><span class="p">,</span> <span class="nb">str</span><span class="p">),</span> <span class="s2">&quot;Internal error.&quot;</span>
+                <span class="n">meta</span> <span class="o">=</span> <span class="n">new_metadata</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="n">DeprecatedError</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span> <span class="n">option_descriptor</span><span class="o">.</span><span class="n">deprecated</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
+
+            <span class="c1"># Rename the option if it has an alias.</span>
+            <span class="k">if</span> <span class="n">option_descriptor</span><span class="o">.</span><span class="n">alias</span><span class="p">:</span>
+                <span class="n">key</span> <span class="o">=</span> <span class="n">option_descriptor</span><span class="o">.</span><span class="n">alias</span>
+                <span class="n">option_descriptor</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">OPTIONS</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+
+            <span class="c1"># Convert the value, if necessary.</span>
+            <span class="k">if</span> <span class="n">option_descriptor</span><span class="o">.</span><span class="n">converter</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">value</span> <span class="o">=</span> <span class="n">option_descriptor</span><span class="o">.</span><span class="n">converter</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                    <span class="n">meta</span> <span class="o">=</span> <span class="n">new_metadata</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="n">ParserError</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span>
+                                    <span class="s2">&quot;Error for option &#39;</span><span class="si">{}</span><span class="s2">&#39;: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">exc</span><span class="p">),</span>
+                                    <span class="kc">None</span><span class="p">))</span>
+                    <span class="k">return</span>
+
+            <span class="n">option</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">option</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                <span class="c1"># Append to a list of values.</span>
+                <span class="n">option</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">option</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                <span class="c1"># Set to a dict of values.</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="n">ParserError</span><span class="p">(</span>
+                            <span class="n">meta</span><span class="p">,</span> <span class="s2">&quot;Error for option &#39;</span><span class="si">{}</span><span class="s2">&#39;: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">),</span> <span class="kc">None</span><span class="p">))</span>
+                    <span class="k">return</span>
+                <span class="n">dict_key</span><span class="p">,</span> <span class="n">dict_value</span> <span class="o">=</span> <span class="n">value</span>
+                <span class="n">option</span><span class="p">[</span><span class="n">dict_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">dict_value</span>
+
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">option</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+                <span class="c1"># Convert to a boolean.</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+                    <span class="n">value</span> <span class="o">=</span> <span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="p">{</span><span class="s1">&#39;true&#39;</span><span class="p">,</span> <span class="s1">&#39;on&#39;</span><span class="p">})</span> <span class="ow">or</span> <span class="p">(</span><span class="n">value</span> <span class="o">==</span> <span class="s1">&#39;1&#39;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Set the value.</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+            <span class="c1"># Refresh the list of valid account regexps as we go along.</span>
+            <span class="k">if</span> <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;name_&#39;</span><span class="p">):</span>
+                <span class="c1"># Update the set of valid account types.</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">account_regexp</span> <span class="o">=</span> <span class="n">valid_account_regexp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">key</span> <span class="o">==</span> <span class="s1">&#39;insert_pythonpath&#39;</span><span class="p">:</span>
+                <span class="c1"># Insert the PYTHONPATH to this file when and only if you</span>
+                <span class="c1"># encounter this option.</span>
+                <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">filename</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="Builder.include"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.include">[docs]</a>    <span class="k">def</span> <span class="nf">include</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">,</span> <span class="n">include_filename</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Process an include directive.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          filename: current filename.</span>
+<span class="sd">          lineno: current line number.</span>
+<span class="sd">          include_name: A string, the name of the file to include.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="p">[</span><span class="s1">&#39;include&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">include_filename</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Builder.plugin"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.plugin">[docs]</a>    <span class="k">def</span> <span class="nf">plugin</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">,</span> <span class="n">plugin_name</span><span class="p">,</span> <span class="n">plugin_config</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Process a plugin directive.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          filename: current filename.</span>
+<span class="sd">          lineno: current line number.</span>
+<span class="sd">          plugin_name: A string, the name of the plugin module to import.</span>
+<span class="sd">          plugin_config: A string or None, an optional configuration string to</span>
+<span class="sd">            pass in to the plugin module.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="p">[</span><span class="s1">&#39;plugin&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">plugin_name</span><span class="p">,</span> <span class="n">plugin_config</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="Builder.amount"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.amount">[docs]</a>    <span class="k">def</span> <span class="nf">amount</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">number</span><span class="p">,</span> <span class="n">currency</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Process an amount grammar rule.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          number: a Decimal instance, the number of the amount.</span>
+<span class="sd">          currency: a currency object (a str, really, see CURRENCY above)</span>
+<span class="sd">        Returns:</span>
+<span class="sd">          An instance of Amount.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Update the mapping that stores the parsed precisions.</span>
+        <span class="c1"># Note: This is relatively slow, adds about 70ms because of number.as_tuple().</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dcupdate</span><span class="p">(</span><span class="n">number</span><span class="p">,</span> <span class="n">currency</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Amount</span><span class="p">(</span><span class="n">number</span><span class="p">,</span> <span class="n">currency</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Builder.compound_amount"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.compound_amount">[docs]</a>    <span class="k">def</span> <span class="nf">compound_amount</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">number_per</span><span class="p">,</span> <span class="n">number_total</span><span class="p">,</span> <span class="n">currency</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Process an amount grammar rule.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          number_per: a Decimal instance, the number of the cost per share.</span>
+<span class="sd">          number_total: a Decimal instance, the number of the cost over all shares.</span>
+<span class="sd">          currency: a currency object (a str, really, see CURRENCY above)</span>
+<span class="sd">        Returns:</span>
+<span class="sd">          A triple of (Decimal, Decimal, currency string) to be processed further when</span>
+<span class="sd">          creating the final per-unit cost number.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Update the mapping that stores the parsed precisions.</span>
+        <span class="c1"># Note: This is relatively slow, adds about 70ms because of number.as_tuple().</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dcupdate</span><span class="p">(</span><span class="n">number_per</span><span class="p">,</span> <span class="n">currency</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dcupdate</span><span class="p">(</span><span class="n">number_total</span><span class="p">,</span> <span class="n">currency</span><span class="p">)</span>
+
+        <span class="c1"># Note that we are not able to reduce the value to a number per-share</span>
+        <span class="c1"># here because we only get the number of units in the full lot spec.</span>
+        <span class="k">return</span> <span class="n">CompoundAmount</span><span class="p">(</span><span class="n">number_per</span><span class="p">,</span> <span class="n">number_total</span><span class="p">,</span> <span class="n">currency</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Builder.cost_merge"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.cost_merge">[docs]</a>    <span class="k">def</span> <span class="nf">cost_merge</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Create a &#39;merge cost&#39; token.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">MERGE_COST</span></div>
+
+<div class="viewcode-block" id="Builder.cost_spec"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.cost_spec">[docs]</a>    <span class="k">def</span> <span class="nf">cost_spec</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cost_comp_list</span><span class="p">,</span> <span class="n">is_total</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Process a cost_spec grammar rule.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          cost_comp_list: A list of CompoundAmount, a datetime.date, or</span>
+<span class="sd">            label ID strings.</span>
+<span class="sd">          is_total: Assume only the total cost is specified; reject the &lt;number&gt; # &lt;number&gt;</span>
+<span class="sd">              syntax, that is, no compound amounts may be specified. This is used to support</span>
+<span class="sd">              the {{...}} syntax.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">          A cost-info tuple of CompoundAmount, lot date and label string. Any of these</span>
+<span class="sd">          may be set to a sentinel indicating &quot;unset&quot;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">cost_comp_list</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">CostSpec</span><span class="p">(</span><span class="n">MISSING</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">MISSING</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cost_comp_list</span><span class="p">,</span> <span class="nb">list</span><span class="p">),</span> <span class="p">(</span>
+            <span class="s2">&quot;Internal error in parser: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cost_comp_list</span><span class="p">))</span>
+
+        <span class="n">compound_cost</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">date_</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">label</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">merge</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">for</span> <span class="n">comp</span> <span class="ow">in</span> <span class="n">cost_comp_list</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">comp</span><span class="p">,</span> <span class="n">CompoundAmount</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">compound_cost</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">compound_cost</span> <span class="o">=</span> <span class="n">comp</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="n">ParserError</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_lexer_location</span><span class="p">(),</span>
+                                    <span class="s2">&quot;Duplicate cost: &#39;</span><span class="si">{}</span><span class="s2">&#39;.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">comp</span><span class="p">),</span> <span class="kc">None</span><span class="p">))</span>
+
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">comp</span><span class="p">,</span> <span class="n">date</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">date_</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">date_</span> <span class="o">=</span> <span class="n">comp</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="n">ParserError</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_lexer_location</span><span class="p">(),</span>
+                                    <span class="s2">&quot;Duplicate date: &#39;</span><span class="si">{}</span><span class="s2">&#39;.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">comp</span><span class="p">),</span> <span class="kc">None</span><span class="p">))</span>
+
+            <span class="k">elif</span> <span class="n">comp</span> <span class="ow">is</span> <span class="n">MERGE_COST</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">merge</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">merge</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="n">ParserError</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_lexer_location</span><span class="p">(),</span>
+                                    <span class="s2">&quot;Cost merging is not supported yet&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="n">ParserError</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_lexer_location</span><span class="p">(),</span>
+                                    <span class="s2">&quot;Duplicate merge-cost spec&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">comp</span><span class="p">,</span> <span class="nb">str</span><span class="p">),</span> <span class="p">(</span>
+                    <span class="s2">&quot;Currency component is not string: &#39;</span><span class="si">{}</span><span class="s2">&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">comp</span><span class="p">))</span>
+                <span class="k">if</span> <span class="n">label</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">label</span> <span class="o">=</span> <span class="n">comp</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="n">ParserError</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_lexer_location</span><span class="p">(),</span>
+                                    <span class="s2">&quot;Duplicate label: &#39;</span><span class="si">{}</span><span class="s2">&#39;.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">comp</span><span class="p">),</span> <span class="kc">None</span><span class="p">))</span>
+
+        <span class="c1"># If there was a cost_comp_list, thus a &quot;{...}&quot; cost basis spec, you must</span>
+        <span class="c1"># indicate that by creating a CompoundAmount(), always.</span>
+
+        <span class="k">if</span> <span class="n">compound_cost</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">number_per</span><span class="p">,</span> <span class="n">number_total</span><span class="p">,</span> <span class="n">currency</span> <span class="o">=</span> <span class="n">MISSING</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">MISSING</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">number_per</span><span class="p">,</span> <span class="n">number_total</span><span class="p">,</span> <span class="n">currency</span> <span class="o">=</span> <span class="n">compound_cost</span>
+            <span class="k">if</span> <span class="n">is_total</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">number_total</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="n">ParserError</span><span class="p">(</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">get_lexer_location</span><span class="p">(),</span>
+                            <span class="p">(</span><span class="s2">&quot;Per-unit cost may not be specified using total cost &quot;</span>
+                             <span class="s2">&quot;syntax: &#39;</span><span class="si">{}</span><span class="s2">&#39;; ignoring per-unit cost&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">compound_cost</span><span class="p">),</span>
+                            <span class="kc">None</span><span class="p">))</span>
+                    <span class="c1"># Ignore per-unit number.</span>
+                    <span class="n">number_per</span> <span class="o">=</span> <span class="n">ZERO</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># There&#39;s a single number specified; interpret it as a total cost.</span>
+                    <span class="n">number_total</span> <span class="o">=</span> <span class="n">number_per</span>
+                    <span class="n">number_per</span> <span class="o">=</span> <span class="n">ZERO</span>
+
+        <span class="k">if</span> <span class="n">merge</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">merge</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="k">return</span> <span class="n">CostSpec</span><span class="p">(</span><span class="n">number_per</span><span class="p">,</span> <span class="n">number_total</span><span class="p">,</span> <span class="n">currency</span><span class="p">,</span> <span class="n">date_</span><span class="p">,</span> <span class="n">label</span><span class="p">,</span> <span class="n">merge</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Builder.handle_list"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.handle_list">[docs]</a>    <span class="k">def</span> <span class="nf">handle_list</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">object_list</span><span class="p">,</span> <span class="n">new_object</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Handle a recursive list grammar rule, generically.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          object_list: the current list of objects.</span>
+<span class="sd">          new_object: the new object to be added.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">          The new, updated list of objects.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">object_list</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">object_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">new_object</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">object_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">new_object</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">object_list</span></div>
+
+<div class="viewcode-block" id="Builder.open"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.open">[docs]</a>    <span class="k">def</span> <span class="nf">open</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">account</span><span class="p">,</span> <span class="n">currencies</span><span class="p">,</span> <span class="n">booking_str</span><span class="p">,</span> <span class="n">kvlist</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Process an open directive.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          filename: The current filename.</span>
+<span class="sd">          lineno: The current line number.</span>
+<span class="sd">          date: A datetime object.</span>
+<span class="sd">          account: A string, the name of the account.</span>
+<span class="sd">          currencies: A list of constraint currencies.</span>
+<span class="sd">          booking_str: A string, the booking method, or None if none was specified.</span>
+<span class="sd">          kvlist: a list of KeyValue instances.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">          A new Open object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">meta</span> <span class="o">=</span> <span class="n">new_metadata</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">,</span> <span class="n">kvlist</span><span class="p">)</span>
+        <span class="n">error</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="n">booking_str</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># Note: Somehow the &#39;in&#39; membership operator is not defined on Enum.</span>
+                <span class="n">booking</span> <span class="o">=</span> <span class="n">Booking</span><span class="p">[</span><span class="n">booking_str</span><span class="p">]</span>
+            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                <span class="c1"># If the per-account method is invalid, set it to the global</span>
+                <span class="c1"># default method and continue.</span>
+                <span class="n">booking</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="p">[</span><span class="s1">&#39;booking_method&#39;</span><span class="p">]</span>
+                <span class="n">error</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">booking</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="n">entry</span> <span class="o">=</span> <span class="n">Open</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">account</span><span class="p">,</span> <span class="n">currencies</span><span class="p">,</span> <span class="n">booking</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">error</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ParserError</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span>
+                                           <span class="s2">&quot;Invalid booking method: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">booking_str</span><span class="p">),</span>
+                                           <span class="n">entry</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">entry</span></div>
+
+<div class="viewcode-block" id="Builder.close"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.close">[docs]</a>    <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">account</span><span class="p">,</span> <span class="n">kvlist</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Process a close directive.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          filename: The current filename.</span>
+<span class="sd">          lineno: The current line number.</span>
+<span class="sd">          date: A datetime object.</span>
+<span class="sd">          account: A string, the name of the account.</span>
+<span class="sd">          kvlist: a list of KeyValue instances.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">          A new Close object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">meta</span> <span class="o">=</span> <span class="n">new_metadata</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">,</span> <span class="n">kvlist</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Close</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">account</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Builder.commodity"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.commodity">[docs]</a>    <span class="k">def</span> <span class="nf">commodity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">currency</span><span class="p">,</span> <span class="n">kvlist</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Process a close directive.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          filename: The current filename.</span>
+<span class="sd">          lineno: The current line number.</span>
+<span class="sd">          date: A datetime object.</span>
+<span class="sd">          currency: A string, the commodity being declared.</span>
+<span class="sd">          kvlist: a list of KeyValue instances.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">          A new Close object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">meta</span> <span class="o">=</span> <span class="n">new_metadata</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">,</span> <span class="n">kvlist</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Commodity</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">currency</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Builder.pad"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.pad">[docs]</a>    <span class="k">def</span> <span class="nf">pad</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">account</span><span class="p">,</span> <span class="n">source_account</span><span class="p">,</span> <span class="n">kvlist</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Process a pad directive.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          filename: The current filename.</span>
+<span class="sd">          lineno: The current line number.</span>
+<span class="sd">          date: A datetime object.</span>
+<span class="sd">          account: A string, the account to be padded.</span>
+<span class="sd">          source_account: A string, the account to pad from.</span>
+<span class="sd">          kvlist: a list of KeyValue instances.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">          A new Pad object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">meta</span> <span class="o">=</span> <span class="n">new_metadata</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">,</span> <span class="n">kvlist</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Pad</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">account</span><span class="p">,</span> <span class="n">source_account</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Builder.balance"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.balance">[docs]</a>    <span class="k">def</span> <span class="nf">balance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">account</span><span class="p">,</span> <span class="n">amount</span><span class="p">,</span> <span class="n">tolerance</span><span class="p">,</span> <span class="n">kvlist</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Process an assertion directive.</span>
+
+<span class="sd">        We produce no errors here by default. We replace the failing ones in the</span>
+<span class="sd">        routine that does the verification later one, that these have succeeded</span>
+<span class="sd">        or failed.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          filename: The current filename.</span>
+<span class="sd">          lineno: The current line number.</span>
+<span class="sd">          date: A datetime object.</span>
+<span class="sd">          account: A string, the account to balance.</span>
+<span class="sd">          amount: The expected amount, to be checked.</span>
+<span class="sd">          tolerance: The tolerance number.</span>
+<span class="sd">          kvlist: a list of KeyValue instances.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">          A new Balance object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">diff_amount</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">meta</span> <span class="o">=</span> <span class="n">new_metadata</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">,</span> <span class="n">kvlist</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Balance</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">account</span><span class="p">,</span> <span class="n">amount</span><span class="p">,</span> <span class="n">tolerance</span><span class="p">,</span> <span class="n">diff_amount</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Builder.event"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.event">[docs]</a>    <span class="k">def</span> <span class="nf">event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">event_type</span><span class="p">,</span> <span class="n">description</span><span class="p">,</span> <span class="n">kvlist</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Process an event directive.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          filename: the current filename.</span>
+<span class="sd">          lineno: the current line number.</span>
+<span class="sd">          date: a datetime object.</span>
+<span class="sd">          event_type: a str, the name of the event type.</span>
+<span class="sd">          description: a str, the event value, the contents.</span>
+<span class="sd">          kvlist: a list of KeyValue instances.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">          A new Event object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">meta</span> <span class="o">=</span> <span class="n">new_metadata</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">,</span> <span class="n">kvlist</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Event</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">event_type</span><span class="p">,</span> <span class="n">description</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Builder.query"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.query">[docs]</a>    <span class="k">def</span> <span class="nf">query</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">query_name</span><span class="p">,</span> <span class="n">query_string</span><span class="p">,</span> <span class="n">kvlist</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Process a document directive.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          filename: the current filename.</span>
+<span class="sd">          lineno: the current line number.</span>
+<span class="sd">          date: a datetime object.</span>
+<span class="sd">          query_name: a str, the name of the query.</span>
+<span class="sd">          query_string: a str, the SQL query itself.</span>
+<span class="sd">          kvlist: a list of KeyValue instances.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">          A new Query object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">meta</span> <span class="o">=</span> <span class="n">new_metadata</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">,</span> <span class="n">kvlist</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Query</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">query_name</span><span class="p">,</span> <span class="n">query_string</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Builder.price"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.price">[docs]</a>    <span class="k">def</span> <span class="nf">price</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">currency</span><span class="p">,</span> <span class="n">amount</span><span class="p">,</span> <span class="n">kvlist</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Process a price directive.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          filename: the current filename.</span>
+<span class="sd">          lineno: the current line number.</span>
+<span class="sd">          date: a datetime object.</span>
+<span class="sd">          currency: the currency to be priced.</span>
+<span class="sd">          amount: an instance of Amount, that is the price of the currency.</span>
+<span class="sd">          kvlist: a list of KeyValue instances.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">          A new Price object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">meta</span> <span class="o">=</span> <span class="n">new_metadata</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">,</span> <span class="n">kvlist</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Price</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">currency</span><span class="p">,</span> <span class="n">amount</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Builder.note"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.note">[docs]</a>    <span class="k">def</span> <span class="nf">note</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">account</span><span class="p">,</span> <span class="n">comment</span><span class="p">,</span> <span class="n">kvlist</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Process a note directive.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          filename: The current filename.</span>
+<span class="sd">          lineno: The current line number.</span>
+<span class="sd">          date: A datetime object.</span>
+<span class="sd">          account: A string, the account to attach the note to.</span>
+<span class="sd">          comment: A str, the note&#39;s comments contents.</span>
+<span class="sd">          kvlist: a list of KeyValue instances.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">          A new Note object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">meta</span> <span class="o">=</span> <span class="n">new_metadata</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">,</span> <span class="n">kvlist</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Note</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">account</span><span class="p">,</span> <span class="n">comment</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Builder.document"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.document">[docs]</a>    <span class="k">def</span> <span class="nf">document</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">account</span><span class="p">,</span> <span class="n">document_filename</span><span class="p">,</span> <span class="n">tags_links</span><span class="p">,</span>
+                 <span class="n">kvlist</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Process a document directive.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          filename: the current filename.</span>
+<span class="sd">          lineno: the current line number.</span>
+<span class="sd">          date: a datetime object.</span>
+<span class="sd">          account: an Account instance.</span>
+<span class="sd">          document_filename: a str, the name of the document file.</span>
+<span class="sd">          tags_links: The current TagsLinks accumulator.</span>
+<span class="sd">          kvlist: a list of KeyValue instances.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">          A new Document object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">meta</span> <span class="o">=</span> <span class="n">new_metadata</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">,</span> <span class="n">kvlist</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">isabs</span><span class="p">(</span><span class="n">document_filename</span><span class="p">):</span>
+            <span class="n">document_filename</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">filename</span><span class="p">),</span>
+                                                       <span class="n">document_filename</span><span class="p">))</span>
+        <span class="n">tags</span><span class="p">,</span> <span class="n">links</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">finalize_tags_links</span><span class="p">(</span><span class="n">tags_links</span><span class="o">.</span><span class="n">tags</span><span class="p">,</span> <span class="n">tags_links</span><span class="o">.</span><span class="n">links</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Document</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">account</span><span class="p">,</span> <span class="n">document_filename</span><span class="p">,</span> <span class="n">tags</span><span class="p">,</span> <span class="n">links</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Builder.custom"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.custom">[docs]</a>    <span class="k">def</span> <span class="nf">custom</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">dir_type</span><span class="p">,</span> <span class="n">custom_values</span><span class="p">,</span> <span class="n">kvlist</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Process a custom directive.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          filename: the current filename.</span>
+<span class="sd">          lineno: the current line number.</span>
+<span class="sd">          date: a datetime object.</span>
+<span class="sd">          dir_type: A string, a type for the custom directive being parsed.</span>
+<span class="sd">          custom_values: A list of the various tokens seen on the same line.</span>
+<span class="sd">          kvlist: a list of KeyValue instances.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">          A new Custom object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">meta</span> <span class="o">=</span> <span class="n">new_metadata</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">,</span> <span class="n">kvlist</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Custom</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">dir_type</span><span class="p">,</span> <span class="n">custom_values</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Builder.custom_value"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.custom_value">[docs]</a>    <span class="k">def</span> <span class="nf">custom_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Create a custom value object, along with its type.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          value: One of the accepted custom values.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">          A pair of (value, dtype) where &#39;dtype&#39; is the datatype is that of the</span>
+<span class="sd">          value.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">dtype</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">dtype</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ValueType</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">dtype</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Builder.key_value"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.key_value">[docs]</a>    <span class="k">def</span> <span class="nf">key_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Process a document directive.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          filename: The current filename.</span>
+<span class="sd">          lineno: The current line number.</span>
+<span class="sd">          date: A datetime object.</span>
+<span class="sd">          account: A string, the account the document relates to.</span>
+<span class="sd">          document_filename: A str, the name of the document file.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">          A new KeyValue object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">KeyValue</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Builder.posting"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.posting">[docs]</a>    <span class="k">def</span> <span class="nf">posting</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">,</span> <span class="n">account</span><span class="p">,</span> <span class="n">units</span><span class="p">,</span> <span class="n">cost</span><span class="p">,</span> <span class="n">price</span><span class="p">,</span> <span class="n">istotal</span><span class="p">,</span> <span class="n">flag</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Process a posting grammar rule.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          filename: the current filename.</span>
+<span class="sd">          lineno: the current line number.</span>
+<span class="sd">          account: A string, the account of the posting.</span>
+<span class="sd">          units: An instance of Amount for the units.</span>
+<span class="sd">          cost: An instance of CostSpec for the cost.</span>
+<span class="sd">          price: Either None, or an instance of Amount that is the cost of the position.</span>
+<span class="sd">          istotal: A bool, True if the price is for the total amount being parsed, or</span>
+<span class="sd">                   False if the price is for each lot of the position.</span>
+<span class="sd">          flag: A string, one-character, the flag associated with this posting.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">          A new Posting object, with no parent entry.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">meta</span> <span class="o">=</span> <span class="n">new_metadata</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">)</span>
+
+        <span class="c1"># Prices may not be negative.</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">__allow_negative_prices__</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">price</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">price</span><span class="o">.</span><span class="n">number</span><span class="p">,</span> <span class="n">Decimal</span><span class="p">)</span> <span class="ow">and</span> <span class="n">price</span><span class="o">.</span><span class="n">number</span> <span class="o">&lt;</span> <span class="n">ZERO</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="n">ParserError</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span> <span class="p">(</span>
+                        <span class="s2">&quot;Negative prices are not allowed: </span><span class="si">{}</span><span class="s2"> &quot;</span>
+                        <span class="s2">&quot;(see http://furius.ca/beancount/doc/bug-negative-prices &quot;</span>
+                        <span class="s2">&quot;for workaround)&quot;</span>
+                    <span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">price</span><span class="p">),</span> <span class="kc">None</span><span class="p">))</span>
+                <span class="c1"># Fix it and continue.</span>
+                <span class="n">price</span> <span class="o">=</span> <span class="n">Amount</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">price</span><span class="o">.</span><span class="n">number</span><span class="p">),</span> <span class="n">price</span><span class="o">.</span><span class="n">currency</span><span class="p">)</span>
+
+        <span class="c1"># If the price is specified for the entire amount, compute the effective</span>
+        <span class="c1"># price here and forget about that detail of the input syntax.</span>
+        <span class="k">if</span> <span class="n">istotal</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">units</span><span class="o">.</span><span class="n">number</span> <span class="o">==</span> <span class="n">ZERO</span><span class="p">:</span>
+                <span class="n">number</span> <span class="o">=</span> <span class="n">ZERO</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">__allow_negative_prices__</span><span class="p">:</span>
+                    <span class="n">number</span> <span class="o">=</span> <span class="n">price</span><span class="o">.</span><span class="n">number</span><span class="o">/</span><span class="n">units</span><span class="o">.</span><span class="n">number</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">number</span> <span class="o">=</span> <span class="n">price</span><span class="o">.</span><span class="n">number</span><span class="o">/</span><span class="nb">abs</span><span class="p">(</span><span class="n">units</span><span class="o">.</span><span class="n">number</span><span class="p">)</span>
+            <span class="n">price</span> <span class="o">=</span> <span class="n">Amount</span><span class="p">(</span><span class="n">number</span><span class="p">,</span> <span class="n">price</span><span class="o">.</span><span class="n">currency</span><span class="p">)</span>
+
+        <span class="c1"># Note: Allow zero prices because we need them for round-trips for</span>
+        <span class="c1"># conversion entries.</span>
+        <span class="c1">#</span>
+        <span class="c1"># if price is not None and price.number == ZERO:</span>
+        <span class="c1">#     self.errors.append(</span>
+        <span class="c1">#         ParserError(meta, &quot;Price is zero: {}&quot;.format(price), None))</span>
+
+        <span class="c1"># If both cost and price are specified, the currencies must match, or</span>
+        <span class="c1"># that is an error.</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">cost</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span>
+            <span class="n">price</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span>
+            <span class="nb">isinstance</span><span class="p">(</span><span class="n">cost</span><span class="o">.</span><span class="n">currency</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span>
+            <span class="nb">isinstance</span><span class="p">(</span><span class="n">price</span><span class="o">.</span><span class="n">currency</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span>
+            <span class="n">cost</span><span class="o">.</span><span class="n">currency</span> <span class="o">!=</span> <span class="n">price</span><span class="o">.</span><span class="n">currency</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">ParserError</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span>
+                            <span class="s2">&quot;Cost and price currencies must match: </span><span class="si">{}</span><span class="s2"> != </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                                <span class="n">cost</span><span class="o">.</span><span class="n">currency</span><span class="p">,</span> <span class="n">price</span><span class="o">.</span><span class="n">currency</span><span class="p">),</span> <span class="kc">None</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">Posting</span><span class="p">(</span><span class="n">account</span><span class="p">,</span> <span class="n">units</span><span class="p">,</span> <span class="n">cost</span><span class="p">,</span> <span class="n">price</span><span class="p">,</span> <span class="nb">chr</span><span class="p">(</span><span class="n">flag</span><span class="p">)</span> <span class="k">if</span> <span class="n">flag</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span> <span class="n">meta</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Builder.tag_link_new"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.tag_link_new">[docs]</a>    <span class="k">def</span> <span class="nf">tag_link_new</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Create a new TagsLinks instance.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">          An instance of TagsLinks, initialized with expected attributes.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">TagsLinks</span><span class="p">(</span><span class="nb">set</span><span class="p">(),</span> <span class="nb">set</span><span class="p">())</span></div>
+
+<div class="viewcode-block" id="Builder.tag_link_TAG"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.tag_link_TAG">[docs]</a>    <span class="k">def</span> <span class="nf">tag_link_TAG</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tags_links</span><span class="p">,</span> <span class="n">tag</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Add a tag to the TagsLinks accumulator.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          tags_links: The current TagsLinks accumulator.</span>
+<span class="sd">          tag: A string, the new tag to insert.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">          An updated TagsLinks instance.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tags_links</span><span class="o">.</span><span class="n">tags</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">tags_links</span></div>
+
+<div class="viewcode-block" id="Builder.tag_link_LINK"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.tag_link_LINK">[docs]</a>    <span class="k">def</span> <span class="nf">tag_link_LINK</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tags_links</span><span class="p">,</span> <span class="n">link</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Add a link to the TagsLinks accumulator.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          tags_links: The current TagsLinks accumulator.</span>
+<span class="sd">          link: A string, the new link to insert.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">          An updated TagsLinks instance.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tags_links</span><span class="o">.</span><span class="n">links</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">link</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">tags_links</span></div>
+
+<div class="viewcode-block" id="Builder.tag_link_STRING"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.tag_link_STRING">[docs]</a>    <span class="k">def</span> <span class="nf">tag_link_STRING</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tags_links</span><span class="p">,</span> <span class="n">string</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Add a string to the TagsLinks accumulator.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          tags_links: The current TagsLinks accumulator.</span>
+<span class="sd">          string: A string, the new string to insert in the list.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">          An updated TagsLinks instance.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tags_links</span><span class="o">.</span><span class="n">strings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">string</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">tags_links</span></div>
+
+<div class="viewcode-block" id="Builder.unpack_txn_strings"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.unpack_txn_strings">[docs]</a>    <span class="k">def</span> <span class="nf">unpack_txn_strings</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">txn_strings</span><span class="p">,</span> <span class="n">meta</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Unpack a tags_links accumulator to its payee and narration fields.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          txn_strings: A list of strings.</span>
+<span class="sd">          meta: A metadata dict for errors generated in this routine.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">          A pair of (payee, narration) strings or None objects, or None, if</span>
+<span class="sd">          there was an error.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">num_strings</span> <span class="o">=</span> <span class="mi">0</span> <span class="k">if</span> <span class="n">txn_strings</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">len</span><span class="p">(</span><span class="n">txn_strings</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">num_strings</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">payee</span><span class="p">,</span> <span class="n">narration</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">txn_strings</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">num_strings</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">payee</span><span class="p">,</span> <span class="n">narration</span> <span class="o">=</span> <span class="n">txn_strings</span>
+        <span class="k">elif</span> <span class="n">num_strings</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">payee</span><span class="p">,</span> <span class="n">narration</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">ParserError</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span>
+                            <span class="s2">&quot;Too many strings on transaction description: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                                <span class="n">txn_strings</span><span class="p">),</span> <span class="kc">None</span><span class="p">))</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">payee</span><span class="p">,</span> <span class="n">narration</span></div>
+
+<div class="viewcode-block" id="Builder.finalize_tags_links"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.finalize_tags_links">[docs]</a>    <span class="k">def</span> <span class="nf">finalize_tags_links</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tags</span><span class="p">,</span> <span class="n">links</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Finally amend tags and links and return final objects to be inserted.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          tags: A set of tag strings (warning: this gets mutated in-place).</span>
+<span class="sd">          links: A set of link strings.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">          A sanitized pair of (tags, links).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="p">:</span>
+            <span class="n">tags</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span><span class="nb">frozenset</span><span class="p">(</span><span class="n">tags</span><span class="p">)</span> <span class="k">if</span> <span class="n">tags</span> <span class="k">else</span> <span class="n">EMPTY_SET</span><span class="p">,</span>
+                <span class="nb">frozenset</span><span class="p">(</span><span class="n">links</span><span class="p">)</span> <span class="k">if</span> <span class="n">links</span> <span class="k">else</span> <span class="n">EMPTY_SET</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Builder.transaction"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.transaction">[docs]</a>    <span class="k">def</span> <span class="nf">transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">flag</span><span class="p">,</span> <span class="n">txn_strings</span><span class="p">,</span> <span class="n">tags_links</span><span class="p">,</span>
+                    <span class="n">posting_or_kv_list</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Process a transaction directive.</span>
+
+<span class="sd">        All the postings of the transaction are available at this point, and so the</span>
+<span class="sd">        the transaction is balanced here, incomplete postings are completed with the</span>
+<span class="sd">        appropriate position, and errors are being accumulated on the builder to be</span>
+<span class="sd">        reported later on.</span>
+
+<span class="sd">        This is the main routine that takes up most of the parsing time; be very</span>
+<span class="sd">        careful with modifications here, they have an impact on performance.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          filename: the current filename.</span>
+<span class="sd">          lineno: the current line number.</span>
+<span class="sd">          date: a datetime object.</span>
+<span class="sd">          flag: a str, one-character, the flag associated with this transaction.</span>
+<span class="sd">          txn_strings: A list of strings, possibly empty, possibly longer.</span>
+<span class="sd">          tags_links: A TagsLinks namedtuple of tags, and/or links.</span>
+<span class="sd">          posting_or_kv_list: a list of Posting or KeyValue instances, to be inserted in</span>
+<span class="sd">            this transaction, or None, if no postings have been declared.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">          A new Transaction object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">meta</span> <span class="o">=</span> <span class="n">new_metadata</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">)</span>
+
+        <span class="c1"># Separate postings and key-values.</span>
+        <span class="n">explicit_meta</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">postings</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">tags</span><span class="p">,</span> <span class="n">links</span> <span class="o">=</span> <span class="n">tags_links</span><span class="o">.</span><span class="n">tags</span><span class="p">,</span> <span class="n">tags_links</span><span class="o">.</span><span class="n">links</span>
+        <span class="k">if</span> <span class="n">posting_or_kv_list</span><span class="p">:</span>
+            <span class="n">last_posting</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">for</span> <span class="n">posting_or_kv</span> <span class="ow">in</span> <span class="n">posting_or_kv_list</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">posting_or_kv</span><span class="p">,</span> <span class="n">Posting</span><span class="p">):</span>
+                    <span class="n">postings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">posting_or_kv</span><span class="p">)</span>
+                    <span class="n">last_posting</span> <span class="o">=</span> <span class="n">posting_or_kv</span>
+                <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">posting_or_kv</span><span class="p">,</span> <span class="n">TagsLinks</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="n">postings</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ParserError</span><span class="p">(</span>
+                            <span class="n">meta</span><span class="p">,</span>
+                            <span class="s2">&quot;Tags or links not allowed after first &quot;</span> <span class="o">+</span>
+                            <span class="s2">&quot;Posting: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">posting_or_kv</span><span class="p">),</span> <span class="kc">None</span><span class="p">))</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">tags</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">posting_or_kv</span><span class="o">.</span><span class="n">tags</span><span class="p">)</span>
+                        <span class="n">links</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">posting_or_kv</span><span class="o">.</span><span class="n">links</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">last_posting</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">value</span> <span class="o">=</span> <span class="n">explicit_meta</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">posting_or_kv</span><span class="o">.</span><span class="n">key</span><span class="p">,</span>
+                                                         <span class="n">posting_or_kv</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">posting_or_kv</span><span class="o">.</span><span class="n">value</span><span class="p">:</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ParserError</span><span class="p">(</span>
+                                <span class="n">meta</span><span class="p">,</span> <span class="s2">&quot;Duplicate metadata field on entry: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                                    <span class="n">posting_or_kv</span><span class="p">),</span> <span class="kc">None</span><span class="p">))</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">last_posting</span><span class="o">.</span><span class="n">meta</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                            <span class="n">last_posting</span> <span class="o">=</span> <span class="n">last_posting</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">meta</span><span class="o">=</span><span class="p">{})</span>
+                            <span class="n">postings</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+                            <span class="n">postings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">last_posting</span><span class="p">)</span>
+
+                        <span class="n">value</span> <span class="o">=</span> <span class="n">last_posting</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">posting_or_kv</span><span class="o">.</span><span class="n">key</span><span class="p">,</span>
+                                                             <span class="n">posting_or_kv</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">posting_or_kv</span><span class="o">.</span><span class="n">value</span><span class="p">:</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ParserError</span><span class="p">(</span>
+                                <span class="n">meta</span><span class="p">,</span> <span class="s2">&quot;Duplicate posting metadata field: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                                    <span class="n">posting_or_kv</span><span class="p">),</span> <span class="kc">None</span><span class="p">))</span>
+
+        <span class="c1"># Freeze the tags &amp; links or set to default empty values.</span>
+        <span class="n">tags</span><span class="p">,</span> <span class="n">links</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">finalize_tags_links</span><span class="p">(</span><span class="n">tags</span><span class="p">,</span> <span class="n">links</span><span class="p">)</span>
+
+        <span class="c1"># Initialize the metadata fields from the set of active values.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value_list</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">meta</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value_list</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="c1"># Add on explicitly defined values.</span>
+        <span class="k">if</span> <span class="n">explicit_meta</span><span class="p">:</span>
+            <span class="n">meta</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">explicit_meta</span><span class="p">)</span>
+
+        <span class="c1"># Unpack the transaction fields.</span>
+        <span class="n">payee_narration</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">unpack_txn_strings</span><span class="p">(</span><span class="n">txn_strings</span><span class="p">,</span> <span class="n">meta</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">payee_narration</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="n">payee</span><span class="p">,</span> <span class="n">narration</span> <span class="o">=</span> <span class="n">payee_narration</span>
+
+        <span class="c1"># We now allow a single posting when its balance is zero, so we</span>
+        <span class="c1"># commented out the check below. If a transaction has a single posting</span>
+        <span class="c1"># with a non-zero balance, it&#39;ll get caught below in the booking code.</span>
+        <span class="c1">#</span>
+        <span class="c1"># # Detect when a transaction does not have at least two legs.</span>
+        <span class="c1"># if postings is None or len(postings) &lt; 2:</span>
+        <span class="c1">#     self.errors.append(</span>
+        <span class="c1">#         ParserError(meta,</span>
+        <span class="c1">#                     &quot;Transaction with only one posting: {}&quot;.format(postings),</span>
+        <span class="c1">#                     None))</span>
+        <span class="c1">#     return None</span>
+
+        <span class="c1"># If there are no postings, make sure we insert a list object.</span>
+        <span class="k">if</span> <span class="n">postings</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">postings</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Create the transaction.</span>
+        <span class="k">return</span> <span class="n">Transaction</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="nb">chr</span><span class="p">(</span><span class="n">flag</span><span class="p">),</span>
+                           <span class="n">payee</span><span class="p">,</span> <span class="n">narration</span><span class="p">,</span> <span class="n">tags</span><span class="p">,</span> <span class="n">links</span><span class="p">,</span> <span class="n">postings</span><span class="p">)</span></div></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">Beancount</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/index.html">Beancount Modules</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Martin Blais.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

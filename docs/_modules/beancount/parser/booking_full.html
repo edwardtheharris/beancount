@@ -1,0 +1,1029 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>beancount.parser.booking_full &#8212; Beancount 2.2.1 documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for beancount.parser.booking_full</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Full (new) booking implementation.</span>
+
+<span class="sd">Problem description:</span>
+
+<span class="sd">Interpolation and booking feed on each other, that is, numbers filled in from</span>
+<span class="sd">interpolation might affect the booking process, and numbers derived from the</span>
+<span class="sd">booking process may help carry out interpolation that would otherwise be</span>
+<span class="sd">under-defined. Here&#39;s an example of interpolation helping the booking process:</span>
+
+<span class="sd">Assume the ante-inventory of Assets:Investments contains two lots of shares of</span>
+<span class="sd">HOOL, one at 100.00 USD and the other at 101.00 USD and apply this transaction:</span>
+
+<span class="sd">    2015-09-30 *</span>
+<span class="sd">      Assets:Investments   -10 HOOL {USD}</span>
+<span class="sd">      Assets:Cash               1000 USD</span>
+<span class="sd">      Income:Gains              -200 USD</span>
+
+<span class="sd">Interpolation is unambiguously able to back out a cost of 100 USD / HOOL, which</span>
+<span class="sd">would then result in an unambiguous booking result.</span>
+
+<span class="sd">On the other hand, consider this transaction:</span>
+
+<span class="sd">    2015-09-30 *</span>
+<span class="sd">      Assets:Investments    -10 HOOL {USD}</span>
+<span class="sd">      Assets:Cash               1000 USD</span>
+<span class="sd">      Income:Gains</span>
+
+<span class="sd">Now the interpolation cannot succeed. If the Assets:Investments account is</span>
+<span class="sd">configured to use the FIFO method, the 10 oldest shares would be selected for</span>
+<span class="sd">the cost, and we could then interpolate the capital gains correctly.</span>
+
+<span class="sd">First observation: The second case is much more frequent than the first, and the</span>
+<span class="sd">first is easily resolved manually by requiring a particular cost be specified.</span>
+<span class="sd">Moreover, in many cases there isn&#39;t just a single lot of shares to be reduced</span>
+<span class="sd">from and figuring out the correct set of shares given a target cost is an</span>
+<span class="sd">underspecified problem.</span>
+
+<span class="sd">Second observation: Booking can only be achieved for inventory reductions, not</span>
+<span class="sd">for augmentations. Therefore, we should carry out booking on inventory</span>
+<span class="sd">reductions and fail early if reduction is undefined there, and leave inventory</span>
+<span class="sd">augmentations with missing numbers undefined, so that interpolation can fill</span>
+<span class="sd">them in at a later stage.</span>
+
+<span class="sd">Note that one case we&#39;d like to but may not be able to handle is of a reduction</span>
+<span class="sd">with interpolated price, like this:</span>
+
+<span class="sd">    2015-09-30 *</span>
+<span class="sd">      Assets:Investments        -10 HOOL {100.00 # USD}</span>
+<span class="sd">      Expenses:Commission      9.95 USD</span>
+<span class="sd">      Assets:Cash            990.05 USD</span>
+
+<span class="sd">Therefore we choose to</span>
+
+<span class="sd">1) Carry out booking first, on inventory reductions only, and leave inventory</span>
+<span class="sd">   augmentations as they are, possibly undefined. The &#39;cost&#39; attributed of</span>
+<span class="sd">   booked postings are converted from CostSpec to Cost. Augmented postings with</span>
+<span class="sd">   missing amounts are left as CostSpec instances in order to allow for</span>
+<span class="sd">   interpolation of total vs. per-unit amount.</span>
+
+<span class="sd">2) Compute interpolations on the resulting postings. Undefined costs for</span>
+<span class="sd">   inventory augmentations may be filled in by interpolations at this stage (if</span>
+<span class="sd">   possible).</span>
+
+<span class="sd">3) Finally, convert the interpolated CostSpec instances to Cost instances.</span>
+
+<span class="sd">Improving on this algorithm would require running a loop over the booking and</span>
+<span class="sd">interpolation steps until all numbers are resolved or no more inference can</span>
+<span class="sd">occur. We may consider that for later, as an experimental feature. My hunch is</span>
+<span class="sd">that there are so few cases for which this would be useful that we won&#39;t bother</span>
+<span class="sd">improving on the algorithm above.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="n">__copyright__</span> <span class="o">=</span> <span class="s2">&quot;Copyright (C) 2015-2017  Martin Blais&quot;</span>
+<span class="n">__license__</span> <span class="o">=</span> <span class="s2">&quot;GNU GPLv2&quot;</span>
+
+<span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">import</span> <span class="nn">enum</span>
+
+<span class="kn">from</span> <span class="nn">beancount.core.number</span> <span class="k">import</span> <span class="n">MISSING</span>
+<span class="kn">from</span> <span class="nn">beancount.core.number</span> <span class="k">import</span> <span class="n">ZERO</span>
+<span class="kn">from</span> <span class="nn">beancount.core.number</span> <span class="k">import</span> <span class="n">Decimal</span>
+<span class="kn">from</span> <span class="nn">beancount.core.data</span> <span class="k">import</span> <span class="n">Transaction</span>
+<span class="kn">from</span> <span class="nn">beancount.core.data</span> <span class="k">import</span> <span class="n">Booking</span>
+<span class="kn">from</span> <span class="nn">beancount.core.amount</span> <span class="k">import</span> <span class="n">Amount</span>
+<span class="kn">from</span> <span class="nn">beancount.core.position</span> <span class="k">import</span> <span class="n">Position</span>
+<span class="kn">from</span> <span class="nn">beancount.core.position</span> <span class="k">import</span> <span class="n">Cost</span>
+<span class="kn">from</span> <span class="nn">beancount.core.position</span> <span class="k">import</span> <span class="n">CostSpec</span>
+<span class="kn">from</span> <span class="nn">beancount.parser</span> <span class="k">import</span> <span class="n">booking_method</span>
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">position</span>
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">inventory</span>
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">interpolate</span>
+
+
+<span class="c1"># An error of disallowed self-reduction.</span>
+<span class="n">SelfReduxError</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;SelfReduxError&#39;</span><span class="p">,</span> <span class="s1">&#39;source message entry&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="book"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.booking_full.html#beancount.parser.booking_full.book">[docs]</a><span class="k">def</span> <span class="nf">book</span><span class="p">(</span><span class="n">entries</span><span class="p">,</span> <span class="n">options_map</span><span class="p">,</span> <span class="n">methods</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Interpolate missing data from the entries using the full historical algorithm.</span>
+<span class="sd">    See the internal implementation _book() for details.</span>
+<span class="sd">    This method only stripes some of the return values.</span>
+
+<span class="sd">    See _book() for arguments and return values.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">entries</span><span class="p">,</span> <span class="n">errors</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">_book</span><span class="p">(</span><span class="n">entries</span><span class="p">,</span> <span class="n">options_map</span><span class="p">,</span> <span class="n">methods</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">entries</span><span class="p">,</span> <span class="n">errors</span></div>
+
+
+<span class="k">def</span> <span class="nf">_book</span><span class="p">(</span><span class="n">entries</span><span class="p">,</span> <span class="n">options_map</span><span class="p">,</span> <span class="n">methods</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Interpolate missing data from the entries using the full historical algorithm.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      incomplete_entries: A list of directives, with some postings possibly left</span>
+<span class="sd">        with incomplete amounts as produced by the parser.</span>
+<span class="sd">      options_map: An options dict as produced by the parser.</span>
+<span class="sd">      methods: A mapping of account name to their corresponding booking</span>
+<span class="sd">        method.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">      A triple of</span>
+<span class="sd">        entries: A list of interpolated entries with all their postings completed.</span>
+<span class="sd">        errors: New errors produced during interpolation.</span>
+<span class="sd">        balances: A dict of account name and resulting balances.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">new_entries</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">errors</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">balances</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">(</span><span class="n">inventory</span><span class="o">.</span><span class="n">Inventory</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">entries</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">Transaction</span><span class="p">):</span>
+            <span class="c1"># Group postings by currency.</span>
+            <span class="n">refer_groups</span><span class="p">,</span> <span class="n">cat_errors</span> <span class="o">=</span> <span class="n">categorize_by_currency</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">balances</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">cat_errors</span><span class="p">:</span>
+                <span class="n">errors</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">cat_errors</span><span class="p">)</span>
+                <span class="k">continue</span>
+            <span class="n">posting_groups</span> <span class="o">=</span> <span class="n">replace_currencies</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">postings</span><span class="p">,</span> <span class="n">refer_groups</span><span class="p">)</span>
+
+            <span class="c1"># Get the list of tolerances.</span>
+            <span class="n">tolerances</span> <span class="o">=</span> <span class="n">interpolate</span><span class="o">.</span><span class="n">infer_tolerances</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">postings</span><span class="p">,</span> <span class="n">options_map</span><span class="p">)</span>
+
+            <span class="c1"># Resolve reductions to a particular lot in their inventory balance.</span>
+            <span class="n">repl_postings</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">currency</span><span class="p">,</span> <span class="n">group_postings</span> <span class="ow">in</span> <span class="n">posting_groups</span><span class="p">:</span>
+                <span class="c1"># Important note: the group of &#39;postings&#39; here is a subset of</span>
+                <span class="c1"># that from entry.postings, and may include replicated</span>
+                <span class="c1"># auto-postings. Never use entry.postings going forward.</span>
+
+                <span class="c1"># (See http://furius.ca/beancount/doc/self-reductions for an</span>
+                <span class="c1"># explanation of how we will eventually treat each currency</span>
+                <span class="c1"># group in this block; Summary: We will need to run the</span>
+                <span class="c1"># reductions prior to the augmentations in order to support</span>
+                <span class="c1"># reductions between the postings of a single transaction.)</span>
+                <span class="c1"># Disabled.</span>
+                <span class="k">if</span> <span class="kc">False</span><span class="p">:</span>  <span class="c1"># pylint: disable=using-constant-test</span>
+                    <span class="k">if</span> <span class="n">has_self_reduction</span><span class="p">(</span><span class="n">group_postings</span><span class="p">,</span> <span class="n">methods</span><span class="p">):</span>
+                        <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">SelfReduxError</span><span class="p">(</span>
+                            <span class="n">entry</span><span class="o">.</span><span class="n">meta</span><span class="p">,</span> <span class="s2">&quot;Self-reduction is not allowed&quot;</span><span class="p">,</span> <span class="n">entry</span><span class="p">))</span>
+
+                <span class="c1"># Perform booking reductions, that is, match postings which</span>
+                <span class="c1"># reduce the ante-inventory of their accounts to an existing</span>
+                <span class="c1"># position in the inventory against a possibly incomplete</span>
+                <span class="c1"># CostSpec specification, and replace the postings&#39; cost to the</span>
+                <span class="c1"># fully-specified (with a date &amp; label) existing Cost instance.</span>
+                <span class="c1"># Note that &#39;balances&#39; remains untouched.</span>
+                <span class="c1">#</span>
+                <span class="c1"># Also note that &#39;booked_postings&#39; may include augmenting</span>
+                <span class="c1"># postings whose &#39;cost&#39; attribute has been left to a CostSpec</span>
+                <span class="c1"># instance. Therefore, the postings held-at-cost may hold a</span>
+                <span class="c1"># mixture of Cost and CostSpec instances. This is necessary to</span>
+                <span class="c1"># let the interpolation do its magic on partially incomplete</span>
+                <span class="c1"># CostSpec instances below.</span>
+                <span class="p">(</span><span class="n">booked_postings</span><span class="p">,</span>
+                 <span class="n">booking_errors</span><span class="p">)</span> <span class="o">=</span> <span class="n">book_reductions</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">group_postings</span><span class="p">,</span> <span class="n">balances</span><span class="p">,</span>
+                                                   <span class="n">methods</span><span class="p">)</span>
+
+                <span class="c1"># If there were any errors, skip this group of postings.</span>
+                <span class="k">if</span> <span class="n">booking_errors</span><span class="p">:</span>
+                    <span class="n">errors</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">booking_errors</span><span class="p">)</span>
+                    <span class="k">continue</span>
+
+                <span class="c1"># Interpolate missing numbers from all postings. This</span>
+                <span class="c1"># includes partially incomplete CostSpec instances remaining</span>
+                <span class="c1"># on augmenting postings. After this interpolation, all</span>
+                <span class="c1"># &#39;inter_postings&#39; consists entirely of postings holding</span>
+                <span class="c1"># instances of Cost.</span>
+                <span class="p">(</span><span class="n">inter_postings</span><span class="p">,</span>
+                 <span class="n">interpolation_errors</span><span class="p">,</span>
+                 <span class="n">interpolated</span><span class="p">)</span> <span class="o">=</span> <span class="n">interpolate_group</span><span class="p">(</span><span class="n">booked_postings</span><span class="p">,</span> <span class="n">balances</span><span class="p">,</span> <span class="n">currency</span><span class="p">,</span>
+                                                   <span class="n">tolerances</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">interpolation_errors</span><span class="p">:</span>
+                    <span class="n">errors</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">interpolation_errors</span><span class="p">)</span>
+                <span class="n">repl_postings</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">inter_postings</span><span class="p">)</span>
+
+            <span class="c1"># Replace postings by interpolated ones.</span>
+            <span class="n">meta</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="n">meta</span><span class="p">[</span><span class="n">interpolate</span><span class="o">.</span><span class="n">AUTOMATIC_TOLERANCES</span><span class="p">]</span> <span class="o">=</span> <span class="n">tolerances</span>
+            <span class="n">entry</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">postings</span><span class="o">=</span><span class="n">repl_postings</span><span class="p">,</span>
+                                   <span class="n">meta</span><span class="o">=</span><span class="n">meta</span><span class="p">)</span>
+
+            <span class="c1"># Update the running balances for each account using the final,</span>
+            <span class="c1"># booked and interpolated values. Note that we could optimize away</span>
+            <span class="c1"># some of this in book_reductions() but we choose not to do so, as a</span>
+            <span class="c1"># sanity check that the direct aggregation of the final booked lots</span>
+            <span class="c1"># will compute the same result as that during the book_reductions()</span>
+            <span class="c1"># process.</span>
+            <span class="k">for</span> <span class="n">posting</span> <span class="ow">in</span> <span class="n">repl_postings</span><span class="p">:</span>
+                <span class="n">balance</span> <span class="o">=</span> <span class="n">balances</span><span class="p">[</span><span class="n">posting</span><span class="o">.</span><span class="n">account</span><span class="p">]</span>
+                <span class="n">balance</span><span class="o">.</span><span class="n">add_position</span><span class="p">(</span><span class="n">posting</span><span class="p">)</span>
+
+        <span class="n">new_entries</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">new_entries</span><span class="p">,</span> <span class="n">errors</span><span class="p">,</span> <span class="n">balances</span>
+
+
+<span class="c1"># An error raised if we failed to bucket a posting to a particular currency.</span>
+<span class="n">CategorizationError</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;CategorizationError&#39;</span><span class="p">,</span> <span class="s1">&#39;source message entry&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="get_bucket_currency"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.booking_full.html#beancount.parser.booking_full.get_bucket_currency">[docs]</a><span class="k">def</span> <span class="nf">get_bucket_currency</span><span class="p">(</span><span class="n">refer</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Given currency references for a posting, return the bucket currency.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      refer: An instance of Refer.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">      A currency string.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">currency</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">refer</span><span class="o">.</span><span class="n">cost_currency</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">currency</span> <span class="o">=</span> <span class="n">refer</span><span class="o">.</span><span class="n">cost_currency</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">refer</span><span class="o">.</span><span class="n">price_currency</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">currency</span> <span class="o">=</span> <span class="n">refer</span><span class="o">.</span><span class="n">price_currency</span>
+    <span class="k">elif</span> <span class="p">(</span><span class="n">refer</span><span class="o">.</span><span class="n">cost_currency</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span>
+          <span class="n">refer</span><span class="o">.</span><span class="n">price_currency</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span>
+          <span class="nb">isinstance</span><span class="p">(</span><span class="n">refer</span><span class="o">.</span><span class="n">units_currency</span><span class="p">,</span> <span class="nb">str</span><span class="p">)):</span>
+        <span class="n">currency</span> <span class="o">=</span> <span class="n">refer</span><span class="o">.</span><span class="n">units_currency</span>
+    <span class="k">return</span> <span class="n">currency</span></div>
+
+<span class="n">Refer</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;Refer&#39;</span><span class="p">,</span> <span class="s1">&#39;index units_currency cost_currency price_currency&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="categorize_by_currency"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.booking_full.html#beancount.parser.booking_full.categorize_by_currency">[docs]</a><span class="k">def</span> <span class="nf">categorize_by_currency</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">balances</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Group the postings by the currency they declare.</span>
+
+<span class="sd">    This is used to prepare the postings for the next stages: Interpolation and</span>
+<span class="sd">    booking will then be carried out separately on each currency group. At the</span>
+<span class="sd">    outset of this routine, we should have distinct groups of currencies without</span>
+<span class="sd">    any ambiguities regarding which currency they need to balance against.</span>
+
+<span class="sd">    Here&#39;s how this works.</span>
+
+<span class="sd">    - First we apply the constraint that cost-currency and price-currency must</span>
+<span class="sd">      match, if there is both a cost and a price. This reduces the space of</span>
+<span class="sd">      possibilities somewahte.</span>
+
+<span class="sd">    - If the currency is explicitly specified, we put the posting in that</span>
+<span class="sd">      currency&#39;s bucket.</span>
+
+<span class="sd">    - If not, we have a few methods left to disambiguate the currency:</span>
+
+<span class="sd">      1. We look at the remaining postings... if they are all of a single</span>
+<span class="sd">         currency, the posting must be in that currency too.</span>
+
+<span class="sd">      2. If we cannot do that, we inspect the contents of the inventory of the</span>
+<span class="sd">         account for the posting. If all the contents are of a single currency,</span>
+<span class="sd">         we use that one.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      postings: A list of incomplete postings to categorize.</span>
+<span class="sd">      balances: A dict of currency to inventory contents before the transaction is</span>
+<span class="sd">        applied.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">      A list of (currency string, list of tuples) items describing each postings</span>
+<span class="sd">      and its interpolated currencies, and a list of generated errors for</span>
+<span class="sd">      currency interpolation. The entry&#39;s original postings are left unmodified.</span>
+<span class="sd">      Each tuple in the value-list contains:</span>
+<span class="sd">        index: The posting index in the original entry.</span>
+<span class="sd">        units_currency: The interpolated currency for units.</span>
+<span class="sd">        cost_currency: The interpolated currency for cost.</span>
+<span class="sd">        price_currency: The interpolated currency for price.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">errors</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="n">groups</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">sortdict</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">auto_postings</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">unknown</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">posting</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">postings</span><span class="p">):</span>
+        <span class="n">units</span> <span class="o">=</span> <span class="n">posting</span><span class="o">.</span><span class="n">units</span>
+        <span class="n">cost</span> <span class="o">=</span> <span class="n">posting</span><span class="o">.</span><span class="n">cost</span>
+        <span class="n">price</span> <span class="o">=</span> <span class="n">posting</span><span class="o">.</span><span class="n">price</span>
+
+        <span class="c1"># Extract and override the currencies locally.</span>
+        <span class="n">units_currency</span> <span class="o">=</span> <span class="p">(</span><span class="n">units</span><span class="o">.</span><span class="n">currency</span>
+                          <span class="k">if</span> <span class="n">units</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">MISSING</span> <span class="ow">and</span> <span class="n">units</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                          <span class="k">else</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">cost_currency</span> <span class="o">=</span> <span class="p">(</span><span class="n">cost</span><span class="o">.</span><span class="n">currency</span>
+                         <span class="k">if</span> <span class="n">cost</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">MISSING</span> <span class="ow">and</span> <span class="n">cost</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                         <span class="k">else</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">price_currency</span> <span class="o">=</span> <span class="p">(</span><span class="n">price</span><span class="o">.</span><span class="n">currency</span>
+                          <span class="k">if</span> <span class="n">price</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">MISSING</span> <span class="ow">and</span> <span class="n">price</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                          <span class="k">else</span> <span class="kc">None</span><span class="p">)</span>
+
+        <span class="c1"># First we apply the constraint that cost-currency and price-currency</span>
+        <span class="c1"># must match, if there is both a cost and a price. This reduces the</span>
+        <span class="c1"># space of possibilities somewhat.</span>
+        <span class="k">if</span> <span class="n">cost_currency</span> <span class="ow">is</span> <span class="n">MISSING</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">price_currency</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">cost_currency</span> <span class="o">=</span> <span class="n">price_currency</span>
+        <span class="k">if</span> <span class="n">price_currency</span> <span class="ow">is</span> <span class="n">MISSING</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cost_currency</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">price_currency</span> <span class="o">=</span> <span class="n">cost_currency</span>
+
+        <span class="n">refer</span> <span class="o">=</span> <span class="n">Refer</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="n">units_currency</span><span class="p">,</span> <span class="n">cost_currency</span><span class="p">,</span> <span class="n">price_currency</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">units</span> <span class="ow">is</span> <span class="n">MISSING</span> <span class="ow">and</span> <span class="n">price_currency</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Bucket auto-postings separately from unknown.</span>
+            <span class="n">auto_postings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">refer</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Bucket with what we know so far.</span>
+            <span class="n">currency</span> <span class="o">=</span> <span class="n">get_bucket_currency</span><span class="p">(</span><span class="n">refer</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">currency</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">sortdict</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">currency</span><span class="p">,</span> <span class="n">index</span><span class="p">)</span>
+                <span class="n">groups</span><span class="p">[</span><span class="n">currency</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">refer</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># If we need to infer the currency, store in unknown.</span>
+                <span class="n">unknown</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">refer</span><span class="p">)</span>
+
+    <span class="c1"># We look at the remaining postings... if they are all of a single currency,</span>
+    <span class="c1"># the posting must be in that currency too.</span>
+    <span class="k">if</span> <span class="n">unknown</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">unknown</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">groups</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="n">units_currency</span><span class="p">,</span> <span class="n">cost_currency</span><span class="p">,</span> <span class="n">price_currency</span><span class="p">)</span> <span class="o">=</span> <span class="n">unknown</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+
+        <span class="n">other_currency</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">groups</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
+        <span class="k">if</span> <span class="n">price_currency</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">cost_currency</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Infer to the units currency.</span>
+            <span class="n">units_currency</span> <span class="o">=</span> <span class="n">other_currency</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Infer to the cost and price currencies.</span>
+            <span class="k">if</span> <span class="n">price_currency</span> <span class="ow">is</span> <span class="n">MISSING</span><span class="p">:</span>
+                <span class="n">price_currency</span> <span class="o">=</span> <span class="n">other_currency</span>
+            <span class="k">if</span> <span class="n">cost_currency</span> <span class="ow">is</span> <span class="n">MISSING</span><span class="p">:</span>
+                <span class="n">cost_currency</span> <span class="o">=</span> <span class="n">other_currency</span>
+
+        <span class="n">refer</span> <span class="o">=</span> <span class="n">Refer</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="n">units_currency</span><span class="p">,</span> <span class="n">cost_currency</span><span class="p">,</span> <span class="n">price_currency</span><span class="p">)</span>
+        <span class="n">currency</span> <span class="o">=</span> <span class="n">get_bucket_currency</span><span class="p">(</span><span class="n">refer</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">currency</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="n">sortdict</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">currency</span><span class="p">,</span> <span class="n">index</span><span class="p">)</span>
+        <span class="n">groups</span><span class="p">[</span><span class="n">currency</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">refer</span><span class="p">)</span>
+
+    <span class="c1"># Finally, try to resolve all the unknown legs using the inventory contents</span>
+    <span class="c1"># of each account.</span>
+    <span class="k">for</span> <span class="n">refer</span> <span class="ow">in</span> <span class="n">unknown</span><span class="p">:</span>
+        <span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="n">units_currency</span><span class="p">,</span> <span class="n">cost_currency</span><span class="p">,</span> <span class="n">price_currency</span><span class="p">)</span> <span class="o">=</span> <span class="n">refer</span>
+        <span class="n">posting</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">postings</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+        <span class="n">balance</span> <span class="o">=</span> <span class="n">balances</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">posting</span><span class="o">.</span><span class="n">account</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">balance</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">balance</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">Inventory</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">units_currency</span> <span class="ow">is</span> <span class="n">MISSING</span><span class="p">:</span>
+            <span class="n">balance_currencies</span> <span class="o">=</span> <span class="n">balance</span><span class="o">.</span><span class="n">currencies</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">balance_currencies</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">units_currency</span> <span class="o">=</span> <span class="n">balance_currencies</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">cost_currency</span> <span class="ow">is</span> <span class="n">MISSING</span> <span class="ow">or</span> <span class="n">price_currency</span> <span class="ow">is</span> <span class="n">MISSING</span><span class="p">:</span>
+            <span class="n">balance_cost_currencies</span> <span class="o">=</span> <span class="n">balance</span><span class="o">.</span><span class="n">cost_currencies</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">balance_cost_currencies</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">balance_cost_currency</span> <span class="o">=</span> <span class="n">balance_cost_currencies</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">price_currency</span> <span class="ow">is</span> <span class="n">MISSING</span><span class="p">:</span>
+                    <span class="n">price_currency</span> <span class="o">=</span> <span class="n">balance_cost_currency</span>
+                <span class="k">if</span> <span class="n">cost_currency</span> <span class="ow">is</span> <span class="n">MISSING</span><span class="p">:</span>
+                    <span class="n">cost_currency</span> <span class="o">=</span> <span class="n">balance_cost_currency</span>
+
+        <span class="n">refer</span> <span class="o">=</span> <span class="n">Refer</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="n">units_currency</span><span class="p">,</span> <span class="n">cost_currency</span><span class="p">,</span> <span class="n">price_currency</span><span class="p">)</span>
+        <span class="n">currency</span> <span class="o">=</span> <span class="n">get_bucket_currency</span><span class="p">(</span><span class="n">refer</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">currency</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">sortdict</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">currency</span><span class="p">,</span> <span class="n">index</span><span class="p">)</span>
+            <span class="n">groups</span><span class="p">[</span><span class="n">currency</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">refer</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">CategorizationError</span><span class="p">(</span><span class="n">posting</span><span class="o">.</span><span class="n">meta</span><span class="p">,</span>
+                                    <span class="s2">&quot;Failed to categorize posting </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span>
+                                    <span class="n">entry</span><span class="p">))</span>
+
+    <span class="c1"># Fill in missing units currencies if some remain as missing. This may occur</span>
+    <span class="c1"># if we used the cost or price to bucket the currency but the units currency</span>
+    <span class="c1"># was missing.</span>
+    <span class="k">for</span> <span class="n">currency</span><span class="p">,</span> <span class="n">refers</span> <span class="ow">in</span> <span class="n">groups</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">rindex</span><span class="p">,</span> <span class="n">refer</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">refers</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">refer</span><span class="o">.</span><span class="n">units_currency</span> <span class="ow">is</span> <span class="n">MISSING</span><span class="p">:</span>
+                <span class="n">posting</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">postings</span><span class="p">[</span><span class="n">refer</span><span class="o">.</span><span class="n">index</span><span class="p">]</span>
+                <span class="n">balance</span> <span class="o">=</span> <span class="n">balances</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">posting</span><span class="o">.</span><span class="n">account</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">balance</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="n">balance_currencies</span> <span class="o">=</span> <span class="n">balance</span><span class="o">.</span><span class="n">currencies</span><span class="p">()</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">balance_currencies</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="n">refers</span><span class="p">[</span><span class="n">rindex</span><span class="p">]</span> <span class="o">=</span> <span class="n">refer</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">units_currency</span><span class="o">=</span><span class="n">balance_currencies</span><span class="o">.</span><span class="n">pop</span><span class="p">())</span>
+
+    <span class="c1"># Deal with auto-postings.</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">auto_postings</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">refer</span> <span class="o">=</span> <span class="n">auto_postings</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">posting</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">postings</span><span class="p">[</span><span class="n">refer</span><span class="o">.</span><span class="n">index</span><span class="p">]</span>
+        <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">CategorizationError</span><span class="p">(</span><span class="n">posting</span><span class="o">.</span><span class="n">meta</span><span class="p">,</span>
+                                <span class="s2">&quot;You may not have more than one auto-posting per currency&quot;</span><span class="p">,</span>
+                                <span class="n">entry</span><span class="p">))</span>
+        <span class="n">auto_postings</span> <span class="o">=</span> <span class="n">auto_postings</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">refer</span> <span class="ow">in</span> <span class="n">auto_postings</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">currency</span> <span class="ow">in</span> <span class="n">groups</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">sortdict</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">currency</span><span class="p">,</span> <span class="n">refer</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+            <span class="n">groups</span><span class="p">[</span><span class="n">currency</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Refer</span><span class="p">(</span><span class="n">refer</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">currency</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
+
+    <span class="c1"># Issue error for all currencies which we could not resolve.</span>
+    <span class="k">for</span> <span class="n">currency</span><span class="p">,</span> <span class="n">refers</span> <span class="ow">in</span> <span class="n">groups</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">refer</span> <span class="ow">in</span> <span class="n">refers</span><span class="p">:</span>
+            <span class="n">posting</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">postings</span><span class="p">[</span><span class="n">refer</span><span class="o">.</span><span class="n">index</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">currency</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">[(</span><span class="n">refer</span><span class="o">.</span><span class="n">units_currency</span><span class="p">,</span> <span class="s1">&#39;units&#39;</span><span class="p">),</span>
+                                   <span class="p">(</span><span class="n">refer</span><span class="o">.</span><span class="n">cost_currency</span><span class="p">,</span> <span class="s1">&#39;cost&#39;</span><span class="p">),</span>
+                                   <span class="p">(</span><span class="n">refer</span><span class="o">.</span><span class="n">price_currency</span><span class="p">,</span> <span class="s1">&#39;price&#39;</span><span class="p">)]:</span>
+                <span class="k">if</span> <span class="n">currency</span> <span class="ow">is</span> <span class="n">MISSING</span><span class="p">:</span>
+                    <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">CategorizationError</span><span class="p">(</span>
+                        <span class="n">posting</span><span class="o">.</span><span class="n">meta</span><span class="p">,</span>
+                        <span class="s2">&quot;Could not resolve </span><span class="si">{}</span><span class="s2"> currency&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">),</span>
+                        <span class="n">entry</span><span class="p">))</span>
+
+    <span class="n">sorted_groups</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">groups</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">item</span><span class="p">:</span> <span class="n">sortdict</span><span class="p">[</span><span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]])</span>
+    <span class="k">return</span> <span class="n">sorted_groups</span><span class="p">,</span> <span class="n">errors</span></div>
+
+
+<div class="viewcode-block" id="replace_currencies"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.booking_full.html#beancount.parser.booking_full.replace_currencies">[docs]</a><span class="k">def</span> <span class="nf">replace_currencies</span><span class="p">(</span><span class="n">postings</span><span class="p">,</span> <span class="n">refer_groups</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Replace resolved currencies in the entry&#39;s Postings.</span>
+
+<span class="sd">    This essentially applies the findings of categorize_by_currency() to produce</span>
+<span class="sd">    new postings with all currencies resolved.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      postings: A list of Posting instances to replace.</span>
+<span class="sd">      refer_groups: A list of (currency, list of posting references) items as</span>
+<span class="sd">        returned by categorize_by_currency().</span>
+<span class="sd">    Returns:</span>
+<span class="sd">      A new list of items of (currency, list of Postings), postings for which the</span>
+<span class="sd">      currencies have been replaced by their interpolated currency values.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">new_groups</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">currency</span><span class="p">,</span> <span class="n">refers</span> <span class="ow">in</span> <span class="n">refer_groups</span><span class="p">:</span>
+        <span class="n">new_postings</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">refer</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">refers</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">r</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">index</span><span class="p">):</span>
+            <span class="n">posting</span> <span class="o">=</span> <span class="n">postings</span><span class="p">[</span><span class="n">refer</span><span class="o">.</span><span class="n">index</span><span class="p">]</span>
+            <span class="n">units</span> <span class="o">=</span> <span class="n">posting</span><span class="o">.</span><span class="n">units</span>
+            <span class="k">if</span> <span class="n">units</span> <span class="ow">is</span> <span class="n">MISSING</span> <span class="ow">or</span> <span class="n">units</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">posting</span> <span class="o">=</span> <span class="n">posting</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">units</span><span class="o">=</span><span class="n">Amount</span><span class="p">(</span><span class="n">MISSING</span><span class="p">,</span> <span class="n">refer</span><span class="o">.</span><span class="n">units_currency</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">replace</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="n">cost</span> <span class="o">=</span> <span class="n">posting</span><span class="o">.</span><span class="n">cost</span>
+                <span class="n">price</span> <span class="o">=</span> <span class="n">posting</span><span class="o">.</span><span class="n">price</span>
+                <span class="k">if</span> <span class="n">units</span><span class="o">.</span><span class="n">currency</span> <span class="ow">is</span> <span class="n">MISSING</span><span class="p">:</span>
+                    <span class="n">units</span> <span class="o">=</span> <span class="n">Amount</span><span class="p">(</span><span class="n">units</span><span class="o">.</span><span class="n">number</span><span class="p">,</span> <span class="n">refer</span><span class="o">.</span><span class="n">units_currency</span><span class="p">)</span>
+                    <span class="n">replace</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="k">if</span> <span class="n">cost</span> <span class="ow">and</span> <span class="n">cost</span><span class="o">.</span><span class="n">currency</span> <span class="ow">is</span> <span class="n">MISSING</span><span class="p">:</span>
+                    <span class="n">cost</span> <span class="o">=</span> <span class="n">cost</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">currency</span><span class="o">=</span><span class="n">refer</span><span class="o">.</span><span class="n">cost_currency</span><span class="p">)</span>
+                    <span class="n">replace</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="k">if</span> <span class="n">price</span> <span class="ow">and</span> <span class="n">price</span><span class="o">.</span><span class="n">currency</span> <span class="ow">is</span> <span class="n">MISSING</span><span class="p">:</span>
+                    <span class="n">price</span> <span class="o">=</span> <span class="n">Amount</span><span class="p">(</span><span class="n">price</span><span class="o">.</span><span class="n">number</span><span class="p">,</span> <span class="n">refer</span><span class="o">.</span><span class="n">price_currency</span><span class="p">)</span>
+                    <span class="n">replace</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="k">if</span> <span class="n">replace</span><span class="p">:</span>
+                    <span class="n">posting</span> <span class="o">=</span> <span class="n">posting</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">units</span><span class="o">=</span><span class="n">units</span><span class="p">,</span> <span class="n">cost</span><span class="o">=</span><span class="n">cost</span><span class="p">,</span> <span class="n">price</span><span class="o">=</span><span class="n">price</span><span class="p">)</span>
+            <span class="n">new_postings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">posting</span><span class="p">)</span>
+        <span class="n">new_groups</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">currency</span><span class="p">,</span> <span class="n">new_postings</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">new_groups</span></div>
+
+
+<span class="c1"># An error raised if we failed to reduce the inventory balance unambiguously.</span>
+<span class="n">ReductionError</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;ReductionError&#39;</span><span class="p">,</span> <span class="s1">&#39;source message entry&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="has_self_reduction"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.booking_full.html#beancount.parser.booking_full.has_self_reduction">[docs]</a><span class="k">def</span> <span class="nf">has_self_reduction</span><span class="p">(</span><span class="n">postings</span><span class="p">,</span> <span class="n">methods</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Return true if the postings potentially reduce each other at cost.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      postings: A list of postings with uninterpolated CostSpec cost instances.</span>
+<span class="sd">      methods: A mapping of account name to their corresponding booking</span>
+<span class="sd">        method.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">      A boolean, true if there&#39;s a potential for self-reduction.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># A mapping of (currency, cost-currency) and sign.</span>
+    <span class="n">cost_changes</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">posting</span> <span class="ow">in</span> <span class="n">postings</span><span class="p">:</span>
+        <span class="n">cost</span> <span class="o">=</span> <span class="n">posting</span><span class="o">.</span><span class="n">cost</span>
+        <span class="k">if</span> <span class="n">cost</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">methods</span><span class="p">[</span><span class="n">posting</span><span class="o">.</span><span class="n">account</span><span class="p">]</span> <span class="ow">is</span> <span class="n">Booking</span><span class="o">.</span><span class="n">NONE</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="p">(</span><span class="n">posting</span><span class="o">.</span><span class="n">account</span><span class="p">,</span> <span class="n">posting</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">currency</span><span class="p">)</span>
+        <span class="n">sign</span> <span class="o">=</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">posting</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">number</span> <span class="o">&gt;</span> <span class="n">ZERO</span> <span class="k">else</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="k">if</span> <span class="n">cost_changes</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">sign</span><span class="p">)</span> <span class="o">!=</span> <span class="n">sign</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">return</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="book_reductions"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.booking_full.html#beancount.parser.booking_full.book_reductions">[docs]</a><span class="k">def</span> <span class="nf">book_reductions</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">group_postings</span><span class="p">,</span> <span class="n">balances</span><span class="p">,</span>
+                    <span class="n">methods</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Book inventory reductions against the ante-balances.</span>
+
+<span class="sd">    This function accepts a dict of (account, Inventory balance) and for each</span>
+<span class="sd">    posting that is a reduction against its inventory, attempts to find a</span>
+<span class="sd">    corresponding lot or list of lots to reduce the balance with.</span>
+
+<span class="sd">    * For reducing lots, the CostSpec instance of the posting is replaced by a</span>
+<span class="sd">      Cost instance.</span>
+
+<span class="sd">    * For augmenting lots, the CostSpec instance of the posting is left alone,</span>
+<span class="sd">      except for its date, which is inherited from the parent Transaction.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      entry: An instance of Transaction. This is only used to refer to when</span>
+<span class="sd">        logging errors.</span>
+<span class="sd">      group_postings: A list of Posting instances for the group.</span>
+<span class="sd">      balances: A dict of account name to inventory contents.</span>
+<span class="sd">      methods: A mapping of account name to their corresponding booking</span>
+<span class="sd">        method enum.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">      A pair of</span>
+<span class="sd">        booked_postings: A list of booked postings, with reducing lots resolved</span>
+<span class="sd">          against specific position in the corresponding accounts&#39;</span>
+<span class="sd">          ante-inventory balances. Note single reducing posting in the input may</span>
+<span class="sd">          result in multiple postings in the output. Also note that augmenting</span>
+<span class="sd">          postings held-at-cost will still refer to &#39;cost&#39; instances of</span>
+<span class="sd">          CostSpec, left to be interpolated later.</span>
+<span class="sd">        errors: A list of errors, if there were any.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">errors</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="c1"># A local copy of the balances dictionary which is updated just for the</span>
+    <span class="c1"># duration of this function&#39;s updates, in order to take into account the</span>
+    <span class="c1"># cumulative effect of all the postings inferred here</span>
+    <span class="n">local_balances</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="n">empty</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">Inventory</span><span class="p">()</span>
+    <span class="n">booked_postings</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">posting</span> <span class="ow">in</span> <span class="n">group_postings</span><span class="p">:</span>
+        <span class="c1"># Process a single posting.</span>
+        <span class="n">units</span> <span class="o">=</span> <span class="n">posting</span><span class="o">.</span><span class="n">units</span>
+        <span class="n">costspec</span> <span class="o">=</span> <span class="n">posting</span><span class="o">.</span><span class="n">cost</span>
+        <span class="n">account</span> <span class="o">=</span> <span class="n">posting</span><span class="o">.</span><span class="n">account</span>
+
+        <span class="c1"># Note: We ensure there is no mutation on &#39;balances&#39; to keep this</span>
+        <span class="c1"># function without side-effects. Note that we may be able to optimize</span>
+        <span class="c1"># performance later on by giving up this property.</span>
+        <span class="c1">#</span>
+        <span class="c1"># Also note that if there is no existing balance, then won&#39;t be any lot</span>
+        <span class="c1"># reduction because none of the postings will be able to match against</span>
+        <span class="c1"># any currencies of the balance.</span>
+        <span class="n">previous_balance</span> <span class="o">=</span> <span class="n">balances</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">account</span><span class="p">,</span> <span class="n">empty</span><span class="p">)</span>
+        <span class="n">balance</span> <span class="o">=</span> <span class="n">local_balances</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">account</span><span class="p">,</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">previous_balance</span><span class="p">))</span>
+
+        <span class="c1"># Check if this is a lot held at cost.</span>
+        <span class="k">if</span> <span class="n">costspec</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">units</span><span class="o">.</span><span class="n">number</span> <span class="ow">is</span> <span class="n">MISSING</span><span class="p">:</span>
+            <span class="c1"># This posting is not held at cost; we do nothing.</span>
+            <span class="n">booked_postings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">posting</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># This posting is held at cost; figure out if it&#39;s a reduction or an</span>
+            <span class="c1"># augmentation.</span>
+            <span class="n">method</span> <span class="o">=</span> <span class="n">methods</span><span class="p">[</span><span class="n">account</span><span class="p">]</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">method</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">Booking</span><span class="o">.</span><span class="n">NONE</span> <span class="ow">and</span>
+                <span class="n">balance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span>
+                <span class="n">balance</span><span class="o">.</span><span class="n">is_reduced_by</span><span class="p">(</span><span class="n">units</span><span class="p">)):</span>
+                <span class="c1"># This posting is a reduction.</span>
+
+                <span class="c1"># Match the positions.</span>
+                <span class="n">cost_number</span> <span class="o">=</span> <span class="n">compute_cost_number</span><span class="p">(</span><span class="n">costspec</span><span class="p">,</span> <span class="n">units</span><span class="p">)</span>
+                <span class="n">matches</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="k">for</span> <span class="n">position</span> <span class="ow">in</span> <span class="n">balance</span><span class="p">:</span>
+                    <span class="c1"># Skip inventory contents of a different currency.</span>
+                    <span class="k">if</span> <span class="p">(</span><span class="n">units</span><span class="o">.</span><span class="n">currency</span> <span class="ow">and</span>
+                        <span class="n">position</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">currency</span> <span class="o">!=</span> <span class="n">units</span><span class="o">.</span><span class="n">currency</span><span class="p">):</span>
+                        <span class="k">continue</span>
+                    <span class="c1"># Skip balance positions not held at cost.</span>
+                    <span class="k">if</span> <span class="n">position</span><span class="o">.</span><span class="n">cost</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="k">continue</span>
+                    <span class="k">if</span> <span class="p">(</span><span class="n">cost_number</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span>
+                        <span class="n">position</span><span class="o">.</span><span class="n">cost</span><span class="o">.</span><span class="n">number</span> <span class="o">!=</span> <span class="n">cost_number</span><span class="p">):</span>
+                        <span class="k">continue</span>
+                    <span class="k">if</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">costspec</span><span class="o">.</span><span class="n">currency</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span>
+                        <span class="n">position</span><span class="o">.</span><span class="n">cost</span><span class="o">.</span><span class="n">currency</span> <span class="o">!=</span> <span class="n">costspec</span><span class="o">.</span><span class="n">currency</span><span class="p">):</span>
+                        <span class="k">continue</span>
+                    <span class="k">if</span> <span class="p">(</span><span class="n">costspec</span><span class="o">.</span><span class="n">date</span> <span class="ow">and</span>
+                        <span class="n">position</span><span class="o">.</span><span class="n">cost</span><span class="o">.</span><span class="n">date</span> <span class="o">!=</span> <span class="n">costspec</span><span class="o">.</span><span class="n">date</span><span class="p">):</span>
+                        <span class="k">continue</span>
+                    <span class="k">if</span> <span class="p">(</span><span class="n">costspec</span><span class="o">.</span><span class="n">label</span> <span class="ow">and</span>
+                        <span class="n">position</span><span class="o">.</span><span class="n">cost</span><span class="o">.</span><span class="n">label</span> <span class="o">!=</span> <span class="n">costspec</span><span class="o">.</span><span class="n">label</span><span class="p">):</span>
+                        <span class="k">continue</span>
+                    <span class="n">matches</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">position</span><span class="p">)</span>
+
+                <span class="c1"># Check for ambiguous matches.</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">matches</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="n">ReductionError</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">meta</span><span class="p">,</span>
+                                       <span class="s1">&#39;No position matches &quot;</span><span class="si">{}</span><span class="s1">&quot; against balance </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                                           <span class="n">posting</span><span class="p">,</span> <span class="n">balance</span><span class="p">),</span>
+                                       <span class="n">entry</span><span class="p">))</span>
+                    <span class="k">return</span> <span class="p">[],</span> <span class="n">errors</span>  <span class="c1"># This is irreconcilable, remove these postings.</span>
+
+                <span class="n">reduction_postings</span><span class="p">,</span> <span class="n">ambi_errors</span> <span class="o">=</span> <span class="n">booking_method</span><span class="o">.</span><span class="n">handle_ambiguous_matches</span><span class="p">(</span>
+                    <span class="n">entry</span><span class="p">,</span> <span class="n">posting</span><span class="p">,</span> <span class="n">matches</span><span class="p">,</span> <span class="n">method</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">ambi_errors</span><span class="p">:</span>
+                    <span class="n">errors</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">ambi_errors</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="p">[],</span> <span class="n">errors</span>
+
+                <span class="c1"># Add the reductions to the resulting list of booked postings.</span>
+                <span class="n">booked_postings</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">reduction_postings</span><span class="p">)</span>
+
+                <span class="c1"># Update the local balance in order to avoid matching against</span>
+                <span class="c1"># the same postings twice when processing multiple postings in</span>
+                <span class="c1"># the same transaction. Note that we only do this for postings</span>
+                <span class="c1"># held at cost because the other postings may need interpolation</span>
+                <span class="c1"># in order to be resolved properly.</span>
+                <span class="k">for</span> <span class="n">posting</span> <span class="ow">in</span> <span class="n">reduction_postings</span><span class="p">:</span>
+                    <span class="n">balance</span><span class="o">.</span><span class="n">add_position</span><span class="p">(</span><span class="n">posting</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># This posting is an augmentation.</span>
+                <span class="c1">#</span>
+                <span class="c1"># Note that we do not convert the CostSpec instances to Cost</span>
+                <span class="c1"># instances, because we want to let the subsequent interpolation</span>
+                <span class="c1"># process able to interpolate either the cost per-unit or the</span>
+                <span class="c1"># total cost, separately.</span>
+
+                <span class="c1"># Put in the date of the parent Transaction if there is no</span>
+                <span class="c1"># explicit date specified on the spec.</span>
+                <span class="k">if</span> <span class="n">costspec</span><span class="o">.</span><span class="n">date</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">dated_costspec</span> <span class="o">=</span> <span class="n">costspec</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">date</span><span class="o">=</span><span class="n">entry</span><span class="o">.</span><span class="n">date</span><span class="p">)</span>
+                    <span class="n">posting</span> <span class="o">=</span> <span class="n">posting</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">cost</span><span class="o">=</span><span class="n">dated_costspec</span><span class="p">)</span>
+                <span class="n">booked_postings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">posting</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">booked_postings</span><span class="p">,</span> <span class="n">errors</span></div>
+
+
+<div class="viewcode-block" id="compute_cost_number"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.booking_full.html#beancount.parser.booking_full.compute_cost_number">[docs]</a><span class="k">def</span> <span class="nf">compute_cost_number</span><span class="p">(</span><span class="n">costspec</span><span class="p">,</span> <span class="n">units</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Given a CostSpec, return the cost number, if possible to compute.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      costspec: A parsed instance of CostSpec.</span>
+<span class="sd">      units: An instance of Amount for the units of the position.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">      If it is not possible to calculate the cost, return None.</span>
+<span class="sd">      Otherwise, returns a Decimal instance, the per-unit cost.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">number_per</span> <span class="o">=</span> <span class="n">costspec</span><span class="o">.</span><span class="n">number_per</span>
+    <span class="n">number_total</span> <span class="o">=</span> <span class="n">costspec</span><span class="o">.</span><span class="n">number_total</span>
+    <span class="k">if</span> <span class="n">MISSING</span> <span class="ow">in</span> <span class="p">(</span><span class="n">number_per</span><span class="p">,</span> <span class="n">number_total</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">number_total</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Compute the per-unit cost if there is some total cost</span>
+        <span class="c1"># component involved.</span>
+        <span class="n">cost_total</span> <span class="o">=</span> <span class="n">number_total</span>
+        <span class="n">units_number</span> <span class="o">=</span> <span class="n">units</span><span class="o">.</span><span class="n">number</span>
+        <span class="k">if</span> <span class="n">number_per</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">cost_total</span> <span class="o">+=</span> <span class="n">number_per</span> <span class="o">*</span> <span class="n">units_number</span>
+        <span class="n">unit_cost</span> <span class="o">=</span> <span class="n">cost_total</span> <span class="o">/</span> <span class="nb">abs</span><span class="p">(</span><span class="n">units_number</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">number_per</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">unit_cost</span> <span class="o">=</span> <span class="n">number_per</span>
+    <span class="k">return</span> <span class="n">unit_cost</span></div>
+
+
+<div class="viewcode-block" id="convert_costspec_to_cost"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.booking_full.html#beancount.parser.booking_full.convert_costspec_to_cost">[docs]</a><span class="k">def</span> <span class="nf">convert_costspec_to_cost</span><span class="p">(</span><span class="n">posting</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Convert an instance of CostSpec to Cost, if present on the posting.</span>
+
+<span class="sd">    If the posting has no cost, it itself is just returned.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      posting: An instance of Posting.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">      An instance of Posting with a possibly replaced &#39;cost&#39; attribute.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">cost</span> <span class="o">=</span> <span class="n">posting</span><span class="o">.</span><span class="n">cost</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cost</span><span class="p">,</span> <span class="n">position</span><span class="o">.</span><span class="n">CostSpec</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">cost</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">units_number</span> <span class="o">=</span> <span class="n">posting</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">number</span>
+            <span class="n">number_per</span> <span class="o">=</span> <span class="n">cost</span><span class="o">.</span><span class="n">number_per</span>
+            <span class="n">number_total</span> <span class="o">=</span> <span class="n">cost</span><span class="o">.</span><span class="n">number_total</span>
+            <span class="k">if</span> <span class="n">number_total</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># Compute the per-unit cost if there is some total cost</span>
+                <span class="c1"># component involved.</span>
+                <span class="n">cost_total</span> <span class="o">=</span> <span class="n">number_total</span>
+                <span class="k">if</span> <span class="n">number_per</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">MISSING</span><span class="p">:</span>
+                    <span class="n">cost_total</span> <span class="o">+=</span> <span class="n">number_per</span> <span class="o">*</span> <span class="n">units_number</span>
+                <span class="n">unit_cost</span> <span class="o">=</span> <span class="n">cost_total</span> <span class="o">/</span> <span class="nb">abs</span><span class="p">(</span><span class="n">units_number</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">unit_cost</span> <span class="o">=</span> <span class="n">number_per</span>
+            <span class="n">new_cost</span> <span class="o">=</span> <span class="n">Cost</span><span class="p">(</span><span class="n">unit_cost</span><span class="p">,</span> <span class="n">cost</span><span class="o">.</span><span class="n">currency</span><span class="p">,</span> <span class="n">cost</span><span class="o">.</span><span class="n">date</span><span class="p">,</span> <span class="n">cost</span><span class="o">.</span><span class="n">label</span><span class="p">)</span>
+            <span class="n">posting</span> <span class="o">=</span> <span class="n">posting</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">units</span><span class="o">=</span><span class="n">posting</span><span class="o">.</span><span class="n">units</span><span class="p">,</span> <span class="n">cost</span><span class="o">=</span><span class="n">new_cost</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">posting</span></div>
+
+
+<span class="c1"># FIXME: Refactor compute_cost_number() and convert_costspec_to_cost().</span>
+
+
+<div class="viewcode-block" id="MissingType"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.booking_full.html#beancount.parser.booking_full.MissingType">[docs]</a><span class="k">class</span> <span class="nc">MissingType</span><span class="p">(</span><span class="n">enum</span><span class="o">.</span><span class="n">Enum</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;The type of missing number.&quot;&quot;&quot;</span>
+    <span class="n">UNITS</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">COST_PER</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">COST_TOTAL</span> <span class="o">=</span> <span class="mi">3</span>
+    <span class="n">PRICE</span> <span class="o">=</span> <span class="mi">4</span></div>
+
+
+<span class="c1"># An error raised if we are not able to interpolate.</span>
+<span class="n">InterpolationError</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;InterpolationError&#39;</span><span class="p">,</span> <span class="s1">&#39;source message entry&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="interpolate_group"><a class="viewcode-back" href="../../../modules/parser/beancount.parser.booking_full.html#beancount.parser.booking_full.interpolate_group">[docs]</a><span class="k">def</span> <span class="nf">interpolate_group</span><span class="p">(</span><span class="n">postings</span><span class="p">,</span> <span class="n">balances</span><span class="p">,</span> <span class="n">currency</span><span class="p">,</span> <span class="n">tolerances</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Interpolate missing numbers in the set of postings.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      postings: A list of Posting instances.</span>
+<span class="sd">      balances: A dict of account to its ante-inventory.</span>
+<span class="sd">      currency: The weight currency of this group, used for reporting errors.</span>
+<span class="sd">      tolerances: A dict of currency to tolerance values.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">      A tuple of</span>
+<span class="sd">        postings: A lit of new posting instances.</span>
+<span class="sd">        errors: A list of errors generated during interpolation.</span>
+<span class="sd">        interpolated: A boolean, true if we did have to interpolate.</span>
+
+<span class="sd">      In the case of an error, this returns the original list of postings, which</span>
+<span class="sd">      is still incomplete. If an error is returned, you should probably skip the</span>
+<span class="sd">      transaction altogether, or just not include the postings in it. (An</span>
+<span class="sd">      alternative behaviour would be to return only the list of valid postings,</span>
+<span class="sd">      but that would likely result in an unbalanced transaction. We do it this</span>
+<span class="sd">      way by choice.)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">errors</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="c1"># Figure out which type of amount is missing, by creating a list of</span>
+    <span class="c1"># incomplete postings and which type of units is missing.</span>
+    <span class="n">incomplete</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">posting</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">postings</span><span class="p">):</span>
+        <span class="n">units</span> <span class="o">=</span> <span class="n">posting</span><span class="o">.</span><span class="n">units</span>
+        <span class="n">cost</span> <span class="o">=</span> <span class="n">posting</span><span class="o">.</span><span class="n">cost</span>
+        <span class="n">price</span> <span class="o">=</span> <span class="n">posting</span><span class="o">.</span><span class="n">price</span>
+
+        <span class="c1"># Identify incomplete parts of the Posting components.</span>
+        <span class="k">if</span> <span class="n">units</span><span class="o">.</span><span class="n">number</span> <span class="ow">is</span> <span class="n">MISSING</span><span class="p">:</span>
+            <span class="n">incomplete</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">MissingType</span><span class="o">.</span><span class="n">UNITS</span><span class="p">,</span> <span class="n">index</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cost</span><span class="p">,</span> <span class="n">CostSpec</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">cost</span> <span class="ow">and</span> <span class="n">cost</span><span class="o">.</span><span class="n">number_per</span> <span class="ow">is</span> <span class="n">MISSING</span><span class="p">:</span>
+                <span class="n">incomplete</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">MissingType</span><span class="o">.</span><span class="n">COST_PER</span><span class="p">,</span> <span class="n">index</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">cost</span> <span class="ow">and</span> <span class="n">cost</span><span class="o">.</span><span class="n">number_total</span> <span class="ow">is</span> <span class="n">MISSING</span><span class="p">:</span>
+                <span class="n">incomplete</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">MissingType</span><span class="o">.</span><span class="n">COST_TOTAL</span><span class="p">,</span> <span class="n">index</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Check that a resolved instance of Cost never needs interpolation.</span>
+            <span class="c1">#</span>
+            <span class="c1"># Note that in theory we could support the interpolation of regular</span>
+            <span class="c1"># per-unit costs in these if we wanted to; but because they&#39;re all</span>
+            <span class="c1"># reducing postings that have been booked earlier, those never need</span>
+            <span class="c1"># to be interpolated.</span>
+            <span class="k">if</span> <span class="n">cost</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cost</span><span class="o">.</span><span class="n">number</span><span class="p">,</span> <span class="n">Decimal</span><span class="p">),</span> <span class="p">(</span>
+                    <span class="s2">&quot;Internal error: cost has no number: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cost</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">price</span> <span class="ow">and</span> <span class="n">price</span><span class="o">.</span><span class="n">number</span> <span class="ow">is</span> <span class="n">MISSING</span><span class="p">:</span>
+            <span class="n">incomplete</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">MissingType</span><span class="o">.</span><span class="n">PRICE</span><span class="p">,</span> <span class="n">index</span><span class="p">))</span>
+
+    <span class="c1"># The replacement posting for the incomplete posting of this group.</span>
+    <span class="n">new_posting</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">incomplete</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="c1"># If there are no missing numbers, just convert the CostSpec to Cost and</span>
+        <span class="c1"># return that.</span>
+        <span class="n">out_postings</span> <span class="o">=</span> <span class="p">[</span><span class="n">convert_costspec_to_cost</span><span class="p">(</span><span class="n">posting</span><span class="p">)</span>
+                        <span class="k">for</span> <span class="n">posting</span> <span class="ow">in</span> <span class="n">postings</span><span class="p">]</span>
+
+    <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">incomplete</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="c1"># If there is more than a single value to be interpolated, generate an</span>
+        <span class="c1"># error and return no postings.</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">posting_index</span> <span class="o">=</span> <span class="n">incomplete</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">InterpolationError</span><span class="p">(</span>
+            <span class="n">postings</span><span class="p">[</span><span class="n">posting_index</span><span class="p">]</span><span class="o">.</span><span class="n">meta</span><span class="p">,</span>
+            <span class="s2">&quot;Too many missing numbers for currency group &#39;</span><span class="si">{}</span><span class="s2">&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">currency</span><span class="p">),</span>
+            <span class="kc">None</span><span class="p">))</span>
+        <span class="n">out_postings</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># If there is a single missing number, calculate it and fill it in here.</span>
+        <span class="n">missing</span><span class="p">,</span> <span class="n">index</span> <span class="o">=</span> <span class="n">incomplete</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">incomplete_posting</span> <span class="o">=</span> <span class="n">postings</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+
+        <span class="c1"># Convert augmenting postings&#39; costs from CostSpec to corresponding Cost</span>
+        <span class="c1"># instances, except for the incomplete posting.</span>
+        <span class="n">new_postings</span> <span class="o">=</span> <span class="p">[(</span><span class="n">posting</span>
+                         <span class="k">if</span> <span class="n">posting</span> <span class="ow">is</span> <span class="n">incomplete_posting</span>
+                         <span class="k">else</span> <span class="n">convert_costspec_to_cost</span><span class="p">(</span><span class="n">posting</span><span class="p">))</span>
+                        <span class="k">for</span> <span class="n">posting</span> <span class="ow">in</span> <span class="n">postings</span><span class="p">]</span>
+
+        <span class="c1"># Compute the balance of the other postings.</span>
+        <span class="n">residual</span> <span class="o">=</span> <span class="n">interpolate</span><span class="o">.</span><span class="n">compute_residual</span><span class="p">(</span><span class="n">posting</span>
+                                                <span class="k">for</span> <span class="n">posting</span> <span class="ow">in</span> <span class="n">new_postings</span>
+                                                <span class="k">if</span> <span class="n">posting</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">incomplete_posting</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">residual</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;Internal error in grouping postings by currencies.&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">residual</span><span class="o">.</span><span class="n">is_empty</span><span class="p">():</span>
+            <span class="n">respos</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">residual</span><span class="p">))</span>
+            <span class="k">assert</span> <span class="n">respos</span><span class="o">.</span><span class="n">cost</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">,</span> <span class="p">(</span>
+                <span class="s2">&quot;Internal error; cost appears in weight calculation.&quot;</span><span class="p">)</span>
+            <span class="k">assert</span> <span class="n">respos</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">currency</span> <span class="o">==</span> <span class="n">currency</span><span class="p">,</span> <span class="p">(</span>
+                <span class="s2">&quot;Internal error; residual different than currency group.&quot;</span><span class="p">)</span>
+            <span class="n">weight</span> <span class="o">=</span> <span class="o">-</span><span class="n">respos</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">number</span>
+            <span class="n">weight_currency</span> <span class="o">=</span> <span class="n">respos</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">currency</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">weight</span> <span class="o">=</span> <span class="n">ZERO</span>
+            <span class="n">weight_currency</span> <span class="o">=</span> <span class="n">currency</span>
+
+        <span class="k">if</span> <span class="n">missing</span> <span class="o">==</span> <span class="n">MissingType</span><span class="o">.</span><span class="n">UNITS</span><span class="p">:</span>
+            <span class="n">units</span> <span class="o">=</span> <span class="n">incomplete_posting</span><span class="o">.</span><span class="n">units</span>
+            <span class="n">cost</span> <span class="o">=</span> <span class="n">incomplete_posting</span><span class="o">.</span><span class="n">cost</span>
+            <span class="k">if</span> <span class="n">cost</span><span class="p">:</span>
+                <span class="c1"># Handle the special case where we only have total cost.</span>
+                <span class="k">if</span> <span class="n">cost</span><span class="o">.</span><span class="n">number_per</span> <span class="o">==</span> <span class="n">ZERO</span><span class="p">:</span>
+                    <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">InterpolationError</span><span class="p">(</span>
+                        <span class="n">incomplete_posting</span><span class="o">.</span><span class="n">meta</span><span class="p">,</span>
+                        <span class="s2">&quot;Cannot infer per-unit cost only from total&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
+                    <span class="k">return</span> <span class="n">postings</span><span class="p">,</span> <span class="n">errors</span><span class="p">,</span> <span class="kc">True</span>
+
+                <span class="k">assert</span> <span class="n">cost</span><span class="o">.</span><span class="n">currency</span> <span class="o">==</span> <span class="n">weight_currency</span><span class="p">,</span> <span class="p">(</span>
+                    <span class="s2">&quot;Internal error; residual currency different than missing currency.&quot;</span><span class="p">)</span>
+                <span class="n">cost_total</span> <span class="o">=</span> <span class="n">cost</span><span class="o">.</span><span class="n">number_total</span> <span class="ow">or</span> <span class="n">ZERO</span>
+                <span class="n">units_number</span> <span class="o">=</span> <span class="p">(</span><span class="n">weight</span> <span class="o">-</span> <span class="n">cost_total</span><span class="p">)</span> <span class="o">/</span> <span class="n">cost</span><span class="o">.</span><span class="n">number_per</span>
+
+            <span class="k">elif</span> <span class="n">incomplete_posting</span><span class="o">.</span><span class="n">price</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="n">incomplete_posting</span><span class="o">.</span><span class="n">price</span><span class="o">.</span><span class="n">currency</span> <span class="o">==</span> <span class="n">weight_currency</span><span class="p">,</span> <span class="p">(</span>
+                    <span class="s2">&quot;Internal error; residual currency different than missing currency.&quot;</span><span class="p">)</span>
+                <span class="n">units_number</span> <span class="o">=</span> <span class="n">weight</span> <span class="o">/</span> <span class="n">incomplete_posting</span><span class="o">.</span><span class="n">price</span><span class="o">.</span><span class="n">number</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="n">units</span><span class="o">.</span><span class="n">currency</span> <span class="o">==</span> <span class="n">weight_currency</span><span class="p">,</span> <span class="p">(</span>
+                    <span class="s2">&quot;Internal error; residual currency different than missing currency.&quot;</span><span class="p">)</span>
+                <span class="n">units_number</span> <span class="o">=</span> <span class="n">weight</span>
+
+            <span class="c1"># Quantize the interpolated units if necessary.</span>
+            <span class="n">units_number</span> <span class="o">=</span> <span class="n">interpolate</span><span class="o">.</span><span class="n">quantize_with_tolerance</span><span class="p">(</span><span class="n">tolerances</span><span class="p">,</span>
+                                                               <span class="n">units</span><span class="o">.</span><span class="n">currency</span><span class="p">,</span>
+                                                               <span class="n">units_number</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">weight</span> <span class="o">!=</span> <span class="n">ZERO</span><span class="p">:</span>
+                <span class="n">new_pos</span> <span class="o">=</span> <span class="n">Position</span><span class="p">(</span><span class="n">Amount</span><span class="p">(</span><span class="n">units_number</span><span class="p">,</span> <span class="n">units</span><span class="o">.</span><span class="n">currency</span><span class="p">),</span> <span class="n">cost</span><span class="p">)</span>
+                <span class="n">new_posting</span> <span class="o">=</span> <span class="n">incomplete_posting</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">units</span><span class="o">=</span><span class="n">new_pos</span><span class="o">.</span><span class="n">units</span><span class="p">,</span>
+                                                          <span class="n">cost</span><span class="o">=</span><span class="n">new_pos</span><span class="o">.</span><span class="n">cost</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">new_posting</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">elif</span> <span class="n">missing</span> <span class="o">==</span> <span class="n">MissingType</span><span class="o">.</span><span class="n">COST_PER</span><span class="p">:</span>
+            <span class="n">units</span> <span class="o">=</span> <span class="n">incomplete_posting</span><span class="o">.</span><span class="n">units</span>
+            <span class="n">cost</span> <span class="o">=</span> <span class="n">incomplete_posting</span><span class="o">.</span><span class="n">cost</span>
+            <span class="k">assert</span> <span class="n">cost</span><span class="o">.</span><span class="n">currency</span> <span class="o">==</span> <span class="n">weight_currency</span><span class="p">,</span> <span class="p">(</span>
+                <span class="s2">&quot;Internal error; residual currency different than missing currency.&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">units</span><span class="o">.</span><span class="n">number</span> <span class="o">!=</span> <span class="n">ZERO</span><span class="p">:</span>
+                <span class="n">number_per</span> <span class="o">=</span> <span class="p">(</span><span class="n">weight</span> <span class="o">-</span> <span class="p">(</span><span class="n">cost</span><span class="o">.</span><span class="n">number_total</span> <span class="ow">or</span> <span class="n">ZERO</span><span class="p">))</span> <span class="o">/</span> <span class="n">units</span><span class="o">.</span><span class="n">number</span>
+                <span class="n">new_cost</span> <span class="o">=</span> <span class="n">cost</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">number_per</span><span class="o">=</span><span class="n">number_per</span><span class="p">)</span>
+                <span class="n">new_pos</span> <span class="o">=</span> <span class="n">Position</span><span class="p">(</span><span class="n">units</span><span class="p">,</span> <span class="n">new_cost</span><span class="p">)</span>
+                <span class="n">new_posting</span> <span class="o">=</span> <span class="n">incomplete_posting</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">units</span><span class="o">=</span><span class="n">new_pos</span><span class="o">.</span><span class="n">units</span><span class="p">,</span>
+                                                          <span class="n">cost</span><span class="o">=</span><span class="n">new_pos</span><span class="o">.</span><span class="n">cost</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">new_posting</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">elif</span> <span class="n">missing</span> <span class="o">==</span> <span class="n">MissingType</span><span class="o">.</span><span class="n">COST_TOTAL</span><span class="p">:</span>
+            <span class="n">units</span> <span class="o">=</span> <span class="n">incomplete_posting</span><span class="o">.</span><span class="n">units</span>
+            <span class="n">cost</span> <span class="o">=</span> <span class="n">incomplete_posting</span><span class="o">.</span><span class="n">cost</span>
+            <span class="k">assert</span> <span class="n">cost</span><span class="o">.</span><span class="n">currency</span> <span class="o">==</span> <span class="n">weight_currency</span><span class="p">,</span> <span class="p">(</span>
+                <span class="s2">&quot;Internal error; residual currency different than missing currency.&quot;</span><span class="p">)</span>
+            <span class="n">number_total</span> <span class="o">=</span> <span class="p">(</span><span class="n">weight</span> <span class="o">-</span> <span class="n">cost</span><span class="o">.</span><span class="n">number_per</span> <span class="o">*</span> <span class="n">units</span><span class="o">.</span><span class="n">number</span><span class="p">)</span>
+            <span class="n">new_cost</span> <span class="o">=</span> <span class="n">cost</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">number_total</span><span class="o">=</span><span class="n">number_total</span><span class="p">)</span>
+            <span class="n">new_pos</span> <span class="o">=</span> <span class="n">Position</span><span class="p">(</span><span class="n">units</span><span class="p">,</span> <span class="n">new_cost</span><span class="p">)</span>
+            <span class="n">new_posting</span> <span class="o">=</span> <span class="n">incomplete_posting</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">units</span><span class="o">=</span><span class="n">new_pos</span><span class="o">.</span><span class="n">units</span><span class="p">,</span>
+                                                      <span class="n">cost</span><span class="o">=</span><span class="n">new_pos</span><span class="o">.</span><span class="n">cost</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">missing</span> <span class="o">==</span> <span class="n">MissingType</span><span class="o">.</span><span class="n">PRICE</span><span class="p">:</span>
+            <span class="n">units</span> <span class="o">=</span> <span class="n">incomplete_posting</span><span class="o">.</span><span class="n">units</span>
+            <span class="n">cost</span> <span class="o">=</span> <span class="n">incomplete_posting</span><span class="o">.</span><span class="n">cost</span>
+            <span class="k">if</span> <span class="n">cost</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">InterpolationError</span><span class="p">(</span>
+                    <span class="n">incomplete_posting</span><span class="o">.</span><span class="n">meta</span><span class="p">,</span>
+                    <span class="s2">&quot;Cannot infer price for postings with units held at cost&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
+                <span class="k">return</span> <span class="n">postings</span><span class="p">,</span> <span class="n">errors</span><span class="p">,</span> <span class="kc">True</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">price</span> <span class="o">=</span> <span class="n">incomplete_posting</span><span class="o">.</span><span class="n">price</span>
+                <span class="k">assert</span> <span class="n">price</span><span class="o">.</span><span class="n">currency</span> <span class="o">==</span> <span class="n">weight_currency</span><span class="p">,</span> <span class="p">(</span>
+                    <span class="s2">&quot;Internal error; residual currency different than missing currency.&quot;</span><span class="p">)</span>
+                <span class="n">new_price_number</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">weight</span> <span class="o">/</span> <span class="n">units</span><span class="o">.</span><span class="n">number</span><span class="p">)</span>
+                <span class="n">new_posting</span> <span class="o">=</span> <span class="n">incomplete_posting</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">price</span><span class="o">=</span><span class="n">Amount</span><span class="p">(</span><span class="n">new_price_number</span><span class="p">,</span>
+                                                                       <span class="n">price</span><span class="o">.</span><span class="n">currency</span><span class="p">))</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;Internal error; Invalid missing type.&quot;</span>
+
+        <span class="c1"># Replace the number in the posting.</span>
+        <span class="k">if</span> <span class="n">new_posting</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Set meta-data on the new posting to indicate it was interpolated.</span>
+            <span class="k">if</span> <span class="n">new_posting</span><span class="o">.</span><span class="n">meta</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">new_posting</span> <span class="o">=</span> <span class="n">new_posting</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">meta</span><span class="o">=</span><span class="p">{})</span>
+            <span class="n">new_posting</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="n">interpolate</span><span class="o">.</span><span class="n">AUTOMATIC_META</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
+            <span class="c1"># Convert augmenting posting costs from CostSpec to a corresponding</span>
+            <span class="c1"># Cost instance.</span>
+            <span class="n">new_postings</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="n">convert_costspec_to_cost</span><span class="p">(</span><span class="n">new_posting</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">del</span> <span class="n">new_postings</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+        <span class="n">out_postings</span> <span class="o">=</span> <span class="n">new_postings</span>
+
+    <span class="k">assert</span> <span class="nb">all</span><span class="p">(</span><span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">posting</span><span class="o">.</span><span class="n">cost</span><span class="p">,</span> <span class="n">CostSpec</span><span class="p">)</span>
+               <span class="k">for</span> <span class="n">posting</span> <span class="ow">in</span> <span class="n">out_postings</span><span class="p">)</span>
+
+    <span class="c1"># Check that units are non-zero and that no cost remains negative; issue an</span>
+    <span class="c1"># error if this is the case.</span>
+    <span class="k">for</span> <span class="n">posting</span> <span class="ow">in</span> <span class="n">out_postings</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">posting</span><span class="o">.</span><span class="n">cost</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="c1"># If there is a cost, we don&#39;t allow either a cost value of zero,</span>
+        <span class="c1"># nor a zero number of units. Note that we allow a price of zero as</span>
+        <span class="c1"># the only special case allowed (for conversion entries), but never</span>
+        <span class="c1"># for costs.</span>
+        <span class="k">if</span> <span class="n">posting</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">number</span> <span class="o">==</span> <span class="n">ZERO</span><span class="p">:</span>
+            <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">InterpolationError</span><span class="p">(</span>
+                <span class="n">posting</span><span class="o">.</span><span class="n">meta</span><span class="p">,</span>
+                <span class="s1">&#39;Amount is zero: &quot;</span><span class="si">{}</span><span class="s1">&quot;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">posting</span><span class="o">.</span><span class="n">units</span><span class="p">),</span> <span class="kc">None</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">posting</span><span class="o">.</span><span class="n">cost</span><span class="o">.</span><span class="n">number</span> <span class="o">&lt;</span> <span class="n">ZERO</span><span class="p">:</span>
+            <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">InterpolationError</span><span class="p">(</span>
+                <span class="n">posting</span><span class="o">.</span><span class="n">meta</span><span class="p">,</span>
+                <span class="s1">&#39;Cost is negative: &quot;</span><span class="si">{}</span><span class="s1">&quot;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">posting</span><span class="o">.</span><span class="n">cost</span><span class="p">),</span> <span class="kc">None</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">out_postings</span><span class="p">,</span> <span class="n">errors</span><span class="p">,</span> <span class="p">(</span><span class="n">new_posting</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">Beancount</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/index.html">Beancount Modules</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Martin Blais.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
