@@ -9,8 +9,8 @@ Parser
 
 .. currentmodule:: beancount.parser
 
-.. autosummary::
-   :toctree:
+.. autosummary:: beancount.parser
+   :toctree: 
 
    booking_full
    booking_method
