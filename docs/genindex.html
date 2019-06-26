@@ -88,14 +88,14 @@
 </li>
       <li><a href="modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.amount">amount() (beancount.parser.grammar.Builder method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/parser/beancount.parser.cmptest.html#beancount.parser.cmptest.TestCase.assertEqualEntries">assertEqualEntries() (beancount.parser.cmptest.TestCase method)</a>
 
       <ul>
         <li><a href="modules/parser/beancount.parser.cmptest.html#beancount.parser.cmptest.assertEqualEntries">(in module beancount.parser.cmptest)</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/parser/beancount.parser.cmptest.html#beancount.parser.cmptest.TestCase.assertExcludesEntries">assertExcludesEntries() (beancount.parser.cmptest.TestCase method)</a>
 
       <ul>
@@ -108,6 +108,10 @@
         <li><a href="modules/parser/beancount.parser.cmptest.html#beancount.parser.cmptest.assertIncludesEntries">(in module beancount.parser.cmptest)</a>
 </li>
       </ul></li>
+      <li><a href="modules/plugins/beancount.plugins.book_conversions.html#beancount.plugins.book_conversions.augment_inventory">augment_inventory() (in module beancount.plugins.book_conversions)</a>
+</li>
+      <li><a href="modules/plugins/beancount.plugins.auto_accounts.html#beancount.plugins.auto_accounts.auto_insert_open">auto_insert_open() (in module beancount.plugins.auto_accounts)</a>
+</li>
   </ul></td>
 </tr></table>
 
@@ -140,9 +144,19 @@
 </li>
       <li><a href="modules/parser/beancount.parser.parser.html#module-beancount.parser.parser">beancount.parser.parser (module)</a>
 </li>
+      <li><a href="modules/parser/beancount.parser.printer.html#module-beancount.parser.printer">beancount.parser.printer (module)</a>, <a href="modules/parser/parser.html#module-beancount.parser.printer">[1]</a>, <a href="modules/parser/printer.html#module-beancount.parser.printer">[2]</a>
+</li>
+      <li><a href="modules/plugins/index.html#module-beancount.plugins">beancount.plugins (module)</a>
+</li>
+      <li><a href="modules/plugins/beancount.plugins.auto.html#module-beancount.plugins.auto">beancount.plugins.auto (module)</a>
+</li>
+      <li><a href="modules/plugins/beancount.plugins.auto_accounts.html#module-beancount.plugins.auto_accounts">beancount.plugins.auto_accounts (module)</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/parser/beancount.parser.printer.html#module-beancount.parser.printer">beancount.parser.printer (module)</a>, <a href="modules/parser/parser.html#module-beancount.parser.printer">[1]</a>, <a href="modules/parser/printer.html#module-beancount.parser.printer">[2]</a>
+      <li><a href="modules/plugins/beancount.plugins.book_conversions.html#module-beancount.plugins.book_conversions">beancount.plugins.book_conversions (module)</a>
+</li>
+      <li><a href="modules/plugins/beancount.plugins.check_average_cost.html#module-beancount.plugins.check_average_cost">beancount.plugins.check_average_cost (module)</a>
 </li>
       <li><a href="modules/parser/beancount.parser.booking.html#beancount.parser.booking.book">book() (in module beancount.parser.booking)</a>
 
@@ -150,7 +164,13 @@
         <li><a href="modules/parser/beancount.parser.booking_full.html#beancount.parser.booking_full.book">(in module beancount.parser.booking_full)</a>
 </li>
       </ul></li>
+      <li><a href="modules/plugins/beancount.plugins.book_conversions.html#beancount.plugins.book_conversions.book_price_conversions">book_price_conversions() (in module beancount.plugins.book_conversions)</a>
+</li>
+      <li><a href="modules/plugins/beancount.plugins.book_conversions.html#beancount.plugins.book_conversions.book_price_conversions_plugin">book_price_conversions_plugin() (in module beancount.plugins.book_conversions)</a>
+</li>
       <li><a href="modules/parser/beancount.parser.booking_full.html#beancount.parser.booking_full.book_reductions">book_reductions() (in module beancount.parser.booking_full)</a>
+</li>
+      <li><a href="modules/plugins/beancount.plugins.book_conversions.html#beancount.plugins.book_conversions.BookConversionError">BookConversionError (class in beancount.plugins.book_conversions)</a>
 </li>
       <li><a href="modules/parser/beancount.parser.booking_method.html#beancount.parser.booking_method.booking_method_AVERAGE">booking_method_AVERAGE() (in module beancount.parser.booking_method)</a>
 </li>
@@ -196,10 +216,12 @@
 </li>
       <li><a href="modules/parser/beancount.parser.booking_full.html#beancount.parser.booking_full.compute_cost_number">compute_cost_number() (in module beancount.parser.booking_full)</a>
 </li>
-      <li><a href="modules/parser/beancount.parser.booking_full.html#beancount.parser.booking_full.convert_costspec_to_cost">convert_costspec_to_cost() (in module beancount.parser.booking_full)</a>
+      <li><a href="modules/plugins/beancount.plugins.book_conversions.html#beancount.plugins.book_conversions.ConfigError">ConfigError (class in beancount.plugins.book_conversions)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="modules/parser/beancount.parser.booking_full.html#beancount.parser.booking_full.convert_costspec_to_cost">convert_costspec_to_cost() (in module beancount.parser.booking_full)</a>
+</li>
       <li><a href="modules/parser/beancount.parser.options.html#beancount.parser.options.OptDesc.converter">converter() (beancount.parser.options.OptDesc property)</a>
 </li>
       <li><a href="modules/parser/beancount.parser.booking_full.html#beancount.parser.booking_full.Refer.cost_currency">cost_currency() (beancount.parser.booking_full.Refer property)</a>
@@ -231,8 +253,6 @@
       <li><a href="modules/parser/beancount.parser.lexer.html#beancount.parser.lexer.LexBuilder.DATE">DATE() (beancount.parser.lexer.LexBuilder method)</a>
 </li>
       <li><a href="modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.dcupdate">dcupdate() (beancount.parser.grammar.Builder method)</a>
-</li>
-      <li><a href="modules/parser/beancount.parser.cmptest.html#beancount.parser.cmptest.DEFAULT_FAILFUNC">DEFAULT_FAILFUNC() (in module beancount.parser.cmptest)</a>
 </li>
       <li><a href="modules/parser/beancount.parser.options.html#beancount.parser.options.OptDesc.default_value">default_value() (beancount.parser.options.OptDesc property)</a>
 </li>
@@ -277,6 +297,12 @@
 </li>
         <li><a href="modules/parser/beancount.parser.lexer.html#beancount.parser.lexer.LexerError.entry">(beancount.parser.lexer.LexerError property)</a>
 </li>
+        <li><a href="modules/plugins/beancount.plugins.book_conversions.html#beancount.plugins.book_conversions.BookConversionError.entry">(beancount.plugins.book_conversions.BookConversionError property)</a>
+</li>
+        <li><a href="modules/plugins/beancount.plugins.book_conversions.html#beancount.plugins.book_conversions.ConfigError.entry">(beancount.plugins.book_conversions.ConfigError property)</a>
+</li>
+        <li><a href="modules/plugins/beancount.plugins.check_average_cost.html#beancount.plugins.check_average_cost.MatchBasisError.entry">(beancount.plugins.check_average_cost.MatchBasisError property)</a>
+</li>
       </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
@@ -287,6 +313,8 @@
       <li><a href="modules/parser/beancount.parser.printer.html#beancount.parser.printer.EntryPrinter.Event">Event() (beancount.parser.printer.EntryPrinter method)</a>, <a href="modules/parser/parser.html#beancount.parser.printer.EntryPrinter.Event">[1]</a>, <a href="modules/parser/printer.html#beancount.parser.printer.EntryPrinter.Event">[2]</a>
 </li>
       <li><a href="modules/parser/beancount.parser.options.html#beancount.parser.options.OptDesc.example_value">example_value() (beancount.parser.options.OptDesc property)</a>
+</li>
+      <li><a href="modules/plugins/beancount.plugins.book_conversions.html#beancount.plugins.book_conversions.extract_trades">extract_trades() (in module beancount.plugins.book_conversions)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -368,6 +396,8 @@
 </li>
       <li><a href="modules/parser/beancount.parser.parser.html#beancount.parser.parser.is_entry_incomplete">is_entry_incomplete() (in module beancount.parser.parser)</a>
 </li>
+      <li><a href="modules/plugins/beancount.plugins.book_conversions.html#beancount.plugins.book_conversions.is_matching">is_matching() (in module beancount.plugins.book_conversions)</a>
+</li>
       <li><a href="modules/parser/beancount.parser.parser.html#beancount.parser.parser.is_posting_incomplete">is_posting_incomplete() (in module beancount.parser.parser)</a>
 </li>
   </ul></td>
@@ -404,6 +434,8 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/parser/beancount.parser.lexer.html#beancount.parser.lexer.LexBuilder.LINK">LINK() (beancount.parser.lexer.LexBuilder method)</a>
 </li>
+      <li><a href="modules/plugins/beancount.plugins.book_conversions.html#beancount.plugins.book_conversions.link_entries_with_metadata">link_entries_with_metadata() (in module beancount.plugins.book_conversions)</a>
+</li>
       <li><a href="modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.TagsLinks.links">links() (beancount.parser.grammar.TagsLinks property)</a>
 </li>
       <li><a href="modules/parser/beancount.parser.options.html#beancount.parser.options.list_options">list_options() (in module beancount.parser.options)</a>
@@ -416,7 +448,9 @@
 <h2 id="M">M</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.MERGE_COST">MERGE_COST (in module beancount.parser.grammar)</a>
+      <li><a href="modules/plugins/beancount.plugins.book_conversions.html#beancount.plugins.book_conversions.main">main() (in module beancount.plugins.book_conversions)</a>
+</li>
+      <li><a href="modules/plugins/beancount.plugins.check_average_cost.html#beancount.plugins.check_average_cost.MatchBasisError">MatchBasisError (class in beancount.plugins.check_average_cost)</a>
 </li>
       <li><a href="modules/parser/beancount.parser.booking.html#beancount.parser.booking.BookingError.message">message() (beancount.parser.booking.BookingError property)</a>
 
@@ -438,6 +472,12 @@
         <li><a href="modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.ParserSyntaxError.message">(beancount.parser.grammar.ParserSyntaxError property)</a>
 </li>
         <li><a href="modules/parser/beancount.parser.lexer.html#beancount.parser.lexer.LexerError.message">(beancount.parser.lexer.LexerError property)</a>
+</li>
+        <li><a href="modules/plugins/beancount.plugins.book_conversions.html#beancount.plugins.book_conversions.BookConversionError.message">(beancount.plugins.book_conversions.BookConversionError property)</a>
+</li>
+        <li><a href="modules/plugins/beancount.plugins.book_conversions.html#beancount.plugins.book_conversions.ConfigError.message">(beancount.plugins.book_conversions.ConfigError property)</a>
+</li>
+        <li><a href="modules/plugins/beancount.plugins.check_average_cost.html#beancount.plugins.check_average_cost.MatchBasisError.message">(beancount.plugins.check_average_cost.MatchBasisError property)</a>
 </li>
       </ul></li>
   </ul></td>
@@ -484,15 +524,9 @@
 </li>
       <li><a href="modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.option">option() (beancount.parser.grammar.Builder method)</a>
 </li>
-      <li><a href="modules/parser/beancount.parser.options.html#beancount.parser.options.OPTION_GROUPS">OPTION_GROUPS (in module beancount.parser.options)</a>
-</li>
-      <li><a href="modules/parser/beancount.parser.options.html#beancount.parser.options.OPTIONS">OPTIONS (in module beancount.parser.options)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/parser/beancount.parser.options.html#beancount.parser.options.OptGroup.options">options() (beancount.parser.options.OptGroup property)</a>
-</li>
-      <li><a href="modules/parser/beancount.parser.options.html#beancount.parser.options.OPTIONS_DEFAULTS">OPTIONS_DEFAULTS (in module beancount.parser.options)</a>
 </li>
       <li><a href="modules/parser/beancount.parser.options.html#beancount.parser.options.options_validate_booking_method">options_validate_booking_method() (in module beancount.parser.options)</a>
 </li>
@@ -505,8 +539,6 @@
       <li><a href="modules/parser/beancount.parser.options.html#beancount.parser.options.options_validate_tolerance">options_validate_tolerance() (in module beancount.parser.options)</a>
 </li>
       <li><a href="modules/parser/beancount.parser.options.html#beancount.parser.options.options_validate_tolerance_map">options_validate_tolerance_map() (in module beancount.parser.options)</a>
-</li>
-      <li><a href="modules/parser/beancount.parser.options.html#beancount.parser.options.OUTPUT_OPTION_GROUPS">OUTPUT_OPTION_GROUPS (in module beancount.parser.options)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -527,8 +559,6 @@
       <li><a href="modules/parser/beancount.parser.parser.html#beancount.parser.parser.parse_one">parse_one() (in module beancount.parser.parser)</a>
 </li>
       <li><a href="modules/parser/beancount.parser.parser.html#beancount.parser.parser.parse_string">parse_string() (in module beancount.parser.parser)</a>
-</li>
-      <li><a href="modules/parser/beancount.parser.hashsrc.html#beancount.parser.hashsrc.PARSER_SOURCE_FILES">PARSER_SOURCE_FILES (in module beancount.parser.hashsrc)</a>
 </li>
       <li><a href="modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.ParserError">ParserError (class in beancount.parser.grammar)</a>
 </li>
@@ -564,8 +594,6 @@
 </li>
       <li><a href="modules/parser/beancount.parser.printer.html#beancount.parser.printer.print_errors">print_errors() (in module beancount.parser.printer)</a>, <a href="modules/parser/parser.html#beancount.parser.printer.print_errors">[1]</a>, <a href="modules/parser/printer.html#beancount.parser.printer.print_errors">[2]</a>
 </li>
-      <li><a href="modules/parser/beancount.parser.options.html#beancount.parser.options.PUBLIC_OPTION_GROUPS">PUBLIC_OPTION_GROUPS (in module beancount.parser.options)</a>
-</li>
       <li><a href="modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.pushmeta">pushmeta() (beancount.parser.grammar.Builder method)</a>
 </li>
       <li><a href="modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.pushtag">pushtag() (beancount.parser.grammar.Builder method)</a>
@@ -588,9 +616,9 @@
 <h2 id="R">R</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/parser/beancount.parser.options.html#beancount.parser.options.READ_ONLY_OPTIONS">READ_ONLY_OPTIONS (in module beancount.parser.options)</a>
-</li>
       <li><a href="modules/parser/beancount.parser.cmptest.html#beancount.parser.cmptest.read_string_or_entries">read_string_or_entries() (in module beancount.parser.cmptest)</a>
+</li>
+      <li><a href="modules/plugins/beancount.plugins.book_conversions.html#beancount.plugins.book_conversions.reduce_inventory">reduce_inventory() (in module beancount.plugins.book_conversions)</a>
 </li>
       <li><a href="modules/parser/beancount.parser.booking_full.html#beancount.parser.booking_full.ReductionError">ReductionError (class in beancount.parser.booking_full)</a>
 </li>
@@ -632,6 +660,12 @@
         <li><a href="modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.ParserSyntaxError.source">(beancount.parser.grammar.ParserSyntaxError property)</a>
 </li>
         <li><a href="modules/parser/beancount.parser.lexer.html#beancount.parser.lexer.LexerError.source">(beancount.parser.lexer.LexerError property)</a>
+</li>
+        <li><a href="modules/plugins/beancount.plugins.book_conversions.html#beancount.plugins.book_conversions.BookConversionError.source">(beancount.plugins.book_conversions.BookConversionError property)</a>
+</li>
+        <li><a href="modules/plugins/beancount.plugins.book_conversions.html#beancount.plugins.book_conversions.ConfigError.source">(beancount.plugins.book_conversions.ConfigError property)</a>
+</li>
+        <li><a href="modules/plugins/beancount.plugins.check_average_cost.html#beancount.plugins.check_average_cost.MatchBasisError.source">(beancount.plugins.check_average_cost.MatchBasisError property)</a>
 </li>
       </ul></li>
   </ul></td>
@@ -678,13 +712,11 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/parser/beancount.parser.booking_full.html#beancount.parser.booking_full.MissingType.UNITS">UNITS (beancount.parser.booking_full.MissingType attribute)</a>
 </li>
-      <li><a href="modules/parser/beancount.parser.booking_full.html#beancount.parser.booking_full.Refer.units_currency">units_currency() (beancount.parser.booking_full.Refer property)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.unpack_txn_strings">unpack_txn_strings() (beancount.parser.grammar.Builder method)</a>
+      <li><a href="modules/parser/beancount.parser.booking_full.html#beancount.parser.booking_full.Refer.units_currency">units_currency() (beancount.parser.booking_full.Refer property)</a>
 </li>
-      <li><a href="modules/parser/beancount.parser.options.html#beancount.parser.options.UNSET">UNSET (in module beancount.parser.options)</a>
+      <li><a href="modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.Builder.unpack_txn_strings">unpack_txn_strings() (beancount.parser.grammar.Builder method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -694,12 +726,14 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.valid_account_regexp">valid_account_regexp() (in module beancount.parser.grammar)</a>
 </li>
-      <li><a href="modules/parser/beancount.parser.booking.html#beancount.parser.booking.validate_inventory_booking">validate_inventory_booking() (in module beancount.parser.booking)</a>
+      <li><a href="modules/plugins/beancount.plugins.check_average_cost.html#beancount.plugins.check_average_cost.validate_average_cost">validate_average_cost() (in module beancount.plugins.check_average_cost)</a>
 </li>
-      <li><a href="modules/parser/beancount.parser.booking.html#beancount.parser.booking.validate_missing_eliminated">validate_missing_eliminated() (in module beancount.parser.booking)</a>
+      <li><a href="modules/parser/beancount.parser.booking.html#beancount.parser.booking.validate_inventory_booking">validate_inventory_booking() (in module beancount.parser.booking)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="modules/parser/beancount.parser.booking.html#beancount.parser.booking.validate_missing_eliminated">validate_missing_eliminated() (in module beancount.parser.booking)</a>
+</li>
       <li><a href="modules/parser/beancount.parser.grammar.html#beancount.parser.grammar.KeyValue.value">value() (beancount.parser.grammar.KeyValue property)</a>
 
       <ul>
@@ -775,7 +809,7 @@
       &copy;2019, Martin Blais.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.0</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.2</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
     </div>

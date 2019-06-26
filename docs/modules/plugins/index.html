@@ -1,0 +1,145 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Plugins &#8212; Beancount 2.2.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="prev" title="beancount.parser.printer" href="../parser/beancount.parser.printer.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="plugins">
+<h1>Plugins<a class="headerlink" href="#plugins" title="Permalink to this headline">¶</a></h1>
+<div class="toctree-wrapper compound">
+</div>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#module-beancount.plugins" title="beancount.plugins"><code class="xref py py-obj docutils literal notranslate"><span class="pre">beancount.plugins</span></code></a></p></td>
+<td><p>Example plugins for filtering transactions.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="beancount.plugins.auto.html#module-beancount.plugins.auto" title="beancount.plugins.auto"><code class="xref py py-obj docutils literal notranslate"><span class="pre">auto</span></code></a></p></td>
+<td><p>A plugin of plugins which triggers are all the automatic and lax plugins.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="beancount.plugins.auto_accounts.html#module-beancount.plugins.auto_accounts" title="beancount.plugins.auto_accounts"><code class="xref py py-obj docutils literal notranslate"><span class="pre">auto_accounts</span></code></a></p></td>
+<td><p>This module automatically inserts Open directives for accounts not opened (at the date of the first entry) and automatically removes open directives for unused accounts.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="beancount.plugins.book_conversions.html#module-beancount.plugins.book_conversions" title="beancount.plugins.book_conversions"><code class="xref py py-obj docutils literal notranslate"><span class="pre">book_conversions</span></code></a></p></td>
+<td><p>A plugin that automatically converts postings at price to postings held at cost, applying an automatic booking algorithm in assigning the cost bases and matching lots.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="beancount.plugins.check_average_cost.html#module-beancount.plugins.check_average_cost" title="beancount.plugins.check_average_cost"><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_average_cost</span></code></a></p></td>
+<td><p>A plugin that ensures cost basis is preserved in unbooked transactions.</p></td>
+</tr>
+</tbody>
+</table>
+<span class="target" id="module-beancount.plugins"></span><p>Example plugins for filtering transactions.</p>
+<p>These are various examples of how to filter entries in various creative ways.</p>
+<p>IMPORTANT: These are not meant to tbe complete features, rather just experiments
+in problem-solving using Beancount, work-in-progress that can be selectively
+installed via a –plugin option, or one-offs to answer questions on the
+mailing-list.</p>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">Beancount</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Beancount Modules</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../core/index.html">Beancount Core</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../parser/index.html">Parser</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Plugins</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Beancount Modules</a><ul>
+      <li>Previous: <a href="../parser/beancount.parser.printer.html" title="previous chapter">beancount.parser.printer</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Martin Blais.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../../_sources/modules/plugins/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

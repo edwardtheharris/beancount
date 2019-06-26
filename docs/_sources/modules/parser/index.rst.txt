@@ -6,6 +6,7 @@ Parser
    :caption: Contents:
 
    parser
+   printer
 
 .. currentmodule:: beancount.parser
 

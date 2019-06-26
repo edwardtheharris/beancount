@@ -1,0 +1,450 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>beancount.plugins.book_conversions &#8212; Beancount 2.2.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="beancount.plugins.check_average_cost" href="beancount.plugins.check_average_cost.html" />
+    <link rel="prev" title="beancount.plugins.auto_accounts" href="beancount.plugins.auto_accounts.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-beancount.plugins.book_conversions">
+<span id="beancount-plugins-book-conversions"></span><h1>beancount.plugins.book_conversions<a class="headerlink" href="#module-beancount.plugins.book_conversions" title="Permalink to this headline">¶</a></h1>
+<p>A plugin that automatically converts postings at price to postings held at
+cost, applying an automatic booking algorithm in assigning the cost bases and
+matching lots.</p>
+<p>This plugin restricts itself to applying these transformations within a
+particular account, which you provide. For each of those accounts, it also
+requires a corresponding Income account to book the profit/loss of reducing
+lots (i.e., sales):</p>
+<blockquote>
+<div><p>plugin “beancount.plugins.book_conversions” “Assets:Bitcoin,Income:Bitcoin”</p>
+</div></blockquote>
+<p>Then, simply input the transactions with price conversion. We use “Bitcoins” in
+this example, converting Bitcoin purchases that were carried out as currency
+into maintaining these with cost basis, for tax reporting purposes:</p>
+<blockquote>
+<div><dl class="simple">
+<dt>2015-09-04 * “Buy some bitcoins”</dt><dd><p>Assets:Bank          -1000.00 USD
+Assets:Bitcoin       4.333507 BTC &#64; 230.76 USD</p>
+</dd>
+<dt>2015-09-05 * “Buy some more bitcoins at a different price”</dt><dd><p>Assets:Bank          -1000.00 USD
+Assets:Bitcoin       4.345747 BTC &#64; 230.11 USD</p>
+</dd>
+<dt>2015-09-20 * “Use (sell) some bitcoins”</dt><dd><p>Assets:Bitcoin       -6.000000 BTC &#64; 230.50 USD
+Expenses:Something</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>The result is that cost bases are inserted on augmenting lots:</p>
+<blockquote>
+<div><dl class="simple">
+<dt>2015-09-04 * “Buy some bitcoins”</dt><dd><p>Assets:Bitcoin  4.333507 BTC {230.76 USD} &#64; 230.76 USD
+Assets:Bank     -1000.00 USD</p>
+</dd>
+<dt>2015-09-05 * “Buy some more bitcoins at a different price”</dt><dd><p>Assets:Bitcoin  4.345747 BTC {230.11 USD} &#64; 230.11 USD
+Assets:Bank     -1000.00 USD</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>While on reducing lots, matching FIFO lots are automatically found and the
+corresponding cost basis added:</p>
+<blockquote>
+<div><dl class="simple">
+<dt>2015-09-20 * “Use (sell) some bitcoins”</dt><dd><p>Assets:Bitcoin          -4.333507 BTC {230.76 USD} &#64; 230.50 USD
+Assets:Bitcoin          -1.666493 BTC {230.11 USD} &#64; 230.50 USD
+Income:Bitcoin         0.47677955 USD
+Expenses:Something  1383.00000000 USD</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>Note that multiple lots were required to fulfill the sale quantity here. As in
+this example, this may result in multiple lots being created for a single one.</p>
+<p>Finally, Beancount will eventually support booking methods built-in, but this is
+a quick method that shows how to hack your own booking method via
+transformations of the postings that run in in a plugin.</p>
+<p>Implementation notes:</p>
+<ul class="simple">
+<li><p>This code uses the FIFO method only for now. However, it would be very easy to
+customize it to provide other booking methods, e.g. LIFO, or otherwise. This
+will be added eventually, and I’m hoping to reuse the same inventory
+abstractions that will be used to implement the fallback booking methods from
+the booking proposal review (<a class="reference external" href="http://furius.ca/beancount/doc/proposal-booking">http://furius.ca/beancount/doc/proposal-booking</a>).</p></li>
+<li><p>Instead of keeping a list of (Position, Transaction) pairs for the pending
+FIFO lots, we really ought to use a beancount.core.inventory.Inventory
+instance. However, the class does not contain sufficient data to carry out
+FIFO booking at the moment. A newer implementation, living in the “booking”
+branch, does, and will be used in the future.</p></li>
+<li><p>This code assumes that a positive number of units is an augmenting lot and a
+reducing one has a negative number of units, though we never call them that
+way on purpose (to eventually allow this code to handle short positions). This
+is not strictly true; however, we would need an Inventory in order to figrue
+this out. This will be done in the future and is not difficult to do.</p></li>
+</ul>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>This plugin was developed before the booking methods (FIFO, LIFO, and others)
+were fully implemented in Beancount. It was built to answer a question on the
+mailing-list about FIFO booking. You probably don’t need to use them anymore.
+Always prefer to use the native syntax instead of this.</p>
+</div>
+<p class="rubric">Functions</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.plugins.book_conversions.augment_inventory" title="beancount.plugins.book_conversions.augment_inventory"><code class="xref py py-obj docutils literal notranslate"><span class="pre">augment_inventory</span></code></a>(pending_lots, posting, …)</p></td>
+<td><p>Add the lots from the given posting to the running inventory.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.plugins.book_conversions.book_price_conversions" title="beancount.plugins.book_conversions.book_price_conversions"><code class="xref py py-obj docutils literal notranslate"><span class="pre">book_price_conversions</span></code></a>(entries, …)</p></td>
+<td><p>Rewrite transactions to insert cost basis according to a booking method.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.plugins.book_conversions.book_price_conversions_plugin" title="beancount.plugins.book_conversions.book_price_conversions_plugin"><code class="xref py py-obj docutils literal notranslate"><span class="pre">book_price_conversions_plugin</span></code></a>(entries, …)</p></td>
+<td><p>Plugin that rewrites transactions to insert cost basis according to a booking method.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.plugins.book_conversions.extract_trades" title="beancount.plugins.book_conversions.extract_trades"><code class="xref py py-obj docutils literal notranslate"><span class="pre">extract_trades</span></code></a>(entries)</p></td>
+<td><p>Find all the matching trades from the metadata attached to postings.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.plugins.book_conversions.is_matching" title="beancount.plugins.book_conversions.is_matching"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_matching</span></code></a>(posting, account)</p></td>
+<td><p>“Identify if the given posting is one to be booked.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.plugins.book_conversions.link_entries_with_metadata" title="beancount.plugins.book_conversions.link_entries_with_metadata"><code class="xref py py-obj docutils literal notranslate"><span class="pre">link_entries_with_metadata</span></code></a>(entries, all_matches)</p></td>
+<td><p>Modify the entries in-place to add matching links to postings.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.plugins.book_conversions.main" title="beancount.plugins.book_conversions.main"><code class="xref py py-obj docutils literal notranslate"><span class="pre">main</span></code></a>()</p></td>
+<td><p>Extract trades from metadata-annotated postings and report on them.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.plugins.book_conversions.reduce_inventory" title="beancount.plugins.book_conversions.reduce_inventory"><code class="xref py py-obj docutils literal notranslate"><span class="pre">reduce_inventory</span></code></a>(pending_lots, posting, eindex)</p></td>
+<td><p>Match a reducing posting against a list of lots (using FIFO order).</p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Classes</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.plugins.book_conversions.BookConversionError" title="beancount.plugins.book_conversions.BookConversionError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BookConversionError</span></code></a>(source, message, entry)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.plugins.book_conversions.ConfigError" title="beancount.plugins.book_conversions.ConfigError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ConfigError</span></code></a>(source, message, entry)</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+<dl class="class">
+<dt id="beancount.plugins.book_conversions.ConfigError">
+<em class="property">class </em><code class="sig-prename descclassname">beancount.plugins.book_conversions.</code><code class="sig-name descname">ConfigError</code><span class="sig-paren">(</span><em class="sig-param">source</em>, <em class="sig-param">message</em>, <em class="sig-param">entry</em><span class="sig-paren">)</span><a class="headerlink" href="#beancount.plugins.book_conversions.ConfigError" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="beancount.plugins.book_conversions.ConfigError.entry">
+<em class="property">property </em><code class="sig-name descname">entry</code><a class="headerlink" href="#beancount.plugins.book_conversions.ConfigError.entry" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 2</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.plugins.book_conversions.ConfigError.message">
+<em class="property">property </em><code class="sig-name descname">message</code><a class="headerlink" href="#beancount.plugins.book_conversions.ConfigError.message" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 1</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.plugins.book_conversions.ConfigError.source">
+<em class="property">property </em><code class="sig-name descname">source</code><a class="headerlink" href="#beancount.plugins.book_conversions.ConfigError.source" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="beancount.plugins.book_conversions.BookConversionError">
+<em class="property">class </em><code class="sig-prename descclassname">beancount.plugins.book_conversions.</code><code class="sig-name descname">BookConversionError</code><span class="sig-paren">(</span><em class="sig-param">source</em>, <em class="sig-param">message</em>, <em class="sig-param">entry</em><span class="sig-paren">)</span><a class="headerlink" href="#beancount.plugins.book_conversions.BookConversionError" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="beancount.plugins.book_conversions.BookConversionError.entry">
+<em class="property">property </em><code class="sig-name descname">entry</code><a class="headerlink" href="#beancount.plugins.book_conversions.BookConversionError.entry" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 2</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.plugins.book_conversions.BookConversionError.message">
+<em class="property">property </em><code class="sig-name descname">message</code><a class="headerlink" href="#beancount.plugins.book_conversions.BookConversionError.message" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 1</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.plugins.book_conversions.BookConversionError.source">
+<em class="property">property </em><code class="sig-name descname">source</code><a class="headerlink" href="#beancount.plugins.book_conversions.BookConversionError.source" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.plugins.book_conversions.is_matching">
+<code class="sig-prename descclassname">beancount.plugins.book_conversions.</code><code class="sig-name descname">is_matching</code><span class="sig-paren">(</span><em class="sig-param">posting</em>, <em class="sig-param">account</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/plugins/book_conversions.html#is_matching"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.plugins.book_conversions.is_matching" title="Permalink to this definition">¶</a></dt>
+<dd><p>“Identify if the given posting is one to be booked.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>posting</strong> – An instance of a Posting.</p></li>
+<li><p><strong>account</strong> – The account name configured.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A boolean, true if this posting is one that we should be adding a cost to.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.plugins.book_conversions.augment_inventory">
+<code class="sig-prename descclassname">beancount.plugins.book_conversions.</code><code class="sig-name descname">augment_inventory</code><span class="sig-paren">(</span><em class="sig-param">pending_lots</em>, <em class="sig-param">posting</em>, <em class="sig-param">entry</em>, <em class="sig-param">eindex</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/plugins/book_conversions.html#augment_inventory"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.plugins.book_conversions.augment_inventory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add the lots from the given posting to the running inventory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>pending_lots</strong> – A list of pending ([number], Posting, Transaction) to be matched.
+The number is modified in-place, destructively.</p></li>
+<li><p><strong>posting</strong> – The posting whose position is to be added.</p></li>
+<li><p><strong>entry</strong> – The parent transaction.</p></li>
+<li><p><strong>eindex</strong> – The index of the parent transaction housing this posting.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A new posting with cost basis inserted to be added to a transformed transaction.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.plugins.book_conversions.reduce_inventory">
+<code class="sig-prename descclassname">beancount.plugins.book_conversions.</code><code class="sig-name descname">reduce_inventory</code><span class="sig-paren">(</span><em class="sig-param">pending_lots</em>, <em class="sig-param">posting</em>, <em class="sig-param">eindex</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/plugins/book_conversions.html#reduce_inventory"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.plugins.book_conversions.reduce_inventory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Match a reducing posting against a list of lots (using FIFO order).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>pending_lots</strong> – A list of pending ([number], Posting, Transaction) to be matched.
+The number is modified in-place, destructively.</p></li>
+<li><p><strong>posting</strong> – The posting whose position is to be added.</p></li>
+<li><p><strong>eindex</strong> – The index of the parent transaction housing this posting.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><dl>
+<dt>A tuple of</dt><dd><dl class="simple">
+<dt>postings: A list of new Posting instances corresponding to the given</dt><dd><p>posting, that were booked to the current list of lots.</p>
+</dd>
+</dl>
+<p>matches: A list of pairs of (augmenting-posting, reducing-posting).
+pnl: A Decimal, the P/L incurred in reducing these lots.
+errors: A list of new errors generated in reducing these lots.</p>
+</dd>
+</dl>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.plugins.book_conversions.link_entries_with_metadata">
+<code class="sig-prename descclassname">beancount.plugins.book_conversions.</code><code class="sig-name descname">link_entries_with_metadata</code><span class="sig-paren">(</span><em class="sig-param">entries</em>, <em class="sig-param">all_matches</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/plugins/book_conversions.html#link_entries_with_metadata"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.plugins.book_conversions.link_entries_with_metadata" title="Permalink to this definition">¶</a></dt>
+<dd><p>Modify the entries in-place to add matching links to postings.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>entries</strong> – The list of entries to modify.</p></li>
+<li><p><strong>all_matches</strong> – A list of pairs of (augmenting-posting, reducing-posting).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A list of pairs of (index, Posting) for the new (augmenting, reducing)
+annotated postings.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.plugins.book_conversions.book_price_conversions">
+<code class="sig-prename descclassname">beancount.plugins.book_conversions.</code><code class="sig-name descname">book_price_conversions</code><span class="sig-paren">(</span><em class="sig-param">entries</em>, <em class="sig-param">assets_account</em>, <em class="sig-param">income_account</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/plugins/book_conversions.html#book_price_conversions"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.plugins.book_conversions.book_price_conversions" title="Permalink to this definition">¶</a></dt>
+<dd><p>Rewrite transactions to insert cost basis according to a booking method.</p>
+<p>See module docstring for full details.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>entries</strong> – A list of entry instances.</p></li>
+<li><p><strong>assets_account</strong> – An account string, the name of the account to process.</p></li>
+<li><p><strong>income_account</strong> – An account string, the name of the account to use for booking
+realized profit/loss.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><dl>
+<dt>A tuple of</dt><dd><p>entries: A list of new, modified entries.
+errors: A list of errors generated by this plugin.
+matches: A list of (number, augmenting-posting, reducing-postings) for all</p>
+<blockquote>
+<div><p>matched lots.</p>
+</div></blockquote>
+</dd>
+</dl>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.plugins.book_conversions.extract_trades">
+<code class="sig-prename descclassname">beancount.plugins.book_conversions.</code><code class="sig-name descname">extract_trades</code><span class="sig-paren">(</span><em class="sig-param">entries</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/plugins/book_conversions.html#extract_trades"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.plugins.book_conversions.extract_trades" title="Permalink to this definition">¶</a></dt>
+<dd><p>Find all the matching trades from the metadata attached to postings.</p>
+<p>This inspects all the postings and pairs them up using the special metadata
+field that was added by this plugin when booking matching lots, and returns
+pairs of those postings.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>entries</strong> – The list of directives to extract from.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A list of (number, augmenting-posting, reducing-posting).</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.plugins.book_conversions.book_price_conversions_plugin">
+<code class="sig-prename descclassname">beancount.plugins.book_conversions.</code><code class="sig-name descname">book_price_conversions_plugin</code><span class="sig-paren">(</span><em class="sig-param">entries</em>, <em class="sig-param">options_map</em>, <em class="sig-param">config</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/plugins/book_conversions.html#book_price_conversions_plugin"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.plugins.book_conversions.book_price_conversions_plugin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plugin that rewrites transactions to insert cost basis according to a booking method.</p>
+<p>See book_price_conversions() for details.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>entries</strong> – A list of entry instances.</p></li>
+<li><p><strong>options_map</strong> – A dict of options parsed from the file.</p></li>
+<li><p><strong>config</strong> – A string, in “&lt;ACCOUNT1&gt;,&lt;ACCOUNT2&gt;” format.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>A tuple of</dt><dd><p>entries: A list of new, modified entries.
+errors: A list of errors generated by this plugin.</p>
+</dd>
+</dl>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.plugins.book_conversions.main">
+<code class="sig-prename descclassname">beancount.plugins.book_conversions.</code><code class="sig-name descname">main</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/plugins/book_conversions.html#main"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.plugins.book_conversions.main" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extract trades from metadata-annotated postings and report on them.</p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">Beancount</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Beancount Modules</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../core/index.html">Beancount Core</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../parser/index.html">Parser</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Plugins</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Beancount Modules</a><ul>
+  <li><a href="index.html">Plugins</a><ul>
+      <li>Previous: <a href="beancount.plugins.auto_accounts.html" title="previous chapter">beancount.plugins.auto_accounts</a></li>
+      <li>Next: <a href="beancount.plugins.check_average_cost.html" title="next chapter">beancount.plugins.check_average_cost</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Martin Blais.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../../_sources/modules/plugins/beancount.plugins.book_conversions.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

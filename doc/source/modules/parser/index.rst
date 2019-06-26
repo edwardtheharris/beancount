@@ -6,11 +6,12 @@ Parser
    :caption: Contents:
 
    parser
+   printer
 
 .. currentmodule:: beancount.parser
 
 .. autosummary:: beancount.parser
-   :toctree: 
+   :toctree:
 
    booking_full
    booking_method

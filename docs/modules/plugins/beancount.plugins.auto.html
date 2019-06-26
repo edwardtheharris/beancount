@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta charset="utf-8" />
-    <title>Beancount Core &#8212; Beancount 2.2.1 documentation</title>
+    <title>beancount.plugins.auto &#8212; Beancount 2.2.1 documentation</title>
     <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
@@ -15,8 +15,7 @@
     <script type="text/javascript" src="../../_static/language_data.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="Parser" href="../parser/index.html" />
-    <link rel="prev" title="Beancount Modules" href="../index.html" />
+    <link rel="next" title="beancount.plugins.auto_accounts" href="beancount.plugins.auto_accounts.html" />
    
   <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
   
@@ -33,9 +32,13 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="module-beancount.core">
-<span id="beancount-core"></span><h1>Beancount Core<a class="headerlink" href="#module-beancount.core" title="Permalink to this headline">¶</a></h1>
-<p>Core basic objects and data structures to represent a list of entries.</p>
+  <div class="section" id="module-beancount.plugins.auto">
+<span id="beancount-plugins-auto"></span><h1>beancount.plugins.auto<a class="headerlink" href="#module-beancount.plugins.auto" title="Permalink to this headline">¶</a></h1>
+<p>A plugin of plugins which triggers are all the automatic and lax plugins.</p>
+<p>In a sense, this is the inverse of “pedantic.” This is useful when doing some
+types of quick and dirty tests. You can just import the “auto” plugin. Put that
+in a macro.</p>
+<p>Also see: the ‘pedantic’ plugin.</p>
 </div>
 
 
@@ -58,9 +61,9 @@
 <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="reference internal" href="../index.html">Beancount Modules</a><ul class="current">
-<li class="toctree-l2 current"><a class="current reference internal" href="#">Beancount Core</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../core/index.html">Beancount Core</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../parser/index.html">Parser</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../plugins/index.html">Plugins</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Plugins</a></li>
 </ul>
 </li>
 </ul>
@@ -70,8 +73,9 @@
 <ul>
   <li><a href="../../index.html">Documentation overview</a><ul>
   <li><a href="../index.html">Beancount Modules</a><ul>
-      <li>Previous: <a href="../index.html" title="previous chapter">Beancount Modules</a></li>
-      <li>Next: <a href="../parser/index.html" title="next chapter">Parser</a></li>
+  <li><a href="index.html">Plugins</a><ul>
+      <li>Next: <a href="beancount.plugins.auto_accounts.html" title="next chapter">beancount.plugins.auto_accounts</a></li>
+  </ul></li>
   </ul></li>
   </ul></li>
 </ul>
@@ -106,7 +110,7 @@
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |
-      <a href="../../_sources/modules/core/index.rst.txt"
+      <a href="../../_sources/modules/plugins/beancount.plugins.auto.rst.txt"
           rel="nofollow">Page source</a>
     </div>
 
