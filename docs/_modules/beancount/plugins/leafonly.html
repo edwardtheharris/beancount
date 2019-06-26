@@ -1,0 +1,155 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>beancount.plugins.leafonly &#8212; Beancount 2.2.1 documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for beancount.plugins.leafonly</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;A plugin that issues errors when amounts are posted to non-leaf accounts,</span>
+<span class="sd">that is, accounts with child accounts.</span>
+
+<span class="sd">This is an extra constraint that you may want to apply optionally. If you</span>
+<span class="sd">install this plugin, it will issue errors for all accounts that have</span>
+<span class="sd">postings to non-leaf accounts. Some users may want to disallow this and</span>
+<span class="sd">enforce that only leaf accounts may have postings on them.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="n">__copyright__</span> <span class="o">=</span> <span class="s2">&quot;Copyright (C) 2014-2017  Martin Blais&quot;</span>
+<span class="n">__license__</span> <span class="o">=</span> <span class="s2">&quot;GNU GPLv2&quot;</span>
+
+<span class="kn">import</span> <span class="nn">collections</span>
+
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">getters</span>
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">data</span>
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">realization</span>
+
+<span class="n">__plugins__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;validate_leaf_only&#39;</span><span class="p">,)</span>
+
+
+<span class="n">LeafOnlyError</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;LeafOnlyError&#39;</span><span class="p">,</span> <span class="s1">&#39;source message entry&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="validate_leaf_only"><a class="viewcode-back" href="../../../modules/plugins/beancount.plugins.leafonly.html#beancount.plugins.leafonly.validate_leaf_only">[docs]</a><span class="k">def</span> <span class="nf">validate_leaf_only</span><span class="p">(</span><span class="n">entries</span><span class="p">,</span> <span class="n">unused_options_map</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Check for non-leaf accounts that have postings on them.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      entries: A list of directives.</span>
+<span class="sd">      unused_options_map: An options map.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">      A list of new errors, if any were found.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">real_root</span> <span class="o">=</span> <span class="n">realization</span><span class="o">.</span><span class="n">realize</span><span class="p">(</span><span class="n">entries</span><span class="p">,</span> <span class="n">compute_balance</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="n">default_meta</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">new_metadata</span><span class="p">(</span><span class="s1">&#39;&lt;leafonly&gt;&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">open_close_map</span> <span class="o">=</span> <span class="kc">None</span> <span class="c1"># Lazily computed.</span>
+    <span class="n">errors</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">real_account</span> <span class="ow">in</span> <span class="n">realization</span><span class="o">.</span><span class="n">iter_children</span><span class="p">(</span><span class="n">real_root</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">real_account</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">real_account</span><span class="o">.</span><span class="n">txn_postings</span><span class="p">:</span>
+
+            <span class="k">if</span> <span class="n">open_close_map</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">open_close_map</span> <span class="o">=</span> <span class="n">getters</span><span class="o">.</span><span class="n">get_account_open_close</span><span class="p">(</span><span class="n">entries</span><span class="p">)</span>
+
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">open_entry</span> <span class="o">=</span> <span class="n">open_close_map</span><span class="p">[</span><span class="n">real_account</span><span class="o">.</span><span class="n">account</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                <span class="n">open_entry</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">LeafOnlyError</span><span class="p">(</span>
+                <span class="n">open_entry</span><span class="o">.</span><span class="n">meta</span> <span class="k">if</span> <span class="n">open_entry</span> <span class="k">else</span> <span class="n">default_meta</span><span class="p">,</span>
+                <span class="s2">&quot;Non-leaf account &#39;</span><span class="si">{}</span><span class="s2">&#39; has postings on it&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">real_account</span><span class="o">.</span><span class="n">account</span><span class="p">),</span>
+                <span class="n">open_entry</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">entries</span><span class="p">,</span> <span class="n">errors</span></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">Beancount</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/index.html">Beancount Modules</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Martin Blais.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,254 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>beancount.plugins.split_expenses &#8212; Beancount 2.2.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="beancount.plugins.tag_pending" href="beancount.plugins.tag_pending.html" />
+    <link rel="prev" title="beancount.plugins.sellgains" href="beancount.plugins.sellgains.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-beancount.plugins.split_expenses">
+<span id="beancount-plugins-split-expenses"></span><h1>beancount.plugins.split_expenses<a class="headerlink" href="#module-beancount.plugins.split_expenses" title="Permalink to this headline">¶</a></h1>
+<p>Split expenses of a Beancount ledger between multiple people.</p>
+<p>This plugin is given a list of names. It assumes that any Expenses account whose
+components do not include any of the given names are to be split between the
+members. It goes through all the transactions and converts all such postings
+into multiple postings, one for each member.</p>
+<p>For example, given the names ‘Martin’ and ‘Caroline’, the following transaction:</p>
+<blockquote>
+<div><dl class="simple">
+<dt>2015-02-01 * “Aqua Viva Tulum - two nights”</dt><dd><p>Income:Caroline:CreditCard      -269.00 USD
+Expenses:Accommodation</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>Will be converted to this:</p>
+<blockquote>
+<div><dl class="simple">
+<dt>2015-02-01 * “Aqua Viva Tulum - two nights”</dt><dd><p>Income:Caroline:CreditCard       -269.00 USD
+Expenses:Accommodation:Martin     134.50 USD
+Expenses:Accommodation:Caroline   134.50 USD</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>After these transformations, all account names should include the name of a
+member. You can generate reports for a particular person by filtering postings
+to accounts with a component by their name.</p>
+<p class="rubric">Functions</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.plugins.split_expenses.get_participants" title="beancount.plugins.split_expenses.get_participants"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_participants</span></code></a>(filename, options_map)</p></td>
+<td><p>Get the list of participants from the plugin configuration in the input file.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.plugins.split_expenses.main" title="beancount.plugins.split_expenses.main"><code class="xref py py-obj docutils literal notranslate"><span class="pre">main</span></code></a>()</p></td>
+<td><p>Generate final reports for a shared expenses on a trip or project.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.plugins.split_expenses.save_query" title="beancount.plugins.split_expenses.save_query"><code class="xref py py-obj docutils literal notranslate"><span class="pre">save_query</span></code></a>(title, participant, entries, …)</p></td>
+<td><p>Save the multiple files for this query.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.plugins.split_expenses.split_expenses" title="beancount.plugins.split_expenses.split_expenses"><code class="xref py py-obj docutils literal notranslate"><span class="pre">split_expenses</span></code></a>(entries, options_map, config)</p></td>
+<td><p>Split postings according to expenses (see module docstring for details).</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="function">
+<dt id="beancount.plugins.split_expenses.split_expenses">
+<code class="sig-prename descclassname">beancount.plugins.split_expenses.</code><code class="sig-name descname">split_expenses</code><span class="sig-paren">(</span><em class="sig-param">entries</em>, <em class="sig-param">options_map</em>, <em class="sig-param">config</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/plugins/split_expenses.html#split_expenses"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.plugins.split_expenses.split_expenses" title="Permalink to this definition">¶</a></dt>
+<dd><p>Split postings according to expenses (see module docstring for details).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>entries</strong> – A list of directives. We’re interested only in the Transaction instances.</p></li>
+<li><p><strong>unused_options_map</strong> – A parser options dict.</p></li>
+<li><p><strong>config</strong> – The plugin configuration string.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A list of entries, with potentially more accounts and potentially more
+postings with smaller amounts.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.plugins.split_expenses.save_query">
+<code class="sig-prename descclassname">beancount.plugins.split_expenses.</code><code class="sig-name descname">save_query</code><span class="sig-paren">(</span><em class="sig-param">title</em>, <em class="sig-param">participant</em>, <em class="sig-param">entries</em>, <em class="sig-param">options_map</em>, <em class="sig-param">sql_query</em>, <em class="sig-param">*format_args</em>, <em class="sig-param">boxed=True</em>, <em class="sig-param">spaced=False</em>, <em class="sig-param">args=None</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/plugins/split_expenses.html#save_query"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.plugins.split_expenses.save_query" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save the multiple files for this query.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>title</strong> – A string, the title of this particular report to render.</p></li>
+<li><p><strong>participant</strong> – A string, the name of the participant under consideration.</p></li>
+<li><p><strong>entries</strong> – A list of directives (as per the loader).</p></li>
+<li><p><strong>options_map</strong> – A dict of options (as per the loader).</p></li>
+<li><p><strong>sql_query</strong> – A string with the SQL query, possibly with some placeholders left for
+<a href="#id1"><span class="problematic" id="id2">*</span></a>format_args to replace.</p></li>
+<li><p><strong>*format_args</strong> – A tuple of arguments to be formatted into the SQL query string.
+This is provided as a convenience.</p></li>
+<li><p><strong>boxed</strong> – A boolean, true if we should render the results in a fancy-looking ASCII box.</p></li>
+<li><p><strong>spaced</strong> – If true, leave an empty line between each of the rows. This is useful if the
+results have a lot of rows that render over multiple lines.</p></li>
+<li><p><strong>args</strong> – <p>A dummy object with the following attributes:
+output_text: An optional directory name, to produce a text rendering of</p>
+<blockquote>
+<div><p>the report.</p>
+</div></blockquote>
+<dl class="simple">
+<dt>output_csv: An optional directory name, to produce a CSV rendering of</dt><dd><p>the report.</p>
+</dd>
+</dl>
+<p>output_stdout: A boolean, if true, also render the output to stdout.
+currency: An optional currency (a string). If you use this, you should</p>
+<blockquote>
+<div><p>wrap query targets to be converted with the pseudo-function
+“CONV[…]” and it will get replaced to CONVERT(…, CURRENCY)
+automatically.</p>
+</div></blockquote>
+</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.plugins.split_expenses.get_participants">
+<code class="sig-prename descclassname">beancount.plugins.split_expenses.</code><code class="sig-name descname">get_participants</code><span class="sig-paren">(</span><em class="sig-param">filename</em>, <em class="sig-param">options_map</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/plugins/split_expenses.html#get_participants"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.plugins.split_expenses.get_participants" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the list of participants from the plugin configuration in the input file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>options_map</strong> – The options map, as produced by the parser.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A list of strings, the names of participants as they should appear in the
+account names.</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>KeyError</strong> – If the configuration does not contain configuration for the list</p></li>
+<li><p><strong>of participants.</strong> – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.plugins.split_expenses.main">
+<code class="sig-prename descclassname">beancount.plugins.split_expenses.</code><code class="sig-name descname">main</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/plugins/split_expenses.html#main"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.plugins.split_expenses.main" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate final reports for a shared expenses on a trip or project.</p>
+<p>For each of many participants, generate a detailed list of expenses,
+contributions, a categorized summary of expenses, and a final balance. Also
+produce a global list of final balances so that participants can reconcile
+between each other.</p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">Beancount</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Beancount Modules</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../core/index.html">Beancount Core</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../parser/index.html">Parser</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Plugins</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Beancount Modules</a><ul>
+  <li><a href="index.html">Plugins</a><ul>
+      <li>Previous: <a href="beancount.plugins.sellgains.html" title="previous chapter">beancount.plugins.sellgains</a></li>
+      <li>Next: <a href="beancount.plugins.tag_pending.html" title="next chapter">beancount.plugins.tag_pending</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Martin Blais.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../../_sources/modules/plugins/beancount.plugins.split_expenses.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

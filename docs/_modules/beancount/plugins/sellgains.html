@@ -1,0 +1,258 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>beancount.plugins.sellgains &#8212; Beancount 2.2.1 documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for beancount.plugins.sellgains</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;A plugin that cross-checks declared gains against prices on lot sales.</span>
+
+<span class="sd">When you sell stock, the gains can be automatically implied by the corresponding</span>
+<span class="sd">cash amounts. For example, in the following transaction the 2nd and 3rd postings</span>
+<span class="sd">should match the value of the stock sold:</span>
+
+<span class="sd">1999-07-31 * &quot;Sell&quot;</span>
+<span class="sd">  Assets:US:BRS:Company:ESPP          -81 ADSK {26.3125 USD}</span>
+<span class="sd">  Assets:US:BRS:Company:Cash      2141.36 USD</span>
+<span class="sd">  Expenses:Financial:Fees            0.08 USD</span>
+<span class="sd">  Income:US:Company:ESPP:PnL      -10.125 USD</span>
+
+<span class="sd">The cost basis is checked against: 2141.36 + 008 + -10.125. That is, the balance</span>
+<span class="sd">checks computes</span>
+
+<span class="sd">  -81 x 26.3125  = -2131.3125  +</span>
+<span class="sd">                    2141.36    +</span>
+<span class="sd">                       0.08    +</span>
+<span class="sd">                     -10.125</span>
+
+<span class="sd">and checks that the residual is below a small tolernace.</span>
+
+<span class="sd">But... usually the income leg isn&#39;t given to you in statements. Beancount can</span>
+<span class="sd">automatically infer it using the balance, which is convenient, like this:</span>
+
+<span class="sd">1999-07-31 * &quot;Sell&quot;</span>
+<span class="sd">  Assets:US:BRS:Company:ESPP          -81 ADSK {26.3125 USD}</span>
+<span class="sd">  Assets:US:BRS:Company:Cash      2141.36 USD</span>
+<span class="sd">  Expenses:Financial:Fees            0.08 USD</span>
+<span class="sd">  Income:US:Company:ESPP:PnL</span>
+
+<span class="sd">Additionally, most often you have the sales prices given to you on your</span>
+<span class="sd">transaction confirmation statement, so you can enter this:</span>
+
+<span class="sd">1999-07-31 * &quot;Sell&quot;</span>
+<span class="sd">  Assets:US:BRS:Company:ESPP          -81 ADSK {26.3125 USD} @ 26.4375 USD</span>
+<span class="sd">  Assets:US:BRS:Company:Cash      2141.36 USD</span>
+<span class="sd">  Expenses:Financial:Fees            0.08 USD</span>
+<span class="sd">  Income:US:Company:ESPP:PnL</span>
+
+<span class="sd">So in theory, if the price is given (26.4375 USD), we could verify that the</span>
+<span class="sd">proceeds from the sale at the given price match non-Income postings. That is,</span>
+<span class="sd">verify that</span>
+
+<span class="sd">  -81 x 26.4375  = -2141.4375  +</span>
+<span class="sd">                    2141.36    +</span>
+<span class="sd">                       0.08    +</span>
+
+<span class="sd">is below a small tolerance value. So this plugin does this.</span>
+
+<span class="sd">In general terms, it does the following: For transactions with postings that</span>
+<span class="sd">have a cost and a price, it verifies that the sum of the positions on all</span>
+<span class="sd">postings to non-income accounts is below tolerance.</span>
+
+<span class="sd">This provides yet another level of verification and allows you to elide the</span>
+<span class="sd">income amounts, knowing that the price is there to provide an extra level of</span>
+<span class="sd">error-checking in case you enter a typo.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="n">__copyright__</span> <span class="o">=</span> <span class="s2">&quot;Copyright (C) 2015-2017  Martin Blais&quot;</span>
+<span class="n">__license__</span> <span class="o">=</span> <span class="s2">&quot;GNU GPLv2&quot;</span>
+
+<span class="kn">import</span> <span class="nn">collections</span>
+
+<span class="kn">from</span> <span class="nn">beancount.core.number</span> <span class="k">import</span> <span class="n">ZERO</span>
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">data</span>
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">amount</span>
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">convert</span>
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">inventory</span>
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">account_types</span>
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">interpolate</span>
+<span class="kn">from</span> <span class="nn">beancount.parser</span> <span class="k">import</span> <span class="n">options</span>
+
+<span class="n">__plugins__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;validate_sell_gains&#39;</span><span class="p">,)</span>
+
+
+<span class="n">SellGainsError</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;SellGainsError&#39;</span><span class="p">,</span> <span class="s1">&#39;source message entry&#39;</span><span class="p">)</span>
+
+
+<span class="c1"># A multiplier of the regular tolerance being used. This provides a little extra</span>
+<span class="c1"># space for satisfying two sets of constraints.</span>
+<span class="n">EXTRA_TOLERANCE_MULTIPLIER</span> <span class="o">=</span> <span class="mi">2</span>
+
+
+<div class="viewcode-block" id="validate_sell_gains"><a class="viewcode-back" href="../../../modules/plugins/beancount.plugins.sellgains.html#beancount.plugins.sellgains.validate_sell_gains">[docs]</a><span class="k">def</span> <span class="nf">validate_sell_gains</span><span class="p">(</span><span class="n">entries</span><span class="p">,</span> <span class="n">options_map</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Check the sum of asset account totals for lots sold with a price on them.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      entries: A list of directives.</span>
+<span class="sd">      unused_options_map: An options map.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">      A list of new errors, if any were found.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">errors</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">acc_types</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">get_account_types</span><span class="p">(</span><span class="n">options_map</span><span class="p">)</span>
+    <span class="n">proceed_types</span> <span class="o">=</span> <span class="nb">set</span><span class="p">([</span><span class="n">acc_types</span><span class="o">.</span><span class="n">assets</span><span class="p">,</span>
+                         <span class="n">acc_types</span><span class="o">.</span><span class="n">liabilities</span><span class="p">,</span>
+                         <span class="n">acc_types</span><span class="o">.</span><span class="n">equity</span><span class="p">,</span>
+                         <span class="n">acc_types</span><span class="o">.</span><span class="n">expenses</span><span class="p">])</span>
+
+    <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">entries</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">Transaction</span><span class="p">):</span>
+            <span class="k">continue</span>
+
+        <span class="c1"># Find transactions whose lots at cost all have a price.</span>
+        <span class="n">postings_at_cost</span> <span class="o">=</span> <span class="p">[</span><span class="n">posting</span>
+                            <span class="k">for</span> <span class="n">posting</span> <span class="ow">in</span> <span class="n">entry</span><span class="o">.</span><span class="n">postings</span>
+                            <span class="k">if</span> <span class="n">posting</span><span class="o">.</span><span class="n">cost</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">postings_at_cost</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="n">posting</span><span class="o">.</span><span class="n">price</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                                           <span class="k">for</span> <span class="n">posting</span> <span class="ow">in</span> <span class="n">postings_at_cost</span><span class="p">):</span>
+            <span class="k">continue</span>
+
+        <span class="c1"># Accumulate the total expected proceeds and the sum of the asset and</span>
+        <span class="c1"># expenses legs.</span>
+        <span class="n">total_price</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">Inventory</span><span class="p">()</span>
+        <span class="n">total_proceeds</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">Inventory</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">posting</span> <span class="ow">in</span> <span class="n">entry</span><span class="o">.</span><span class="n">postings</span><span class="p">:</span>
+            <span class="c1"># If the posting is held at cost, add the priced value to the balance.</span>
+            <span class="k">if</span> <span class="n">posting</span><span class="o">.</span><span class="n">cost</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="n">posting</span><span class="o">.</span><span class="n">price</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                <span class="n">price</span> <span class="o">=</span> <span class="n">posting</span><span class="o">.</span><span class="n">price</span>
+                <span class="n">total_price</span><span class="o">.</span><span class="n">add_amount</span><span class="p">(</span><span class="n">amount</span><span class="o">.</span><span class="n">mul</span><span class="p">(</span><span class="n">price</span><span class="p">,</span> <span class="o">-</span><span class="n">posting</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">number</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Otherwise, use the weight and ignore postings to Income accounts.</span>
+                <span class="n">atype</span> <span class="o">=</span> <span class="n">account_types</span><span class="o">.</span><span class="n">get_account_type</span><span class="p">(</span><span class="n">posting</span><span class="o">.</span><span class="n">account</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">atype</span> <span class="ow">in</span> <span class="n">proceed_types</span><span class="p">:</span>
+                    <span class="n">total_proceeds</span><span class="o">.</span><span class="n">add_amount</span><span class="p">(</span><span class="n">convert</span><span class="o">.</span><span class="n">get_weight</span><span class="p">(</span><span class="n">posting</span><span class="p">))</span>
+
+        <span class="c1"># Compare inventories, currency by currency.</span>
+        <span class="n">dict_price</span> <span class="o">=</span> <span class="p">{</span><span class="n">pos</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">currency</span><span class="p">:</span> <span class="n">pos</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">number</span>
+                      <span class="k">for</span> <span class="n">pos</span> <span class="ow">in</span> <span class="n">total_price</span><span class="p">}</span>
+        <span class="n">dict_proceeds</span> <span class="o">=</span> <span class="p">{</span><span class="n">pos</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">currency</span><span class="p">:</span> <span class="n">pos</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">number</span>
+                         <span class="k">for</span> <span class="n">pos</span> <span class="ow">in</span> <span class="n">total_proceeds</span><span class="p">}</span>
+
+        <span class="n">tolerances</span> <span class="o">=</span> <span class="n">interpolate</span><span class="o">.</span><span class="n">infer_tolerances</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">postings</span><span class="p">,</span> <span class="n">options_map</span><span class="p">)</span>
+        <span class="n">invalid</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">for</span> <span class="n">currency</span><span class="p">,</span> <span class="n">price_number</span> <span class="ow">in</span> <span class="n">dict_price</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="c1"># Accept a looser than usual tolerance because rounding occurs</span>
+            <span class="c1"># differently. Also, it would be difficult for the user to satisfy</span>
+            <span class="c1"># two sets of constraints manually.</span>
+            <span class="n">tolerance</span> <span class="o">=</span> <span class="n">tolerances</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">currency</span><span class="p">)</span> <span class="o">*</span> <span class="n">EXTRA_TOLERANCE_MULTIPLIER</span>
+
+            <span class="n">proceeds_number</span> <span class="o">=</span> <span class="n">dict_proceeds</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">currency</span><span class="p">,</span> <span class="n">ZERO</span><span class="p">)</span>
+            <span class="n">diff</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">price_number</span> <span class="o">-</span> <span class="n">proceeds_number</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">diff</span> <span class="o">&gt;</span> <span class="n">tolerance</span><span class="p">:</span>
+                <span class="n">invalid</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="k">break</span>
+
+        <span class="k">if</span> <span class="n">invalid</span> <span class="ow">or</span> <span class="n">dict_proceeds</span><span class="p">:</span>
+            <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">SellGainsError</span><span class="p">(</span>
+                    <span class="n">entry</span><span class="o">.</span><span class="n">meta</span><span class="p">,</span>
+                    <span class="s2">&quot;Invalid price vs. proceeds/gains: </span><span class="si">{}</span><span class="s2"> vs. </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                        <span class="n">total_price</span><span class="p">,</span> <span class="n">total_proceeds</span><span class="p">),</span>
+                    <span class="n">entry</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">entries</span><span class="p">,</span> <span class="n">errors</span></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">Beancount</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/index.html">Beancount Modules</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Martin Blais.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -10,7 +10,7 @@ Parser
 
 .. currentmodule:: beancount.parser
 
-.. autosummary:: beancount.parser
+.. autosummary::
    :toctree:
 
    booking_full

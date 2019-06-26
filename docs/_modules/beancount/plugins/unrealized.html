@@ -1,0 +1,294 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>beancount.plugins.unrealized &#8212; Beancount 2.2.1 documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for beancount.plugins.unrealized</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Compute unrealized gains.</span>
+
+<span class="sd">The configuration for this plugin is a single string, the name of the subaccount</span>
+<span class="sd">to add to post the unrealized gains to, like this:</span>
+
+<span class="sd">  plugin &quot;beancount.plugins.unrealized&quot; &quot;Unrealized&quot;</span>
+
+<span class="sd">If you don&#39;t specify a name for the subaccount (the configuration value is</span>
+<span class="sd">optional), by default it inserts the unrealized gains in the same account that</span>
+<span class="sd">is being adjusted.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="n">__copyright__</span> <span class="o">=</span> <span class="s2">&quot;Copyright (C) 2014-2016  Martin Blais&quot;</span>
+<span class="n">__license__</span> <span class="o">=</span> <span class="s2">&quot;GNU GPLv2&quot;</span>
+
+<span class="kn">import</span> <span class="nn">collections</span>
+
+<span class="kn">from</span> <span class="nn">beancount.core.data</span> <span class="k">import</span> <span class="n">EMPTY_SET</span>
+<span class="kn">from</span> <span class="nn">beancount.core.number</span> <span class="k">import</span> <span class="n">ZERO</span>
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">data</span>
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">account</span>
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">getters</span>
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">amount</span>
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">flags</span>
+<span class="kn">from</span> <span class="nn">beancount.ops</span> <span class="k">import</span> <span class="n">holdings</span>
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">prices</span>
+<span class="kn">from</span> <span class="nn">beancount.parser</span> <span class="k">import</span> <span class="n">options</span>
+
+
+<span class="n">__plugins__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;add_unrealized_gains&#39;</span><span class="p">,)</span>
+
+
+<span class="n">UnrealizedError</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;UnrealizedError&#39;</span><span class="p">,</span> <span class="s1">&#39;source message entry&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="add_unrealized_gains"><a class="viewcode-back" href="../../../modules/plugins/beancount.plugins.unrealized.html#beancount.plugins.unrealized.add_unrealized_gains">[docs]</a><span class="k">def</span> <span class="nf">add_unrealized_gains</span><span class="p">(</span><span class="n">entries</span><span class="p">,</span> <span class="n">options_map</span><span class="p">,</span> <span class="n">subaccount</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Insert entries for unrealized capital gains.</span>
+
+<span class="sd">    This function inserts entries that represent unrealized gains, at the end of</span>
+<span class="sd">    the available history. It returns a new list of entries, with the new gains</span>
+<span class="sd">    inserted. It replaces the account type with an entry in an income account.</span>
+<span class="sd">    Optionally, it can book the gain in a subaccount of the original and income</span>
+<span class="sd">    accounts.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      entries: A list of data directives.</span>
+<span class="sd">      options_map: A dict of options, that confirms to beancount.parser.options.</span>
+<span class="sd">      subaccount: A string, and optional the name of a subaccount to create</span>
+<span class="sd">        under an account to book the unrealized gain. If this is left to its</span>
+<span class="sd">        default value, the gain is booked directly in the same account.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">      A list of entries, which includes the new unrealized capital gains entries</span>
+<span class="sd">      at the end, and a list of errors. The new list of entries is still sorted.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">errors</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">meta</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">new_metadata</span><span class="p">(</span><span class="s1">&#39;&lt;unrealized_gains&gt;&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+    <span class="n">account_types</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">get_account_types</span><span class="p">(</span><span class="n">options_map</span><span class="p">)</span>
+
+    <span class="c1"># Assert the subaccount name is in valid format.</span>
+    <span class="k">if</span> <span class="n">subaccount</span><span class="p">:</span>
+        <span class="n">validation_account</span> <span class="o">=</span> <span class="n">account</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">account_types</span><span class="o">.</span><span class="n">assets</span><span class="p">,</span> <span class="n">subaccount</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">account</span><span class="o">.</span><span class="n">is_valid</span><span class="p">(</span><span class="n">validation_account</span><span class="p">):</span>
+            <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">UnrealizedError</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span>
+                                <span class="s2">&quot;Invalid subaccount name: &#39;</span><span class="si">{}</span><span class="s2">&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">subaccount</span><span class="p">),</span>
+                                <span class="kc">None</span><span class="p">))</span>
+            <span class="k">return</span> <span class="n">entries</span><span class="p">,</span> <span class="n">errors</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">entries</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">entries</span><span class="p">,</span> <span class="n">errors</span><span class="p">)</span>
+
+    <span class="c1"># Group positions by (account, cost, cost_currency).</span>
+    <span class="n">price_map</span> <span class="o">=</span> <span class="n">prices</span><span class="o">.</span><span class="n">build_price_map</span><span class="p">(</span><span class="n">entries</span><span class="p">)</span>
+    <span class="n">holdings_list</span> <span class="o">=</span> <span class="n">holdings</span><span class="o">.</span><span class="n">get_final_holdings</span><span class="p">(</span><span class="n">entries</span><span class="p">,</span> <span class="n">price_map</span><span class="o">=</span><span class="n">price_map</span><span class="p">)</span>
+
+    <span class="c1"># Group positions by (account, cost, cost_currency).</span>
+    <span class="n">holdings_list</span> <span class="o">=</span> <span class="n">holdings</span><span class="o">.</span><span class="n">aggregate_holdings_by</span><span class="p">(</span>
+        <span class="n">holdings_list</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">h</span><span class="p">:</span> <span class="p">(</span><span class="n">h</span><span class="o">.</span><span class="n">account</span><span class="p">,</span> <span class="n">h</span><span class="o">.</span><span class="n">currency</span><span class="p">,</span> <span class="n">h</span><span class="o">.</span><span class="n">cost_currency</span><span class="p">))</span>
+
+    <span class="c1"># Get the latest prices from the entries.</span>
+    <span class="n">price_map</span> <span class="o">=</span> <span class="n">prices</span><span class="o">.</span><span class="n">build_price_map</span><span class="p">(</span><span class="n">entries</span><span class="p">)</span>
+
+    <span class="c1"># Create transactions to account for each position.</span>
+    <span class="n">new_entries</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">latest_date</span> <span class="o">=</span> <span class="n">entries</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">date</span>
+    <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">holding</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">holdings_list</span><span class="p">):</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">holding</span><span class="o">.</span><span class="n">currency</span> <span class="o">==</span> <span class="n">holding</span><span class="o">.</span><span class="n">cost_currency</span> <span class="ow">or</span>
+            <span class="n">holding</span><span class="o">.</span><span class="n">cost_currency</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">):</span>
+            <span class="k">continue</span>
+
+        <span class="c1"># Note: since we&#39;re only considering positions held at cost, the</span>
+        <span class="c1"># transaction that created the position *must* have created at least one</span>
+        <span class="c1"># price point for that commodity, so we never expect for a price not to</span>
+        <span class="c1"># be available, which is reasonable.</span>
+        <span class="k">if</span> <span class="n">holding</span><span class="o">.</span><span class="n">price_number</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># An entry without a price might indicate that this is a holding</span>
+            <span class="c1"># resulting from leaked cost basis. {0ed05c502e63, b/16}</span>
+            <span class="k">if</span> <span class="n">holding</span><span class="o">.</span><span class="n">number</span><span class="p">:</span>
+                <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="n">UnrealizedError</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span>
+                                    <span class="s2">&quot;A valid price for </span><span class="si">{h.currency}</span><span class="s2">/</span><span class="si">{h.cost_currency}</span><span class="s2"> &quot;</span>
+                                    <span class="s2">&quot;could not be found&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">h</span><span class="o">=</span><span class="n">holding</span><span class="p">),</span> <span class="kc">None</span><span class="p">))</span>
+            <span class="k">continue</span>
+
+        <span class="c1"># Compute the PnL; if there is no profit or loss, we create a</span>
+        <span class="c1"># corresponding entry anyway.</span>
+        <span class="n">pnl</span> <span class="o">=</span> <span class="n">holding</span><span class="o">.</span><span class="n">market_value</span> <span class="o">-</span> <span class="n">holding</span><span class="o">.</span><span class="n">book_value</span>
+        <span class="k">if</span> <span class="n">holding</span><span class="o">.</span><span class="n">number</span> <span class="o">==</span> <span class="n">ZERO</span><span class="p">:</span>
+            <span class="c1"># If the number of units sum to zero, the holdings should have been</span>
+            <span class="c1"># zero.</span>
+            <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">UnrealizedError</span><span class="p">(</span>
+                    <span class="n">meta</span><span class="p">,</span>
+                    <span class="s2">&quot;Number of units of </span><span class="si">{}</span><span class="s2"> in </span><span class="si">{}</span><span class="s2"> in holdings sum to zero &quot;</span>
+                    <span class="s2">&quot;for account </span><span class="si">{}</span><span class="s2"> and should not&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                        <span class="n">holding</span><span class="o">.</span><span class="n">currency</span><span class="p">,</span> <span class="n">holding</span><span class="o">.</span><span class="n">cost_currency</span><span class="p">,</span> <span class="n">holding</span><span class="o">.</span><span class="n">account</span><span class="p">),</span>
+                    <span class="kc">None</span><span class="p">))</span>
+            <span class="k">continue</span>
+
+        <span class="c1"># Compute the name of the accounts and add the requested subaccount name</span>
+        <span class="c1"># if requested.</span>
+        <span class="n">asset_account</span> <span class="o">=</span> <span class="n">holding</span><span class="o">.</span><span class="n">account</span>
+        <span class="n">income_account</span> <span class="o">=</span> <span class="n">account</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">account_types</span><span class="o">.</span><span class="n">income</span><span class="p">,</span>
+                                      <span class="n">account</span><span class="o">.</span><span class="n">sans_root</span><span class="p">(</span><span class="n">holding</span><span class="o">.</span><span class="n">account</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">subaccount</span><span class="p">:</span>
+            <span class="n">asset_account</span> <span class="o">=</span> <span class="n">account</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">asset_account</span><span class="p">,</span> <span class="n">subaccount</span><span class="p">)</span>
+            <span class="n">income_account</span> <span class="o">=</span> <span class="n">account</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">income_account</span><span class="p">,</span> <span class="n">subaccount</span><span class="p">)</span>
+
+        <span class="c1"># Create a new transaction to account for this difference in gain.</span>
+        <span class="n">gain_loss_str</span> <span class="o">=</span> <span class="s2">&quot;gain&quot;</span> <span class="k">if</span> <span class="n">pnl</span> <span class="o">&gt;</span> <span class="n">ZERO</span> <span class="k">else</span> <span class="s2">&quot;loss&quot;</span>
+        <span class="n">narration</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;Unrealized </span><span class="si">{}</span><span class="s2"> for </span><span class="si">{h.number}</span><span class="s2"> units of </span><span class="si">{h.currency}</span><span class="s2"> &quot;</span>
+                     <span class="s2">&quot;(price: </span><span class="si">{h.price_number:.4f}</span><span class="s2"> </span><span class="si">{h.cost_currency}</span><span class="s2"> as of </span><span class="si">{h.price_date}</span><span class="s2">, &quot;</span>
+                     <span class="s2">&quot;average cost: </span><span class="si">{h.cost_number:.4f}</span><span class="s2"> </span><span class="si">{h.cost_currency}</span><span class="s2">)&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                         <span class="n">gain_loss_str</span><span class="p">,</span> <span class="n">h</span><span class="o">=</span><span class="n">holding</span><span class="p">)</span>
+        <span class="n">entry</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">Transaction</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">new_metadata</span><span class="p">(</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;filename&quot;</span><span class="p">],</span> <span class="n">lineno</span><span class="o">=</span><span class="mi">1000</span> <span class="o">+</span> <span class="n">index</span><span class="p">),</span>
+                                 <span class="n">latest_date</span><span class="p">,</span> <span class="n">flags</span><span class="o">.</span><span class="n">FLAG_UNREALIZED</span><span class="p">,</span>
+                                 <span class="kc">None</span><span class="p">,</span> <span class="n">narration</span><span class="p">,</span> <span class="n">EMPTY_SET</span><span class="p">,</span> <span class="n">EMPTY_SET</span><span class="p">,</span> <span class="p">[])</span>
+
+        <span class="c1"># Book this as income, converting the account name to be the same, but as income.</span>
+        <span class="c1"># Note: this is a rather convenient but arbitrary choice--maybe it would be best to</span>
+        <span class="c1"># let the user decide to what account to book it, but I don&#39;t a nice way to let the</span>
+        <span class="c1"># user specify this.</span>
+        <span class="c1">#</span>
+        <span class="c1"># Note: we never set a price because we don&#39;t want these to end up in Conversions.</span>
+        <span class="n">entry</span><span class="o">.</span><span class="n">postings</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span>
+            <span class="n">data</span><span class="o">.</span><span class="n">Posting</span><span class="p">(</span>
+                <span class="n">asset_account</span><span class="p">,</span>
+                <span class="n">amount</span><span class="o">.</span><span class="n">Amount</span><span class="p">(</span><span class="n">pnl</span><span class="p">,</span> <span class="n">holding</span><span class="o">.</span><span class="n">cost_currency</span><span class="p">),</span>
+                <span class="kc">None</span><span class="p">,</span>
+                <span class="kc">None</span><span class="p">,</span>
+                <span class="kc">None</span><span class="p">,</span>
+                <span class="kc">None</span><span class="p">),</span>
+            <span class="n">data</span><span class="o">.</span><span class="n">Posting</span><span class="p">(</span>
+                <span class="n">income_account</span><span class="p">,</span>
+                <span class="n">amount</span><span class="o">.</span><span class="n">Amount</span><span class="p">(</span><span class="o">-</span><span class="n">pnl</span><span class="p">,</span> <span class="n">holding</span><span class="o">.</span><span class="n">cost_currency</span><span class="p">),</span>
+                <span class="kc">None</span><span class="p">,</span>
+                <span class="kc">None</span><span class="p">,</span>
+                <span class="kc">None</span><span class="p">,</span>
+                <span class="kc">None</span><span class="p">)</span>
+        <span class="p">])</span>
+
+        <span class="n">new_entries</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+
+    <span class="c1"># Ensure that the accounts we&#39;re going to use to book the postings exist, by</span>
+    <span class="c1"># creating open entries for those that we generated that weren&#39;t already</span>
+    <span class="c1"># existing accounts.</span>
+    <span class="n">new_accounts</span> <span class="o">=</span> <span class="p">{</span><span class="n">posting</span><span class="o">.</span><span class="n">account</span>
+                    <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">new_entries</span>
+                    <span class="k">for</span> <span class="n">posting</span> <span class="ow">in</span> <span class="n">entry</span><span class="o">.</span><span class="n">postings</span><span class="p">}</span>
+    <span class="n">open_entries</span> <span class="o">=</span> <span class="n">getters</span><span class="o">.</span><span class="n">get_account_open_close</span><span class="p">(</span><span class="n">entries</span><span class="p">)</span>
+    <span class="n">new_open_entries</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">account_</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">new_accounts</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">account_</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">open_entries</span><span class="p">:</span>
+            <span class="n">meta</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">new_metadata</span><span class="p">(</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;filename&quot;</span><span class="p">],</span> <span class="n">index</span><span class="p">)</span>
+            <span class="n">open_entry</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">Open</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span> <span class="n">latest_date</span><span class="p">,</span> <span class="n">account_</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="n">new_open_entries</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">open_entry</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="n">entries</span> <span class="o">+</span> <span class="n">new_open_entries</span> <span class="o">+</span> <span class="n">new_entries</span><span class="p">,</span> <span class="n">errors</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="get_unrealized_entries"><a class="viewcode-back" href="../../../modules/plugins/beancount.plugins.unrealized.html#beancount.plugins.unrealized.get_unrealized_entries">[docs]</a><span class="k">def</span> <span class="nf">get_unrealized_entries</span><span class="p">(</span><span class="n">entries</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Return entries automatically created for unrealized gains.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      entries: A list of directives.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">      A list of directives, all of which are in the original list.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">entry</span>
+            <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">entries</span>
+            <span class="k">if</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">Transaction</span><span class="p">)</span> <span class="ow">and</span>
+                <span class="n">entry</span><span class="o">.</span><span class="n">flag</span> <span class="o">==</span> <span class="n">flags</span><span class="o">.</span><span class="n">FLAG_UNREALIZED</span><span class="p">)]</span></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">Beancount</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/index.html">Beancount Modules</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Martin Blais.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,223 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>beancount.plugins.forecast &#8212; Beancount 2.2.1 documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for beancount.plugins.forecast</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;An example of adding a forecasting feature to Beancount via a plugin.</span>
+
+<span class="sd">This entry filter plugin uses existing syntax to define and automatically</span>
+<span class="sd">inserted transactions in the future based on a convention. It serves mostly as</span>
+<span class="sd">an example of how you can experiment by creating and installing a local filter,</span>
+<span class="sd">and not so much as a serious forecasting feature (though the experiment is a</span>
+<span class="sd">good way to get something more general kickstarted eventually, I think the</span>
+<span class="sd">concept would generalize nicely and should eventually be added as a comon</span>
+<span class="sd">feature of Beancount).</span>
+
+<span class="sd">A user can create a create a transaction like this:</span>
+
+<span class="sd">  2014-03-08 # &quot;Electricity bill [MONTHLY]&quot;&quot;</span>
+<span class="sd">    Expenses:Electricity 			50.10 USD</span>
+<span class="sd">    Assets:Checking			       -50.10 USD</span>
+
+<span class="sd">and new transactions will be created monthly for the following year.</span>
+<span class="sd">Note the use of the &#39;#&#39; flag and the word &#39;MONTHLY&#39; which defines the</span>
+<span class="sd">periodicity.</span>
+
+<span class="sd">The number of recurrences can optionally be specified either by providing an</span>
+<span class="sd">end date or by specifying the number of times that the transaction will be</span>
+<span class="sd">repeated. For example:</span>
+
+<span class="sd">  2014-03-08 # &quot;Electricity bill [MONTHLY UNTIL 2019-12-31]&quot;&quot;</span>
+<span class="sd">    Expenses:Electricity 			50.10 USD</span>
+<span class="sd">    Assets:Checking			       -50.10 USD</span>
+
+<span class="sd">  2014-03-08 # &quot;Electricity bill [MONTHLY REPEAT 10 TIMES]&quot;&quot;</span>
+<span class="sd">    Expenses:Electricity 			50.10 USD</span>
+<span class="sd">    Assets:Checking			       -50.10 USD</span>
+
+<span class="sd">Transactions can be also be repeated at yearly intervals, e.g.:</span>
+
+<span class="sd">  2014-03-08 # &quot;Electricity bill [YEARLY REPEAT 10 TIMES]&quot;&quot;</span>
+<span class="sd">    Expenses:Electricity 			50.10 USD</span>
+<span class="sd">    Assets:Checking			       -50.10 USD</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__copyright__</span> <span class="o">=</span> <span class="s2">&quot;Copyright (C) 2014-2017  Martin Blais&quot;</span>
+<span class="n">__license__</span> <span class="o">=</span> <span class="s2">&quot;GNU GPLv2&quot;</span>
+
+<span class="kn">import</span> <span class="nn">datetime</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">re</span>
+
+<span class="kn">from</span> <span class="nn">dateutil</span> <span class="k">import</span> <span class="n">rrule</span>
+
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">data</span>
+
+<span class="n">__plugins__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;forecast_plugin&#39;</span><span class="p">,)</span>
+
+<span class="n">LOG</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;forecast&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="forecast_plugin"><a class="viewcode-back" href="../../../modules/plugins/beancount.plugins.forecast.html#beancount.plugins.forecast.forecast_plugin">[docs]</a><span class="k">def</span> <span class="nf">forecast_plugin</span><span class="p">(</span><span class="n">entries</span><span class="p">,</span> <span class="n">options_map</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;An example filter that piggybacks on top of the Beancount input syntax to</span>
+<span class="sd">    insert forecast entries automatically. This functions accepts the return</span>
+<span class="sd">    value of beancount.loader.load_file() and must return the same type of output.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      entries: a list of entry instances</span>
+<span class="sd">      options_map: a dict of options parsed from the file</span>
+<span class="sd">    Returns:</span>
+<span class="sd">      A tuple of entries and errors.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">periodicities</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;YEARLY&#39;</span><span class="p">:</span> <span class="n">rrule</span><span class="o">.</span><span class="n">YEARLY</span><span class="p">,</span>
+        <span class="s1">&#39;MONTHLY&#39;</span><span class="p">:</span> <span class="n">rrule</span><span class="o">.</span><span class="n">MONTHLY</span><span class="p">,</span>
+        <span class="s1">&#39;BIWEEKLY&#39;</span><span class="p">:</span> <span class="n">rrule</span><span class="o">.</span><span class="n">WEEKLY</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="n">LOG</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">options_map</span><span class="p">)</span>
+
+    <span class="c1"># Filter out forecast entries from the list of valid entries.</span>
+    <span class="n">forecast_entries</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">filtered_entries</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">entries</span><span class="p">:</span>
+        <span class="k">if</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">Transaction</span><span class="p">)</span> <span class="ow">and</span> <span class="n">entry</span><span class="o">.</span><span class="n">flag</span> <span class="o">==</span> <span class="s1">&#39;#&#39;</span><span class="p">):</span>
+            <span class="n">outlist</span> <span class="o">=</span> <span class="n">forecast_entries</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">outlist</span> <span class="o">=</span> <span class="n">filtered_entries</span>
+        <span class="n">outlist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+
+    <span class="c1"># Generate forecast entries up to the end of the current year.</span>
+    <span class="n">new_entries</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">forecast_entries</span><span class="p">:</span>
+        <span class="c1"># Parse the periodicity.</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;(^.*)\[(MONTHLY|YEARLY|BIWEEKLY)&#39;</span>
+                          <span class="sa">r</span><span class="s1">&#39;(\s+REPEAT\s+([1-9][0-9]*)\s+TIMES)&#39;</span>
+                          <span class="sa">r</span><span class="s1">&#39;?(\s+UNTIL\s+([0-9\-]+))?\]&#39;</span><span class="p">,</span> <span class="n">entry</span><span class="o">.</span><span class="n">narration</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">match</span><span class="p">:</span>
+            <span class="n">new_entries</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="n">forecast_narration</span> <span class="o">=</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="n">forecast_interval</span> <span class="o">=</span> <span class="n">periodicities</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+        <span class="n">forecast_periodicity</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;dtstart&#39;</span><span class="p">:</span> <span class="n">entry</span><span class="o">.</span><span class="n">date</span><span class="p">,</span>
+            <span class="s1">&#39;count&#39;</span><span class="p">:</span> <span class="c1"># e.g., [MONTHLY REPEAT 3 TIMES]:</span>
+                <span class="nb">int</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">4</span><span class="p">))</span> <span class="k">if</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="s1">&#39;interval&#39;</span><span class="p">:</span>
+                <span class="mi">2</span> <span class="k">if</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;BIWEEKLY&#39;</span> <span class="k">else</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="s1">&#39;until&#39;</span><span class="p">:</span> <span class="c1"># e.g., [MONTHLY UNTIL 2020-01-01]:</span>
+                <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">6</span><span class="p">),</span> <span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1">&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">date</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+                <span class="k">else</span> <span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="p">(</span><span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="o">.</span><span class="n">today</span><span class="p">()</span><span class="o">.</span><span class="n">year</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">31</span><span class="p">),</span>
+        <span class="p">}</span>
+
+        <span class="c1"># print(forecast_periodicity)</span>
+        <span class="c1"># Generate a new entry for each forecast date.</span>
+        <span class="n">forecast_dates</span> <span class="o">=</span> <span class="p">[</span><span class="n">dt</span><span class="o">.</span><span class="n">date</span><span class="p">()</span> <span class="k">for</span> <span class="n">dt</span> <span class="ow">in</span> <span class="n">rrule</span><span class="o">.</span><span class="n">rrule</span><span class="p">(</span><span class="n">forecast_interval</span><span class="p">,</span>
+                                                          <span class="o">**</span><span class="n">forecast_periodicity</span><span class="p">)]</span>
+        <span class="k">for</span> <span class="n">forecast_date</span> <span class="ow">in</span> <span class="n">forecast_dates</span><span class="p">:</span>
+            <span class="n">forecast_entry</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">date</span><span class="o">=</span><span class="n">forecast_date</span><span class="p">,</span>
+                                            <span class="n">narration</span><span class="o">=</span><span class="n">forecast_narration</span><span class="p">)</span>
+            <span class="n">new_entries</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">forecast_entry</span><span class="p">)</span>
+
+    <span class="c1"># Make sure the new entries inserted are sorted.</span>
+    <span class="n">new_entries</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">entry_sortkey</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="n">filtered_entries</span> <span class="o">+</span> <span class="n">new_entries</span><span class="p">,</span> <span class="p">[])</span></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">Beancount</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/index.html">Beancount Modules</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Martin Blais.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
