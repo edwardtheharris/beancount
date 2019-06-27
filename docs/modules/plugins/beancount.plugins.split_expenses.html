@@ -1,190 +1,62 @@
-
-
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
 <head>
   <meta charset="utf-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#2D2D2D" />
   
-  <title>beancount.plugins.split_expenses &mdash; Beancount 2.2.1 documentation</title>
-  
-
-  
-  
-  
+  <title>Beancount :: beancount.plugins.split_expenses</title>
   
 
-  
-  <script type="text/javascript" src="../../_static/js/modernizr.min.js"></script>
-  
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
-        <script type="text/javascript" src="../../_static/jquery.js"></script>
-        <script type="text/javascript" src="../../_static/underscore.js"></script>
-        <script type="text/javascript" src="../../_static/doctools.js"></script>
-        <script type="text/javascript" src="../../_static/language_data.js"></script>
-    
-    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  <link rel="icon" type="image/png" sizes="32x32" href="../../_static/img/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="../../_static/img/favicon-16x16.png">
+        <link rel="index" title="Index"
+              href="../../genindex.html"/>
 
-    
+  <link rel="stylesheet" href="../../_static/css/insegel.css"/>
 
-  
-  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="../../_static/graphviz.css" type="text/css" />
-    <link rel="index" title="Index" href="../../genindex.html" />
-    <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="beancount.plugins.unique_prices" href="beancount.plugins.unique_prices.html" />
-    <link rel="prev" title="beancount.plugins.sellgains" href="beancount.plugins.sellgains.html" /> 
+  <script type="text/javascript">
+    var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:'',
+        VERSION:'2.2.1',
+        LANGUAGE:'None',
+        COLLAPSE_INDEX:false,
+        FILE_SUFFIX:'.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+    };
+  </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+
+  <script src="https://email.tl.fortawesome.com/c/eJxNjUEOgyAQAF8jR7Kw6wIHDh7sP1Cw2mgxgmn6-3JsMqc5zEQfE8dkxOY1KKMUOI3ACFKRJpSW2AAp7ontYIaxI6i7XPJVwyeVfCQ550Os3jLrGSNOLgbdAy6s0PBk2TFNjEbsfq31LB0OnX407pJa5v2faRadwSW63mn5KuLyR9j2tgx3zecanl-55R_-jjPs"></script>
+
 </head>
 
-<body class="wy-body-for-nav">
-
-   
-  <div class="wy-grid-for-nav">
-    
-    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
-      <div class="wy-side-scroll">
-        <div class="wy-side-nav-search" >
+<body>
+  <div id="insegel-container">
+    <header>
+      <div id="logo-container">
+          
+          <a href="../../index.html"><img src="../../_static/img/logo.svg"></a>
           
 
-          
-            <a href="../../index.html" class="icon icon-home"> Beancount
-          
-
-          
-          </a>
-
-          
-            
-            
-          
-
-          
-<div role="search">
-  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
-    <input type="text" name="q" placeholder="Search docs" />
-    <input type="hidden" name="check_keywords" value="yes" />
-    <input type="hidden" name="area" value="default" />
-  </form>
-</div>
-
-          
-        </div>
-
-        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
-          
-            
-            
-              
-            
-            
-              <p class="caption"><span class="caption-text">Contents:</span></p>
-<ul class="current">
-<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Beancount Modules</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="../core/index.html">Beancount Core</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../parser/index.html">Parser</a></li>
-<li class="toctree-l2 current"><a class="reference internal" href="index.html">Plugins</a><ul class="current">
-<li class="toctree-l3"><a class="reference internal" href="fix_payees.html">Fix Payees</a></li>
-<li class="toctree-l3"><a class="reference internal" href="tag_pending.html">Tag Pending</a></li>
-<li class="toctree-l3"><a class="reference internal" href="beancount.plugins.auto.html">beancount.plugins.auto</a></li>
-<li class="toctree-l3"><a class="reference internal" href="beancount.plugins.auto_accounts.html">beancount.plugins.auto_accounts</a></li>
-<li class="toctree-l3"><a class="reference internal" href="beancount.plugins.book_conversions.html">beancount.plugins.book_conversions</a></li>
-<li class="toctree-l3"><a class="reference internal" href="beancount.plugins.check_average_cost.html">beancount.plugins.check_average_cost</a></li>
-<li class="toctree-l3"><a class="reference internal" href="beancount.plugins.check_closing.html">beancount.plugins.check_closing</a></li>
-<li class="toctree-l3"><a class="reference internal" href="beancount.plugins.check_commodity.html">beancount.plugins.check_commodity</a></li>
-<li class="toctree-l3"><a class="reference internal" href="beancount.plugins.coherent_cost.html">beancount.plugins.coherent_cost</a></li>
-<li class="toctree-l3"><a class="reference internal" href="beancount.plugins.commodity_attr.html">beancount.plugins.commodity_attr</a></li>
-<li class="toctree-l3"><a class="reference internal" href="beancount.plugins.divert_expenses.html">beancount.plugins.divert_expenses</a></li>
-<li class="toctree-l3"><a class="reference internal" href="beancount.plugins.exclude_tag.html">beancount.plugins.exclude_tag</a></li>
-<li class="toctree-l3"><a class="reference internal" href="beancount.plugins.forecast.html">beancount.plugins.forecast</a></li>
-<li class="toctree-l3"><a class="reference internal" href="beancount.plugins.implicit_prices.html">beancount.plugins.implicit_prices</a></li>
-<li class="toctree-l3"><a class="reference internal" href="beancount.plugins.ira_contribs.html">beancount.plugins.ira_contribs</a></li>
-<li class="toctree-l3"><a class="reference internal" href="beancount.plugins.leafonly.html">beancount.plugins.leafonly</a></li>
-<li class="toctree-l3"><a class="reference internal" href="beancount.plugins.mark_unverified.html">beancount.plugins.mark_unverified</a></li>
-<li class="toctree-l3"><a class="reference internal" href="beancount.plugins.merge_meta.html">beancount.plugins.merge_meta</a></li>
-<li class="toctree-l3"><a class="reference internal" href="beancount.plugins.noduplicates.html">beancount.plugins.noduplicates</a></li>
-<li class="toctree-l3"><a class="reference internal" href="beancount.plugins.nounused.html">beancount.plugins.nounused</a></li>
-<li class="toctree-l3"><a class="reference internal" href="beancount.plugins.onecommodity.html">beancount.plugins.onecommodity</a></li>
-<li class="toctree-l3"><a class="reference internal" href="beancount.plugins.pedantic.html">beancount.plugins.pedantic</a></li>
-<li class="toctree-l3"><a class="reference internal" href="beancount.plugins.sellgains.html">beancount.plugins.sellgains</a></li>
-<li class="toctree-l3 current"><a class="current reference internal" href="#">beancount.plugins.split_expenses</a></li>
-<li class="toctree-l3"><a class="reference internal" href="beancount.plugins.unique_prices.html">beancount.plugins.unique_prices</a></li>
-<li class="toctree-l3"><a class="reference internal" href="beancount.plugins.unrealized.html">beancount.plugins.unrealized</a></li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-
-            
-          
-        </div>
       </div>
-    </nav>
+      <div id="project-container">
+        <h1>Beancount Documentation</h1>
+      </div>
+    </header>
 
-    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+    <div id="content-container">
 
-      
-      <nav class="wy-nav-top" aria-label="top navigation">
-        
-          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="../../index.html">Beancount</a>
-        
-      </nav>
-
-
-      <div class="wy-nav-content">
-        
-        <div class="rst-content">
-        
+      <div id="main-content-container">
+        <div id="main-content-header">
+          <h1>beancount.plugins.split_expenses</h1>
+        </div>
+        <div id="main-content">
           
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<div role="navigation" aria-label="breadcrumbs navigation">
-
-  <ul class="wy-breadcrumbs">
-    
-      <li><a href="../../index.html">Docs</a> &raquo;</li>
-        
-          <li><a href="../index.html">Beancount Modules</a> &raquo;</li>
-        
-          <li><a href="index.html">Plugins</a> &raquo;</li>
-        
-      <li>beancount.plugins.split_expenses</li>
-    
-    
-      <li class="wy-breadcrumbs-aside">
-        
-            
-            <a href="../../_sources/modules/plugins/beancount.plugins.split_expenses.rst.txt" rel="nofollow"> View page source</a>
-          
-        
-      </li>
-    
-  </ul>
-
-  
-  <hr/>
-</div>
-          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
-           <div itemprop="articleBody">
-            
   <div class="section" id="module-beancount.plugins.split_expenses">
 <span id="beancount-plugins-split-expenses"></span><h1>beancount.plugins.split_expenses<a class="headerlink" href="#module-beancount.plugins.split_expenses" title="Permalink to this headline">¶</a></h1>
 <p>Split expenses of a Beancount ledger between multiple people.</p>
@@ -326,52 +198,75 @@ between each other.</p>
 </div>
 
 
-           </div>
-           
-          </div>
-          <footer>
-  
-    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-      
-        <a href="beancount.plugins.unique_prices.html" class="btn btn-neutral float-right" title="beancount.plugins.unique_prices" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
-      
-      
-        <a href="beancount.plugins.sellgains.html" class="btn btn-neutral float-left" title="beancount.plugins.sellgains" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
-      
-    </div>
-  
-
-  <hr/>
-
-  <div role="contentinfo">
-    <p>
-        &copy; Copyright 2019, Martin Blais
-
-    </p>
-  </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
-
-</footer>
-
         </div>
       </div>
 
-    </section>
+      <div id="side-menu-container">
 
-  </div>
-  
+        <div id="search" role="search">
+        <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+            <input type="text" name="q" placeholder="Search..." />
+            <input type="hidden" name="check_keywords" value="yes" />
+            <input type="hidden" name="area" value="default" />
+        </form>
+</div>
 
+        <div id="side-menu" role="navigation">
 
-  <script type="text/javascript">
-      jQuery(function () {
-          SphinxRtdTheme.Navigation.enable(true);
-      });
-  </script>
-
-  
+          
   
     
-   
+  
+  
+    <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Beancount Modules</a></li>
+</ul>
+
+  
+
+
+        </div>
+
+        
+
+      </div>
+
+    </div>
+
+<footer>
+    <div id="footer-info">
+        <ul id="build-details">
+            
+                <li class="footer-element">
+                    
+                        <a href="../../_sources/modules/plugins/beancount.plugins.split_expenses.rst.txt" rel="nofollow"> source</a>
+                    
+                </li>
+            
+
+            
+
+            
+        </ul>
+        <div id="credit">
+            created with <a href="http://sphinx-doc.org/">Sphinx</a> and <a href="https://github.com/Autophagy/insegel">Insegel</a>
+
+        </div>
+    </div>
+
+    <a id="menu-toggle" class="fa fa-bars" aria-hidden="true"></a>
+
+    <script type="text/javascript">
+      $("#menu-toggle").click(function() {
+        $("#menu-toggle").toggleClass("toggled");
+        $("#side-menu-container").slideToggle(300);
+      });
+    </script>
+
+</footer> 
+
+</div>
 
 </body>
 </html>
