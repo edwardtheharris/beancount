@@ -10,6 +10,7 @@ Welcome to Beancount's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+   manual/index
    modules/index
 
 
