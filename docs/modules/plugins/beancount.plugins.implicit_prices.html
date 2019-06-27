@@ -1,0 +1,188 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>beancount.plugins.implicit_prices &#8212; Beancount 2.2.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="beancount.plugins.ira_contribs" href="beancount.plugins.ira_contribs.html" />
+    <link rel="prev" title="beancount.plugins.forecast" href="beancount.plugins.forecast.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-beancount.plugins.implicit_prices">
+<span id="beancount-plugins-implicit-prices"></span><h1>beancount.plugins.implicit_prices<a class="headerlink" href="#module-beancount.plugins.implicit_prices" title="Permalink to this headline">¶</a></h1>
+<p>This plugin synthesizes Price directives for all Postings with a price or
+directive or if it is an augmenting posting, has a cost directive.</p>
+<p class="rubric">Functions</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.plugins.implicit_prices.add_implicit_prices" title="beancount.plugins.implicit_prices.add_implicit_prices"><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_implicit_prices</span></code></a>(entries, unused_options_map)</p></td>
+<td><p>Insert implicitly defined prices from Transactions.</p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Classes</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.plugins.implicit_prices.ImplicitPriceError" title="beancount.plugins.implicit_prices.ImplicitPriceError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ImplicitPriceError</span></code></a>(source, message, entry)</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+<dl class="class">
+<dt id="beancount.plugins.implicit_prices.ImplicitPriceError">
+<em class="property">class </em><code class="sig-prename descclassname">beancount.plugins.implicit_prices.</code><code class="sig-name descname">ImplicitPriceError</code><span class="sig-paren">(</span><em class="sig-param">source</em>, <em class="sig-param">message</em>, <em class="sig-param">entry</em><span class="sig-paren">)</span><a class="headerlink" href="#beancount.plugins.implicit_prices.ImplicitPriceError" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="beancount.plugins.implicit_prices.ImplicitPriceError.entry">
+<em class="property">property </em><code class="sig-name descname">entry</code><a class="headerlink" href="#beancount.plugins.implicit_prices.ImplicitPriceError.entry" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 2</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.plugins.implicit_prices.ImplicitPriceError.message">
+<em class="property">property </em><code class="sig-name descname">message</code><a class="headerlink" href="#beancount.plugins.implicit_prices.ImplicitPriceError.message" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 1</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.plugins.implicit_prices.ImplicitPriceError.source">
+<em class="property">property </em><code class="sig-name descname">source</code><a class="headerlink" href="#beancount.plugins.implicit_prices.ImplicitPriceError.source" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.plugins.implicit_prices.add_implicit_prices">
+<code class="sig-prename descclassname">beancount.plugins.implicit_prices.</code><code class="sig-name descname">add_implicit_prices</code><span class="sig-paren">(</span><em class="sig-param">entries</em>, <em class="sig-param">unused_options_map</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/plugins/implicit_prices.html#add_implicit_prices"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.plugins.implicit_prices.add_implicit_prices" title="Permalink to this definition">¶</a></dt>
+<dd><p>Insert implicitly defined prices from Transactions.</p>
+<p>Explicit price entries are simply maintained in the output list. Prices from
+postings with costs or with prices from Transaction entries are synthesized
+as new Price entries in the list of entries output.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>entries</strong> – A list of directives. We’re interested only in the Transaction instances.</p></li>
+<li><p><strong>unused_options_map</strong> – A parser options dict.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A list of entries, possibly with more Price entries than before, and a
+list of errors.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">Beancount</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Beancount Modules</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../core/index.html">Beancount Core</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../parser/index.html">Parser</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Plugins</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Beancount Modules</a><ul>
+  <li><a href="index.html">Plugins</a><ul>
+      <li>Previous: <a href="beancount.plugins.forecast.html" title="previous chapter">beancount.plugins.forecast</a></li>
+      <li>Next: <a href="beancount.plugins.ira_contribs.html" title="next chapter">beancount.plugins.ira_contribs</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Martin Blais.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../../_sources/modules/plugins/beancount.plugins.implicit_prices.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

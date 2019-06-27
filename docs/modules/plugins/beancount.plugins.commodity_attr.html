@@ -1,0 +1,225 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>beancount.plugins.commodity_attr &#8212; Beancount 2.2.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="beancount.plugins.divert_expenses" href="beancount.plugins.divert_expenses.html" />
+    <link rel="prev" title="beancount.plugins.coherent_cost" href="beancount.plugins.coherent_cost.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-beancount.plugins.commodity_attr">
+<span id="beancount-plugins-commodity-attr"></span><h1>beancount.plugins.commodity_attr<a class="headerlink" href="#module-beancount.plugins.commodity_attr" title="Permalink to this headline">¶</a></h1>
+<p>A plugin that asserts that all Commodity directives have a particular
+attribute and that it is part of a set of enum values.</p>
+<p>The configuration must be a mapping of attribute name to list of valid values,
+like this:</p>
+<blockquote>
+<div><dl class="simple">
+<dt>plugin “beancount.plugins.commodity_attr” “{</dt><dd><p>‘sector’: [‘Technology’, ‘Financials’, ‘Energy’],
+‘name’: None,</p>
+</dd>
+</dl>
+<p>}”</p>
+</div></blockquote>
+<p>The plugin issues an error if a Commodity directive is missing the attribute, or
+if the attribute value is not in the valid set. If you’d like to just ensure the
+attribute is set, set the list of valid values to None, as in the ‘name’
+attribute in the example above.</p>
+<p class="rubric">Functions</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.plugins.commodity_attr.validate_commodity_attr" title="beancount.plugins.commodity_attr.validate_commodity_attr"><code class="xref py py-obj docutils literal notranslate"><span class="pre">validate_commodity_attr</span></code></a>(entries, …)</p></td>
+<td><p>Check that all Commodity directives have a valid attribute.</p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Classes</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.plugins.commodity_attr.CommodityError" title="beancount.plugins.commodity_attr.CommodityError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CommodityError</span></code></a>(source, message, entry)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.plugins.commodity_attr.ConfigError" title="beancount.plugins.commodity_attr.ConfigError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ConfigError</span></code></a>(source, message, entry)</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+<dl class="class">
+<dt id="beancount.plugins.commodity_attr.ConfigError">
+<em class="property">class </em><code class="sig-prename descclassname">beancount.plugins.commodity_attr.</code><code class="sig-name descname">ConfigError</code><span class="sig-paren">(</span><em class="sig-param">source</em>, <em class="sig-param">message</em>, <em class="sig-param">entry</em><span class="sig-paren">)</span><a class="headerlink" href="#beancount.plugins.commodity_attr.ConfigError" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="beancount.plugins.commodity_attr.ConfigError.entry">
+<em class="property">property </em><code class="sig-name descname">entry</code><a class="headerlink" href="#beancount.plugins.commodity_attr.ConfigError.entry" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 2</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.plugins.commodity_attr.ConfigError.message">
+<em class="property">property </em><code class="sig-name descname">message</code><a class="headerlink" href="#beancount.plugins.commodity_attr.ConfigError.message" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 1</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.plugins.commodity_attr.ConfigError.source">
+<em class="property">property </em><code class="sig-name descname">source</code><a class="headerlink" href="#beancount.plugins.commodity_attr.ConfigError.source" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="beancount.plugins.commodity_attr.CommodityError">
+<em class="property">class </em><code class="sig-prename descclassname">beancount.plugins.commodity_attr.</code><code class="sig-name descname">CommodityError</code><span class="sig-paren">(</span><em class="sig-param">source</em>, <em class="sig-param">message</em>, <em class="sig-param">entry</em><span class="sig-paren">)</span><a class="headerlink" href="#beancount.plugins.commodity_attr.CommodityError" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="beancount.plugins.commodity_attr.CommodityError.entry">
+<em class="property">property </em><code class="sig-name descname">entry</code><a class="headerlink" href="#beancount.plugins.commodity_attr.CommodityError.entry" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 2</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.plugins.commodity_attr.CommodityError.message">
+<em class="property">property </em><code class="sig-name descname">message</code><a class="headerlink" href="#beancount.plugins.commodity_attr.CommodityError.message" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 1</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.plugins.commodity_attr.CommodityError.source">
+<em class="property">property </em><code class="sig-name descname">source</code><a class="headerlink" href="#beancount.plugins.commodity_attr.CommodityError.source" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.plugins.commodity_attr.validate_commodity_attr">
+<code class="sig-prename descclassname">beancount.plugins.commodity_attr.</code><code class="sig-name descname">validate_commodity_attr</code><span class="sig-paren">(</span><em class="sig-param">entries</em>, <em class="sig-param">unused_options_map</em>, <em class="sig-param">config_str</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/plugins/commodity_attr.html#validate_commodity_attr"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.plugins.commodity_attr.validate_commodity_attr" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check that all Commodity directives have a valid attribute.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>entries</strong> – A list of directives.</p></li>
+<li><p><strong>unused_options_map</strong> – An options map.</p></li>
+<li><p><strong>config_str</strong> – A configuration string.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A list of new errors, if any were found.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">Beancount</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Beancount Modules</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../core/index.html">Beancount Core</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../parser/index.html">Parser</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Plugins</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Beancount Modules</a><ul>
+  <li><a href="index.html">Plugins</a><ul>
+      <li>Previous: <a href="beancount.plugins.coherent_cost.html" title="previous chapter">beancount.plugins.coherent_cost</a></li>
+      <li>Next: <a href="beancount.plugins.divert_expenses.html" title="next chapter">beancount.plugins.divert_expenses</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Martin Blais.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../../_sources/modules/plugins/beancount.plugins.commodity_attr.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

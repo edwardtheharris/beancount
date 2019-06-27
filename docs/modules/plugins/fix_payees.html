@@ -1,0 +1,195 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Fix Payees &#8212; Beancount 2.2.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="beancount.plugins.auto" href="beancount.plugins.auto.html" />
+    <link rel="prev" title="Plugins" href="index.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-beancount.plugins.fix_payees">
+<span id="fix-payees"></span><h1>Fix Payees<a class="headerlink" href="#module-beancount.plugins.fix_payees" title="Permalink to this headline">¶</a></h1>
+<p>Rename payees based on a set of rules.</p>
+<p>This can be used to clean up dirty imported payee names.</p>
+<p>This plugin accepts a list of rules in this format:</p>
+<blockquote>
+<div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">plugin</span> <span class="s2">&quot;beancount.plugins.fix_payees&quot;</span> <span class="s2">&quot;[</span>
+     <span class="p">(</span><span class="n">PAYEE</span><span class="p">,</span> <span class="n">MATCH1</span><span class="p">,</span> <span class="n">MATCH2</span><span class="p">,</span> <span class="o">...</span><span class="p">),</span>
+<span class="p">]</span><span class="s2">&quot;</span>
+</pre></div>
+</div>
+</div></blockquote>
+<p>Each of the “MATCH” clauses is a string, in the format:</p>
+<blockquote>
+<div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="s2">&quot;A:&lt;regexp&gt;&quot;</span> <span class="p">:</span> <span class="n">Match</span> <span class="n">the</span> <span class="n">account</span> <span class="n">name</span><span class="o">.</span>
+<span class="s2">&quot;D:&lt;regexp&gt;&quot;</span> <span class="p">:</span> <span class="n">Match</span> <span class="n">the</span> <span class="n">payee</span> <span class="ow">or</span> <span class="n">the</span> <span class="n">narration</span><span class="o">.</span>
+</pre></div>
+</div>
+</div></blockquote>
+<p>The plugin matches the Transactions in the file and if there is a
+case-insensitive match against the regular expression (we use re.search()),
+replaces the payee name by “PAYEE”. If multiple rules match, only the first rule
+is used.</p>
+<p>For example:</p>
+<blockquote>
+<div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">plugin</span> <span class="s2">&quot;beancount.plugins.fix_payees&quot;</span> <span class="s2">&quot;[</span>
+ <span class="p">(</span><span class="s2">&quot;T-Mobile USA&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;A:Expenses:Communications:Phone&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;D:t-mobile&quot;</span><span class="p">),</span>
+ <span class="p">(</span><span class="s2">&quot;Con Edison&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;A:Expenses:Home:Electricity&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;D:con ?ed&quot;</span><span class="p">),</span>      <span class="p">(</span><span class="s2">&quot;Birreria @ Eataly&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;D:EATALY BIRRERIA&quot;</span><span class="p">),</span>
+<span class="p">]</span><span class="s2">&quot;</span>
+</pre></div>
+</div>
+</div></blockquote>
+<dl class="class">
+<dt id="beancount.plugins.fix_payees.FixPayeesError">
+<em class="property">class </em><code class="sig-prename descclassname">beancount.plugins.fix_payees.</code><code class="sig-name descname">FixPayeesError</code><span class="sig-paren">(</span><em class="sig-param">source</em>, <em class="sig-param">message</em>, <em class="sig-param">entry</em><span class="sig-paren">)</span><a class="headerlink" href="#beancount.plugins.fix_payees.FixPayeesError" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="beancount.plugins.fix_payees.FixPayeesError.entry">
+<em class="property">property </em><code class="sig-name descname">entry</code><a class="headerlink" href="#beancount.plugins.fix_payees.FixPayeesError.entry" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 2</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.plugins.fix_payees.FixPayeesError.message">
+<em class="property">property </em><code class="sig-name descname">message</code><a class="headerlink" href="#beancount.plugins.fix_payees.FixPayeesError.message" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 1</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.plugins.fix_payees.FixPayeesError.source">
+<em class="property">property </em><code class="sig-name descname">source</code><a class="headerlink" href="#beancount.plugins.fix_payees.FixPayeesError.source" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.plugins.fix_payees.fix_payees">
+<code class="sig-prename descclassname">beancount.plugins.fix_payees.</code><code class="sig-name descname">fix_payees</code><span class="sig-paren">(</span><em class="sig-param">entries</em>, <em class="sig-param">options_map</em>, <em class="sig-param">config</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/plugins/fix_payees.html#fix_payees"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.plugins.fix_payees.fix_payees" title="Permalink to this definition">¶</a></dt>
+<dd><p>Rename payees based on a set of rules. See module docstring for details.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>entries</strong> (<em>list</em>) – a list of entry instances</p></li>
+<li><p><strong>options_map</strong> (<em>dict</em>) – a dict of options parsed from the file</p></li>
+<li><p><strong>config</strong> (<em>str</em>) – A configuration string, which is intended to be a list of
+<cite>(PAYEE, MATCH, …)</cite> rules. See module docstring for details.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A tuple of entries and errors.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">Beancount</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Beancount Modules</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../core/index.html">Beancount Core</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../parser/index.html">Parser</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Plugins</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Beancount Modules</a><ul>
+  <li><a href="index.html">Plugins</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">Plugins</a></li>
+      <li>Next: <a href="beancount.plugins.auto.html" title="next chapter">beancount.plugins.auto</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Martin Blais.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../../_sources/modules/plugins/fix_payees.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

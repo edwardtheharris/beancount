@@ -1,0 +1,211 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Plugins &#8212; Beancount 2.2.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Fix Payees" href="fix_payees.html" />
+    <link rel="prev" title="beancount.parser.printer" href="../parser/beancount.parser.printer.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="plugins">
+<h1>Plugins<a class="headerlink" href="#plugins" title="Permalink to this headline">¶</a></h1>
+<div class="toctree-wrapper compound">
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="fix_payees.html">Fix Payees</a></li>
+</ul>
+</div>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="beancount.plugins.auto.html#module-beancount.plugins.auto" title="beancount.plugins.auto"><code class="xref py py-obj docutils literal notranslate"><span class="pre">auto</span></code></a></p></td>
+<td><p>A plugin of plugins which triggers are all the automatic and lax plugins.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="beancount.plugins.auto_accounts.html#module-beancount.plugins.auto_accounts" title="beancount.plugins.auto_accounts"><code class="xref py py-obj docutils literal notranslate"><span class="pre">auto_accounts</span></code></a></p></td>
+<td><p>This module automatically inserts Open directives for accounts not opened (at the date of the first entry) and automatically removes open directives for unused accounts.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="beancount.plugins.book_conversions.html#module-beancount.plugins.book_conversions" title="beancount.plugins.book_conversions"><code class="xref py py-obj docutils literal notranslate"><span class="pre">book_conversions</span></code></a></p></td>
+<td><p>A plugin that automatically converts postings at price to postings held at cost, applying an automatic booking algorithm in assigning the cost bases and matching lots.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="beancount.plugins.check_average_cost.html#module-beancount.plugins.check_average_cost" title="beancount.plugins.check_average_cost"><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_average_cost</span></code></a></p></td>
+<td><p>A plugin that ensures cost basis is preserved in unbooked transactions.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="beancount.plugins.check_closing.html#module-beancount.plugins.check_closing" title="beancount.plugins.check_closing"><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_closing</span></code></a></p></td>
+<td><p>A plugin that automatically inserts a balance check on a tagged closing posting.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="beancount.plugins.check_commodity.html#module-beancount.plugins.check_commodity" title="beancount.plugins.check_commodity"><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_commodity</span></code></a></p></td>
+<td><p>A plugin that verifies that all seen commodities have a Commodity directive.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="beancount.plugins.coherent_cost.html#module-beancount.plugins.coherent_cost" title="beancount.plugins.coherent_cost"><code class="xref py py-obj docutils literal notranslate"><span class="pre">coherent_cost</span></code></a></p></td>
+<td><p>This plugin validates that currencies held at cost aren’t ever converted at price and vice-versa.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="beancount.plugins.commodity_attr.html#module-beancount.plugins.commodity_attr" title="beancount.plugins.commodity_attr"><code class="xref py py-obj docutils literal notranslate"><span class="pre">commodity_attr</span></code></a></p></td>
+<td><p>A plugin that asserts that all Commodity directives have a particular attribute and that it is part of a set of enum values.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="beancount.plugins.divert_expenses.html#module-beancount.plugins.divert_expenses" title="beancount.plugins.divert_expenses"><code class="xref py py-obj docutils literal notranslate"><span class="pre">divert_expenses</span></code></a></p></td>
+<td><p>For tagged transactions, convert expenses to a single account.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="beancount.plugins.exclude_tag.html#module-beancount.plugins.exclude_tag" title="beancount.plugins.exclude_tag"><code class="xref py py-obj docutils literal notranslate"><span class="pre">exclude_tag</span></code></a></p></td>
+<td><p>Exclude #virtual tags.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="beancount.plugins.forecast.html#module-beancount.plugins.forecast" title="beancount.plugins.forecast"><code class="xref py py-obj docutils literal notranslate"><span class="pre">forecast</span></code></a></p></td>
+<td><p>An example of adding a forecasting feature to Beancount via a plugin.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="beancount.plugins.implicit_prices.html#module-beancount.plugins.implicit_prices" title="beancount.plugins.implicit_prices"><code class="xref py py-obj docutils literal notranslate"><span class="pre">implicit_prices</span></code></a></p></td>
+<td><p>This plugin synthesizes Price directives for all Postings with a price or directive or if it is an augmenting posting, has a cost directive.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="beancount.plugins.ira_contribs.html#module-beancount.plugins.ira_contribs" title="beancount.plugins.ira_contribs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ira_contribs</span></code></a></p></td>
+<td><p>Automatically adding IRA contributions postings.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="beancount.plugins.leafonly.html#module-beancount.plugins.leafonly" title="beancount.plugins.leafonly"><code class="xref py py-obj docutils literal notranslate"><span class="pre">leafonly</span></code></a></p></td>
+<td><p>A plugin that issues errors when amounts are posted to non-leaf accounts, that is, accounts with child accounts.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="beancount.plugins.mark_unverified.html#module-beancount.plugins.mark_unverified" title="beancount.plugins.mark_unverified"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mark_unverified</span></code></a></p></td>
+<td><p>Add metadata to Postings which occur after their last Balance directives.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="beancount.plugins.merge_meta.html#module-beancount.plugins.merge_meta" title="beancount.plugins.merge_meta"><code class="xref py py-obj docutils literal notranslate"><span class="pre">merge_meta</span></code></a></p></td>
+<td><p>Merge the metadata from a second file into the current set of entries.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="beancount.plugins.noduplicates.html#module-beancount.plugins.noduplicates" title="beancount.plugins.noduplicates"><code class="xref py py-obj docutils literal notranslate"><span class="pre">noduplicates</span></code></a></p></td>
+<td><p>This plugin validates that there are no duplicate transactions.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="beancount.plugins.nounused.html#module-beancount.plugins.nounused" title="beancount.plugins.nounused"><code class="xref py py-obj docutils literal notranslate"><span class="pre">nounused</span></code></a></p></td>
+<td><p>This plugin validates that there are no unused accounts.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="beancount.plugins.onecommodity.html#module-beancount.plugins.onecommodity" title="beancount.plugins.onecommodity"><code class="xref py py-obj docutils literal notranslate"><span class="pre">onecommodity</span></code></a></p></td>
+<td><p>A plugin that issues errors when more than one commodity is used in an account.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="beancount.plugins.pedantic.html#module-beancount.plugins.pedantic" title="beancount.plugins.pedantic"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pedantic</span></code></a></p></td>
+<td><p>A plugin of plugins which triggers are all the pedantic plugins.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="beancount.plugins.sellgains.html#module-beancount.plugins.sellgains" title="beancount.plugins.sellgains"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sellgains</span></code></a></p></td>
+<td><p>A plugin that cross-checks declared gains against prices on lot sales.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="beancount.plugins.split_expenses.html#module-beancount.plugins.split_expenses" title="beancount.plugins.split_expenses"><code class="xref py py-obj docutils literal notranslate"><span class="pre">split_expenses</span></code></a></p></td>
+<td><p>Split expenses of a Beancount ledger between multiple people.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="beancount.plugins.tag_pending.html#module-beancount.plugins.tag_pending" title="beancount.plugins.tag_pending"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tag_pending</span></code></a></p></td>
+<td><p>An example of tracking unpaid payables or receivables.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="beancount.plugins.unique_prices.html#module-beancount.plugins.unique_prices" title="beancount.plugins.unique_prices"><code class="xref py py-obj docutils literal notranslate"><span class="pre">unique_prices</span></code></a></p></td>
+<td><p>This module adds validation that there is a single price defined per date and base/quote currencies.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="beancount.plugins.unrealized.html#module-beancount.plugins.unrealized" title="beancount.plugins.unrealized"><code class="xref py py-obj docutils literal notranslate"><span class="pre">unrealized</span></code></a></p></td>
+<td><p>Compute unrealized gains.</p></td>
+</tr>
+</tbody>
+</table>
+<span class="target" id="module-beancount.plugins"></span><p>Example plugins for filtering transactions.</p>
+<p>These are various examples of how to filter entries in various creative ways.</p>
+<p>IMPORTANT: These are not meant to tbe complete features, rather just experiments
+in problem-solving using Beancount, work-in-progress that can be selectively
+installed via a –plugin option, or one-offs to answer questions on the
+mailing-list.</p>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">Beancount</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Beancount Modules</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../core/index.html">Beancount Core</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../parser/index.html">Parser</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Plugins</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Beancount Modules</a><ul>
+      <li>Previous: <a href="../parser/beancount.parser.printer.html" title="previous chapter">beancount.parser.printer</a></li>
+      <li>Next: <a href="fix_payees.html" title="next chapter">Fix Payees</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Martin Blais.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../../_sources/modules/plugins/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

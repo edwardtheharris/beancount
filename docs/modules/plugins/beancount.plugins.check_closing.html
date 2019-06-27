@@ -1,0 +1,182 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>beancount.plugins.check_closing &#8212; Beancount 2.2.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="beancount.plugins.check_commodity" href="beancount.plugins.check_commodity.html" />
+    <link rel="prev" title="beancount.plugins.check_average_cost" href="beancount.plugins.check_average_cost.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-beancount.plugins.check_closing">
+<span id="beancount-plugins-check-closing"></span><h1>beancount.plugins.check_closing<a class="headerlink" href="#module-beancount.plugins.check_closing" title="Permalink to this headline">¶</a></h1>
+<p>A plugin that automatically inserts a balance check on a tagged closing posting.</p>
+<p>Some postings are known to the user to be “closing trades”, which means that the
+resulting position of the instrument just after the trade should be zero. For
+instance, this is the case for most ordinary options trading, only one lot of a
+particular instrument is held, and eventually expires or gets sold off in its
+entirely. One would like to confirm that, and the way to do this in Beancount is
+to insert a balance check.</p>
+<p>This plugin allows you to do that more simply, by inserting metadata. For
+example, this transaction:</p>
+<blockquote>
+<div><dl>
+<dt>2018-02-16 * “SOLD -14 QQQ 100 16 FEB 18 160 CALL &#64;5.31”</dt><dd><dl class="simple">
+<dt>Assets:US:Brokerage:Main:Options     -1400 QQQ180216C160 {2.70 USD} &#64; 5.31 USD</dt><dd><p>closing: TRUE</p>
+</dd>
+</dl>
+<p>Expenses:Financial:Commissions       17.45 USD
+Expenses:Financial:Fees               0.42 USD
+Assets:US:Brokerage:Main:Cash      7416.13 USD
+Income:US:Brokerage:Main:PnL</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>Would expand into the following two directives:</p>
+<blockquote>
+<div><dl class="simple">
+<dt>2018-02-16 * “SOLD -14 QQQ 100 16 FEB 18 160 CALL &#64;5.31”</dt><dd><p>Assets:US:Brokerage:Main:Options     -1400 QQQ180216C160 {2.70 USD} &#64; 5.31 USD
+Expenses:Financial:Commissions       17.45 USD
+Expenses:Financial:Fees               0.42 USD
+Assets:US:Brokerage:Main:Cash      7416.13 USD
+Income:US:Brokerage:Main:PnL</p>
+</dd>
+</dl>
+<p>2018-02-17 balance Assets:US:Brokerage:Main:Options  0 QQQ180216C160</p>
+</div></blockquote>
+<p>Insert the closing line when you know you’re closing the position.</p>
+<p class="rubric">Functions</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.plugins.check_closing.check_closing" title="beancount.plugins.check_closing.check_closing"><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_closing</span></code></a>(entries, options_map)</p></td>
+<td><p>Expand ‘closing’ metadata to a zero balance check.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="function">
+<dt id="beancount.plugins.check_closing.check_closing">
+<code class="sig-prename descclassname">beancount.plugins.check_closing.</code><code class="sig-name descname">check_closing</code><span class="sig-paren">(</span><em class="sig-param">entries</em>, <em class="sig-param">options_map</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/plugins/check_closing.html#check_closing"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.plugins.check_closing.check_closing" title="Permalink to this definition">¶</a></dt>
+<dd><p>Expand ‘closing’ metadata to a zero balance check.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>entries</strong> – A list of directives.</p></li>
+<li><p><strong>unused_options_map</strong> – An options map.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A list of new errors, if any were found.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">Beancount</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Beancount Modules</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../core/index.html">Beancount Core</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../parser/index.html">Parser</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Plugins</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Beancount Modules</a><ul>
+  <li><a href="index.html">Plugins</a><ul>
+      <li>Previous: <a href="beancount.plugins.check_average_cost.html" title="previous chapter">beancount.plugins.check_average_cost</a></li>
+      <li>Next: <a href="beancount.plugins.check_commodity.html" title="next chapter">beancount.plugins.check_commodity</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Martin Blais.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../../_sources/modules/plugins/beancount.plugins.check_closing.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

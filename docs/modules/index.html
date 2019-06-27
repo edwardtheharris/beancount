@@ -41,6 +41,7 @@
 <li class="toctree-l1"><a class="reference internal" href="core/index.html">Beancount Core</a></li>
 <li class="toctree-l1"><a class="reference internal" href="parser/index.html">Parser</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="parser/parser.html">parser.parser</a></li>
+<li class="toctree-l2"><a class="reference internal" href="parser/printer.html">parser.printer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="parser/beancount.parser.booking_full.html">beancount.parser.booking_full</a></li>
 <li class="toctree-l2"><a class="reference internal" href="parser/beancount.parser.booking_method.html">beancount.parser.booking_method</a></li>
 <li class="toctree-l2"><a class="reference internal" href="parser/beancount.parser.booking.html">beancount.parser.booking</a></li>
@@ -51,6 +52,35 @@
 <li class="toctree-l2"><a class="reference internal" href="parser/beancount.parser.options.html">beancount.parser.options</a></li>
 <li class="toctree-l2"><a class="reference internal" href="parser/beancount.parser.parser.html">beancount.parser.parser</a></li>
 <li class="toctree-l2"><a class="reference internal" href="parser/beancount.parser.printer.html">beancount.parser.printer</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="plugins/index.html">Plugins</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="plugins/fix_payees.html">Fix Payees</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plugins/beancount.plugins.auto.html">beancount.plugins.auto</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plugins/beancount.plugins.auto_accounts.html">beancount.plugins.auto_accounts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plugins/beancount.plugins.book_conversions.html">beancount.plugins.book_conversions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plugins/beancount.plugins.check_average_cost.html">beancount.plugins.check_average_cost</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plugins/beancount.plugins.check_closing.html">beancount.plugins.check_closing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plugins/beancount.plugins.check_commodity.html">beancount.plugins.check_commodity</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plugins/beancount.plugins.coherent_cost.html">beancount.plugins.coherent_cost</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plugins/beancount.plugins.commodity_attr.html">beancount.plugins.commodity_attr</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plugins/beancount.plugins.divert_expenses.html">beancount.plugins.divert_expenses</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plugins/beancount.plugins.exclude_tag.html">beancount.plugins.exclude_tag</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plugins/beancount.plugins.forecast.html">beancount.plugins.forecast</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plugins/beancount.plugins.implicit_prices.html">beancount.plugins.implicit_prices</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plugins/beancount.plugins.ira_contribs.html">beancount.plugins.ira_contribs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plugins/beancount.plugins.leafonly.html">beancount.plugins.leafonly</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plugins/beancount.plugins.mark_unverified.html">beancount.plugins.mark_unverified</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plugins/beancount.plugins.merge_meta.html">beancount.plugins.merge_meta</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plugins/beancount.plugins.noduplicates.html">beancount.plugins.noduplicates</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plugins/beancount.plugins.nounused.html">beancount.plugins.nounused</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plugins/beancount.plugins.onecommodity.html">beancount.plugins.onecommodity</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plugins/beancount.plugins.pedantic.html">beancount.plugins.pedantic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plugins/beancount.plugins.sellgains.html">beancount.plugins.sellgains</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plugins/beancount.plugins.split_expenses.html">beancount.plugins.split_expenses</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plugins/beancount.plugins.tag_pending.html">beancount.plugins.tag_pending</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plugins/beancount.plugins.unique_prices.html">beancount.plugins.unique_prices</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plugins/beancount.plugins.unrealized.html">beancount.plugins.unrealized</a></li>
 </ul>
 </li>
 </ul>
@@ -79,6 +109,7 @@
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Beancount Modules</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="core/index.html">Beancount Core</a></li>
 <li class="toctree-l2"><a class="reference internal" href="parser/index.html">Parser</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plugins/index.html">Plugins</a></li>
 </ul>
 </li>
 </ul>
@@ -118,7 +149,7 @@
       &copy;2019, Martin Blais.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.0</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.2</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

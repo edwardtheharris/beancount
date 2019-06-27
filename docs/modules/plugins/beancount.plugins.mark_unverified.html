@@ -1,0 +1,162 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>beancount.plugins.mark_unverified &#8212; Beancount 2.2.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="beancount.plugins.merge_meta" href="beancount.plugins.merge_meta.html" />
+    <link rel="prev" title="beancount.plugins.leafonly" href="beancount.plugins.leafonly.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-beancount.plugins.mark_unverified">
+<span id="beancount-plugins-mark-unverified"></span><h1>beancount.plugins.mark_unverified<a class="headerlink" href="#module-beancount.plugins.mark_unverified" title="Permalink to this headline">¶</a></h1>
+<p>Add metadata to Postings which occur after their last Balance directives.</p>
+<p>Some people use Balance directives as a way to indicate that all postings before
+them are verified. They want to compute balances in each account as of the date
+of that last Balance directives. One way to do that is to use this plugin to
+mark the postings which occur after and to then filter them out using a WHERE
+clause on that metadata:</p>
+<blockquote>
+<div><p>SELECT account, sum(position) WHERE NOT meta(“unverified”)</p>
+</div></blockquote>
+<p>Note that doing such a filtering may result in a list of balances which may not
+add to zero.</p>
+<p>Also, postings for accounts without a single Balance directive on them will not
+be marked as unverified as all (otherwise all the postings would be marked, this
+would make no sense).</p>
+<p class="rubric">Functions</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.plugins.mark_unverified.mark_unverified" title="beancount.plugins.mark_unverified.mark_unverified"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mark_unverified</span></code></a>(entries, options_map)</p></td>
+<td><p>Add metadata to postings after the last Balance entry.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="function">
+<dt id="beancount.plugins.mark_unverified.mark_unverified">
+<code class="sig-prename descclassname">beancount.plugins.mark_unverified.</code><code class="sig-name descname">mark_unverified</code><span class="sig-paren">(</span><em class="sig-param">entries</em>, <em class="sig-param">options_map</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/plugins/mark_unverified.html#mark_unverified"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.plugins.mark_unverified.mark_unverified" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add metadata to postings after the last Balance entry. See module doc.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>entries</strong> – A list of data directives.</p></li>
+<li><p><strong>options_map</strong> – A dict of options, that confirms to beancount.parser.options.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A list of entries, which includes the new unrealized capital gains entries
+at the end, and a list of errors. The new list of entries is still sorted.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">Beancount</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Beancount Modules</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../core/index.html">Beancount Core</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../parser/index.html">Parser</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Plugins</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Beancount Modules</a><ul>
+  <li><a href="index.html">Plugins</a><ul>
+      <li>Previous: <a href="beancount.plugins.leafonly.html" title="previous chapter">beancount.plugins.leafonly</a></li>
+      <li>Next: <a href="beancount.plugins.merge_meta.html" title="next chapter">beancount.plugins.merge_meta</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Martin Blais.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../../_sources/modules/plugins/beancount.plugins.mark_unverified.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,215 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>beancount.plugins.unrealized &#8212; Beancount 2.2.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="prev" title="beancount.plugins.unique_prices" href="beancount.plugins.unique_prices.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-beancount.plugins.unrealized">
+<span id="beancount-plugins-unrealized"></span><h1>beancount.plugins.unrealized<a class="headerlink" href="#module-beancount.plugins.unrealized" title="Permalink to this headline">¶</a></h1>
+<p>Compute unrealized gains.</p>
+<p>The configuration for this plugin is a single string, the name of the subaccount
+to add to post the unrealized gains to, like this:</p>
+<blockquote>
+<div><p>plugin “beancount.plugins.unrealized” “Unrealized”</p>
+</div></blockquote>
+<p>If you don’t specify a name for the subaccount (the configuration value is
+optional), by default it inserts the unrealized gains in the same account that
+is being adjusted.</p>
+<p class="rubric">Functions</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.plugins.unrealized.add_unrealized_gains" title="beancount.plugins.unrealized.add_unrealized_gains"><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_unrealized_gains</span></code></a>(entries, options_map[, …])</p></td>
+<td><p>Insert entries for unrealized capital gains.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.plugins.unrealized.get_unrealized_entries" title="beancount.plugins.unrealized.get_unrealized_entries"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_unrealized_entries</span></code></a>(entries)</p></td>
+<td><p>Return entries automatically created for unrealized gains.</p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Classes</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.plugins.unrealized.UnrealizedError" title="beancount.plugins.unrealized.UnrealizedError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UnrealizedError</span></code></a>(source, message, entry)</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+<dl class="class">
+<dt id="beancount.plugins.unrealized.UnrealizedError">
+<em class="property">class </em><code class="sig-prename descclassname">beancount.plugins.unrealized.</code><code class="sig-name descname">UnrealizedError</code><span class="sig-paren">(</span><em class="sig-param">source</em>, <em class="sig-param">message</em>, <em class="sig-param">entry</em><span class="sig-paren">)</span><a class="headerlink" href="#beancount.plugins.unrealized.UnrealizedError" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="beancount.plugins.unrealized.UnrealizedError.entry">
+<em class="property">property </em><code class="sig-name descname">entry</code><a class="headerlink" href="#beancount.plugins.unrealized.UnrealizedError.entry" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 2</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.plugins.unrealized.UnrealizedError.message">
+<em class="property">property </em><code class="sig-name descname">message</code><a class="headerlink" href="#beancount.plugins.unrealized.UnrealizedError.message" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 1</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.plugins.unrealized.UnrealizedError.source">
+<em class="property">property </em><code class="sig-name descname">source</code><a class="headerlink" href="#beancount.plugins.unrealized.UnrealizedError.source" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.plugins.unrealized.add_unrealized_gains">
+<code class="sig-prename descclassname">beancount.plugins.unrealized.</code><code class="sig-name descname">add_unrealized_gains</code><span class="sig-paren">(</span><em class="sig-param">entries</em>, <em class="sig-param">options_map</em>, <em class="sig-param">subaccount=None</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/plugins/unrealized.html#add_unrealized_gains"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.plugins.unrealized.add_unrealized_gains" title="Permalink to this definition">¶</a></dt>
+<dd><p>Insert entries for unrealized capital gains.</p>
+<p>This function inserts entries that represent unrealized gains, at the end of
+the available history. It returns a new list of entries, with the new gains
+inserted. It replaces the account type with an entry in an income account.
+Optionally, it can book the gain in a subaccount of the original and income
+accounts.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>entries</strong> – A list of data directives.</p></li>
+<li><p><strong>options_map</strong> – A dict of options, that confirms to beancount.parser.options.</p></li>
+<li><p><strong>subaccount</strong> – A string, and optional the name of a subaccount to create
+under an account to book the unrealized gain. If this is left to its
+default value, the gain is booked directly in the same account.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A list of entries, which includes the new unrealized capital gains entries
+at the end, and a list of errors. The new list of entries is still sorted.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.plugins.unrealized.get_unrealized_entries">
+<code class="sig-prename descclassname">beancount.plugins.unrealized.</code><code class="sig-name descname">get_unrealized_entries</code><span class="sig-paren">(</span><em class="sig-param">entries</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/plugins/unrealized.html#get_unrealized_entries"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.plugins.unrealized.get_unrealized_entries" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return entries automatically created for unrealized gains.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>entries</strong> – A list of directives.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A list of directives, all of which are in the original list.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">Beancount</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Beancount Modules</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../core/index.html">Beancount Core</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../parser/index.html">Parser</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Plugins</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Beancount Modules</a><ul>
+  <li><a href="index.html">Plugins</a><ul>
+      <li>Previous: <a href="beancount.plugins.unique_prices.html" title="previous chapter">beancount.plugins.unique_prices</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Martin Blais.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../../_sources/modules/plugins/beancount.plugins.unrealized.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

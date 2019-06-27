@@ -1,0 +1,166 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>beancount.plugins.merge_meta &#8212; Beancount 2.2.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="beancount.plugins.noduplicates" href="beancount.plugins.noduplicates.html" />
+    <link rel="prev" title="beancount.plugins.mark_unverified" href="beancount.plugins.mark_unverified.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-beancount.plugins.merge_meta">
+<span id="beancount-plugins-merge-meta"></span><h1>beancount.plugins.merge_meta<a class="headerlink" href="#module-beancount.plugins.merge_meta" title="Permalink to this headline">¶</a></h1>
+<p>Merge the metadata from a second file into the current set of entries.</p>
+<p>This is useful if you like to keep more sensitive private data, such as account
+numbers or passwords, in a second, possibly encrypted file. This can be used to
+generate a will, for instance, for your loved ones to be able to figure where
+all your assets are in case you pass away. You can store all the super secret
+stuff in a more closely guarded, hidden away separate file.</p>
+<p>The metadata from</p>
+<ul class="simple">
+<li><p>Open directives: Account name must match.</p></li>
+<li><p>Close directives: Account name must match.</p></li>
+<li><p>Commodity directives: Currency must match.</p></li>
+</ul>
+<p>are copied over. Metadata from the external file conflicting with that present
+in the main file overwrites it (external data wins).</p>
+<blockquote>
+<div><p>WARNING! If you include an encrypted file and the main file is not encrypted,
+the contents extraction from the encrypted file may appear in the cache.</p>
+</div></blockquote>
+<p class="rubric">Functions</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.plugins.merge_meta.merge_meta" title="beancount.plugins.merge_meta.merge_meta"><code class="xref py py-obj docutils literal notranslate"><span class="pre">merge_meta</span></code></a>(entries, options_map, config)</p></td>
+<td><p>Load a secondary file and merge its metadata in our given set of entries.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="function">
+<dt id="beancount.plugins.merge_meta.merge_meta">
+<code class="sig-prename descclassname">beancount.plugins.merge_meta.</code><code class="sig-name descname">merge_meta</code><span class="sig-paren">(</span><em class="sig-param">entries</em>, <em class="sig-param">options_map</em>, <em class="sig-param">config</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/plugins/merge_meta.html#merge_meta"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.plugins.merge_meta.merge_meta" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load a secondary file and merge its metadata in our given set of entries.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>entries</strong> – A list of directives. We’re interested only in the Transaction instances.</p></li>
+<li><p><strong>unused_options_map</strong> – A parser options dict.</p></li>
+<li><p><strong>config</strong> – The plugin configuration string.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A list of entries, with more metadata attached to them.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">Beancount</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Beancount Modules</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../core/index.html">Beancount Core</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../parser/index.html">Parser</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Plugins</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Beancount Modules</a><ul>
+  <li><a href="index.html">Plugins</a><ul>
+      <li>Previous: <a href="beancount.plugins.mark_unverified.html" title="previous chapter">beancount.plugins.mark_unverified</a></li>
+      <li>Next: <a href="beancount.plugins.noduplicates.html" title="next chapter">beancount.plugins.noduplicates</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Martin Blais.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../../_sources/modules/plugins/beancount.plugins.merge_meta.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

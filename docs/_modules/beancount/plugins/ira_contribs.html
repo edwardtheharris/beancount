@@ -1,0 +1,298 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>beancount.plugins.ira_contribs &#8212; Beancount 2.2.1 documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for beancount.plugins.ira_contribs</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Automatically adding IRA contributions postings.</span>
+
+<span class="sd">This plugin looks for increasing postings on specified accounts (&#39;+&#39; sign for</span>
+<span class="sd">Assets and Expenses accounts, &#39;-&#39; sign for the others), or postings with a</span>
+<span class="sd">particular flag on them and when it finds some, inserts a pair of postings on</span>
+<span class="sd">that transaction of the corresponding amounts in a different currency. The</span>
+<span class="sd">currency is intended to be an imaginary currency used to track the number of</span>
+<span class="sd">dollars contributed to a retirement account over time.</span>
+
+<span class="sd">For example, a possible configuration could be:</span>
+
+<span class="sd">  plugin &quot;beancount.plugins.ira_contribs&quot; &quot;{</span>
+<span class="sd">      &#39;currency&#39;: &#39;IRAUSD&#39;,</span>
+<span class="sd">      &#39;flag&#39;: &#39;M&#39;,</span>
+<span class="sd">      &#39;accounts&#39;: {</span>
+
+<span class="sd">          &#39;Income:US:Acme:Match401k&#39;: (</span>
+<span class="sd">              &#39;Assets:US:Federal:Match401k&#39;,</span>
+<span class="sd">              &#39;Expenses:Taxes:TY{year}:US:Federal:Match401k&#39;),</span>
+
+<span class="sd">          (&#39;C&#39;, &#39;Assets:US:Fidelity:PreTax401k:Cash&#39;): (</span>
+<span class="sd">              &#39;Assets:US:Federal:PreTax401k&#39;,</span>
+<span class="sd">              &#39;Expenses:Taxes:TY{year}:US:Federal:PreTax401k&#39;),</span>
+<span class="sd">       }</span>
+<span class="sd">  }&quot;</span>
+
+<span class="sd">Note: In this example, the configuration that triggers on the</span>
+<span class="sd">&quot;Income:US:Acme:Match401k&quot; account does not require a flag for those accounts;</span>
+<span class="sd">the configuration for the &quot;Assets:US:Fidelity:PreTax401k:Cash&quot; account requires</span>
+<span class="sd">postings to have a &quot;C&quot; flag to trigger an insertion.</span>
+
+<span class="sd">Given a transaction like the following, which would be typical for a salary</span>
+<span class="sd">entry where the employer is automatically diverting some of the pre-tax money to</span>
+<span class="sd">a retirement account (in this example, at Fidelity):</span>
+
+<span class="sd">  2013-02-15 * &quot;ACME INC       PAYROLL&quot;</span>
+<span class="sd">    Income:US:Acme:Salary                   ...</span>
+<span class="sd">    ...</span>
+<span class="sd">    Assets:US:BofA:Checking                 ...</span>
+<span class="sd">    Assets:US:Fidelity:PreTax401k:Cash      620.50 USD</span>
+<span class="sd">    ...</span>
+
+<span class="sd">A posting with account &#39;Assets:US:Fidelity:PreTax401k:Cash&#39;, which is configured</span>
+<span class="sd">to match, would be found. The configuration above instructs the plugin to</span>
+<span class="sd">automatically insert new postings like this:</span>
+
+<span class="sd">  2013-02-15 * &quot;ACME INC       PAYROLL&quot;</span>
+<span class="sd">    ...</span>
+<span class="sd">    Assets:US:Fidelity:PreTax401k:Cash              620.50 USD</span>
+<span class="sd">    M Assets:US:Federal:PreTax401k                 -620.50 IRAUSD</span>
+<span class="sd">    M Expenses:Taxes:TY2013:US:Federal:PreTax401k   620.50 IRAUSD</span>
+<span class="sd">    ...</span>
+
+<span class="sd">Notice that the &quot;{year}&quot; string in the configuration&#39;s account names is</span>
+<span class="sd">automatically replaced by the current year in the account name. This is useful</span>
+<span class="sd">if you maintain separate tax accounts per yera.</span>
+
+<span class="sd">Furthermore, as in the configuration example above, you may have multiple</span>
+<span class="sd">matching entries to trigger multiple insertions. For example, the employer may</span>
+<span class="sd">also match the employee&#39;s retirement contribution by depositing some money in</span>
+<span class="sd">the retirement account:</span>
+
+<span class="sd">  2013-02-15 * &quot;BUYMF - MATCH&quot; &quot;Employer match, invested in SaveEasy 2030 fund&quot;</span>
+<span class="sd">    Assets:US:Fidelity:Match401k:SE2030   34.793 SE2030 {17.834 USD}</span>
+<span class="sd">    Income:US:Acme:Match401k             -620.50 USD</span>
+
+<span class="sd">In this example the funds get reported as invested immediately (an intermediate</span>
+<span class="sd">deposit into a cash account does not take place). The plugin configuration would</span>
+<span class="sd">match against the &#39;Income:US:Acme:Match401k&#39; account and since it increases its</span>
+<span class="sd">value (the normal balance of an Income account is negative), postings would be</span>
+<span class="sd">inserted like this:</span>
+
+<span class="sd">  2013-02-15 * &quot;BUYMF - MATCH&quot; &quot;Employer match, invested in SaveEasy 2030 fund&quot;</span>
+<span class="sd">    Assets:US:Fidelity:Match401k:SE2030              34.793 SE2030 {17.834 USD}</span>
+<span class="sd">    Income:US:Acme:Match401k                        -620.50 USD</span>
+<span class="sd">    M Assets:US:Federal:Match401k                   -620.50 IRAUSD</span>
+<span class="sd">    M Expenses:Taxes:TY2013:US:Federal:Match401k     620.50 IRAUSD</span>
+
+<span class="sd">Note that the special dict keys &#39;currency&#39; and &#39;flag&#39; are used to</span>
+<span class="sd">specify which currency to use for the inserted postings, and if set, which flag</span>
+<span class="sd">to mark these postings with.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__copyright__</span> <span class="o">=</span> <span class="s2">&quot;Copyright (C) 2014-2016  Martin Blais&quot;</span>
+<span class="n">__license__</span> <span class="o">=</span> <span class="s2">&quot;GNU GPLv2&quot;</span>
+
+<span class="kn">from</span> <span class="nn">beancount.core.number</span> <span class="k">import</span> <span class="n">MISSING</span>
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">data</span>
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">account_types</span>
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">amount</span>
+<span class="kn">from</span> <span class="nn">beancount.parser</span> <span class="k">import</span> <span class="n">printer</span>
+
+
+<span class="n">__plugins__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;add_ira_contribs&#39;</span><span class="p">,)</span>
+
+
+<span class="n">DEBUG</span> <span class="o">=</span> <span class="mi">0</span>
+
+
+<div class="viewcode-block" id="add_ira_contribs"><a class="viewcode-back" href="../../../modules/plugins/beancount.plugins.ira_contribs.html#beancount.plugins.ira_contribs.add_ira_contribs">[docs]</a><span class="k">def</span> <span class="nf">add_ira_contribs</span><span class="p">(</span><span class="n">entries</span><span class="p">,</span> <span class="n">options_map</span><span class="p">,</span> <span class="n">config_str</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Add legs for 401k employer match contributions.</span>
+
+<span class="sd">    See module docstring for an example configuration.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      entries: a list of entry instances</span>
+<span class="sd">      options_map: a dict of options parsed from the file</span>
+<span class="sd">      config_str: A configuration string, which is intended to be a Python dict</span>
+<span class="sd">        mapping match-accounts to a pair of (negative-account, position-account)</span>
+<span class="sd">        account names.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">      A tuple of entries and errors.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Parse and extract configuration values.</span>
+    <span class="c1"># FIXME: Use ast.literal_eval() here; you need to convert this code and the getters.</span>
+    <span class="c1"># FIXME: Also, don&#39;t raise a RuntimeError, return an error object; review</span>
+    <span class="c1"># this for all the plugins.</span>
+    <span class="c1"># FIXME: This too is temporary.</span>
+    <span class="c1"># pylint: disable=eval-used</span>
+    <span class="n">config_obj</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="n">config_str</span><span class="p">,</span> <span class="p">{},</span> <span class="p">{})</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">config_obj</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Invalid plugin configuration: should be a single dict.&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Currency of the inserted postings.</span>
+    <span class="n">currency</span> <span class="o">=</span> <span class="n">config_obj</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;currency&#39;</span><span class="p">,</span> <span class="s1">&#39;UNKNOWN&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Flag to attach to the inserted postings.</span>
+    <span class="n">insert_flag</span> <span class="o">=</span> <span class="n">config_obj</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;flag&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+    <span class="c1"># A dict of account names that trigger the insertion of postings to pairs of</span>
+    <span class="c1"># inserted accounts when triggered.</span>
+    <span class="n">accounts</span> <span class="o">=</span> <span class="n">config_obj</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;accounts&#39;</span><span class="p">,</span> <span class="p">{})</span>
+
+    <span class="c1"># Convert the key in the accounts configuration for matching.</span>
+    <span class="n">account_transforms</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">config</span> <span class="ow">in</span> <span class="n">accounts</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">flag</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">account</span> <span class="o">=</span> <span class="n">key</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span>
+            <span class="n">flag</span><span class="p">,</span> <span class="n">account</span> <span class="o">=</span> <span class="n">key</span>
+        <span class="n">account_transforms</span><span class="p">[</span><span class="n">account</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">flag</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+
+    <span class="n">new_entries</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">entries</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">Transaction</span><span class="p">):</span>
+            <span class="n">orig_entry</span> <span class="o">=</span> <span class="n">entry</span>
+            <span class="k">for</span> <span class="n">posting</span> <span class="ow">in</span> <span class="n">entry</span><span class="o">.</span><span class="n">postings</span><span class="p">:</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">posting</span><span class="o">.</span><span class="n">units</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">MISSING</span> <span class="ow">and</span>
+                    <span class="p">(</span><span class="n">posting</span><span class="o">.</span><span class="n">account</span> <span class="ow">in</span> <span class="n">account_transforms</span><span class="p">)</span> <span class="ow">and</span>
+                    <span class="p">(</span><span class="n">account_types</span><span class="o">.</span><span class="n">get_account_sign</span><span class="p">(</span><span class="n">posting</span><span class="o">.</span><span class="n">account</span><span class="p">)</span> <span class="o">*</span>
+                     <span class="n">posting</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">number</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)):</span>
+
+                    <span class="c1"># Get the new account legs to insert.</span>
+                    <span class="n">required_flag</span><span class="p">,</span> <span class="p">(</span><span class="n">neg_account</span><span class="p">,</span>
+                                    <span class="n">pos_account</span><span class="p">)</span> <span class="o">=</span> <span class="n">account_transforms</span><span class="p">[</span><span class="n">posting</span><span class="o">.</span><span class="n">account</span><span class="p">]</span>
+                    <span class="k">assert</span> <span class="n">posting</span><span class="o">.</span><span class="n">cost</span> <span class="ow">is</span> <span class="kc">None</span>
+
+                    <span class="c1"># Check required flag if present.</span>
+                    <span class="k">if</span> <span class="p">(</span><span class="n">required_flag</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span>
+                        <span class="p">(</span><span class="n">required_flag</span> <span class="ow">and</span> <span class="n">required_flag</span> <span class="o">==</span> <span class="n">posting</span><span class="o">.</span><span class="n">flag</span><span class="p">)):</span>
+                        <span class="c1"># Insert income/expense entries for 401k.</span>
+                        <span class="n">entry</span> <span class="o">=</span> <span class="n">add_postings</span><span class="p">(</span>
+                            <span class="n">entry</span><span class="p">,</span>
+                            <span class="n">amount</span><span class="o">.</span><span class="n">Amount</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">posting</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">number</span><span class="p">),</span> <span class="n">currency</span><span class="p">),</span>
+                            <span class="n">neg_account</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">year</span><span class="o">=</span><span class="n">entry</span><span class="o">.</span><span class="n">date</span><span class="o">.</span><span class="n">year</span><span class="p">),</span>
+                            <span class="n">pos_account</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">year</span><span class="o">=</span><span class="n">entry</span><span class="o">.</span><span class="n">date</span><span class="o">.</span><span class="n">year</span><span class="p">),</span>
+                            <span class="n">insert_flag</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">DEBUG</span> <span class="ow">and</span> <span class="n">orig_entry</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">entry</span><span class="p">:</span>
+                <span class="n">printer</span><span class="o">.</span><span class="n">print_entry</span><span class="p">(</span><span class="n">orig_entry</span><span class="p">)</span>
+                <span class="n">printer</span><span class="o">.</span><span class="n">print_entry</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+
+        <span class="n">new_entries</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">new_entries</span><span class="p">,</span> <span class="p">[]</span></div>
+
+
+<div class="viewcode-block" id="add_postings"><a class="viewcode-back" href="../../../modules/plugins/beancount.plugins.ira_contribs.html#beancount.plugins.ira_contribs.add_postings">[docs]</a><span class="k">def</span> <span class="nf">add_postings</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">amount_</span><span class="p">,</span> <span class="n">neg_account</span><span class="p">,</span> <span class="n">pos_account</span><span class="p">,</span> <span class="n">flag</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Insert positive and negative postings of a position in an entry.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      entry: A Transaction instance.</span>
+<span class="sd">      amount_: An Amount instance to create the position, with positive number.</span>
+<span class="sd">      neg_account: An account for the posting with the negative amount.</span>
+<span class="sd">      pos_account: An account for the posting with the positive amount.</span>
+<span class="sd">      flag: A string, that is to be set as flag for the new postings.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">      A new, modified entry.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">entry</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">postings</span><span class="o">=</span><span class="n">entry</span><span class="o">.</span><span class="n">postings</span> <span class="o">+</span> <span class="p">[</span>
+        <span class="n">data</span><span class="o">.</span><span class="n">Posting</span><span class="p">(</span><span class="n">neg_account</span><span class="p">,</span> <span class="o">-</span><span class="n">amount_</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">flag</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+        <span class="n">data</span><span class="o">.</span><span class="n">Posting</span><span class="p">(</span><span class="n">pos_account</span><span class="p">,</span> <span class="n">amount_</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">flag</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+        <span class="p">])</span></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">Beancount</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/index.html">Beancount Modules</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Martin Blais.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

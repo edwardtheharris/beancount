@@ -1,0 +1,173 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>beancount.plugins.merge_meta &#8212; Beancount 2.2.1 documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for beancount.plugins.merge_meta</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Merge the metadata from a second file into the current set of entries.</span>
+
+<span class="sd">This is useful if you like to keep more sensitive private data, such as account</span>
+<span class="sd">numbers or passwords, in a second, possibly encrypted file. This can be used to</span>
+<span class="sd">generate a will, for instance, for your loved ones to be able to figure where</span>
+<span class="sd">all your assets are in case you pass away. You can store all the super secret</span>
+<span class="sd">stuff in a more closely guarded, hidden away separate file.</span>
+
+<span class="sd">The metadata from</span>
+
+<span class="sd">- Open directives: Account name must match.</span>
+<span class="sd">- Close directives: Account name must match.</span>
+<span class="sd">- Commodity directives: Currency must match.</span>
+
+<span class="sd">are copied over. Metadata from the external file conflicting with that present</span>
+<span class="sd">in the main file overwrites it (external data wins).</span>
+
+<span class="sd">  WARNING! If you include an encrypted file and the main file is not encrypted,</span>
+<span class="sd">  the contents extraction from the encrypted file may appear in the cache.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="n">__copyright__</span> <span class="o">=</span> <span class="s2">&quot;Copyright (C) 2015-2016  Martin Blais&quot;</span>
+<span class="n">__license__</span> <span class="o">=</span> <span class="s2">&quot;GNU GPLv2&quot;</span>
+
+<span class="kn">from</span> <span class="nn">beancount</span> <span class="k">import</span> <span class="n">loader</span>
+<span class="kn">from</span> <span class="nn">beancount.core</span> <span class="k">import</span> <span class="n">getters</span>
+
+<span class="n">__plugins__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;merge_meta&#39;</span><span class="p">,)</span>
+
+
+<div class="viewcode-block" id="merge_meta"><a class="viewcode-back" href="../../../modules/plugins/beancount.plugins.merge_meta.html#beancount.plugins.merge_meta.merge_meta">[docs]</a><span class="k">def</span> <span class="nf">merge_meta</span><span class="p">(</span><span class="n">entries</span><span class="p">,</span> <span class="n">options_map</span><span class="p">,</span> <span class="n">config</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Load a secondary file and merge its metadata in our given set of entries.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      entries: A list of directives. We&#39;re interested only in the Transaction instances.</span>
+<span class="sd">      unused_options_map: A parser options dict.</span>
+<span class="sd">      config: The plugin configuration string.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">      A list of entries, with more metadata attached to them.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">external_filename</span> <span class="o">=</span> <span class="n">config</span>
+    <span class="n">new_entries</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">entries</span><span class="p">)</span>
+
+    <span class="n">ext_entries</span><span class="p">,</span> <span class="n">ext_errors</span><span class="p">,</span> <span class="n">ext_options_map</span> <span class="o">=</span> <span class="n">loader</span><span class="o">.</span><span class="n">load_file</span><span class="p">(</span><span class="n">external_filename</span><span class="p">)</span>
+
+    <span class="c1"># Map Open and Close directives.</span>
+    <span class="n">oc_map</span> <span class="o">=</span> <span class="n">getters</span><span class="o">.</span><span class="n">get_account_open_close</span><span class="p">(</span><span class="n">entries</span><span class="p">)</span>
+    <span class="n">ext_oc_map</span> <span class="o">=</span> <span class="n">getters</span><span class="o">.</span><span class="n">get_account_open_close</span><span class="p">(</span><span class="n">ext_entries</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">account</span> <span class="ow">in</span> <span class="nb">set</span><span class="p">(</span><span class="n">oc_map</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="o">&amp;</span> <span class="nb">set</span><span class="p">(</span><span class="n">ext_oc_map</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+        <span class="n">open_entry</span><span class="p">,</span> <span class="n">close_entry</span> <span class="o">=</span> <span class="n">oc_map</span><span class="p">[</span><span class="n">account</span><span class="p">]</span>
+        <span class="n">ext_open_entry</span><span class="p">,</span> <span class="n">ext_close_entry</span> <span class="o">=</span> <span class="n">ext_oc_map</span><span class="p">[</span><span class="n">account</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">open_entry</span> <span class="ow">and</span> <span class="n">ext_open_entry</span><span class="p">:</span>
+            <span class="n">open_entry</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">ext_open_entry</span><span class="o">.</span><span class="n">meta</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">close_entry</span> <span class="ow">and</span> <span class="n">ext_close_entry</span><span class="p">:</span>
+            <span class="n">close_entry</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">ext_close_entry</span><span class="o">.</span><span class="n">meta</span><span class="p">)</span>
+
+    <span class="c1"># Map Commodity directives.</span>
+    <span class="n">comm_map</span> <span class="o">=</span> <span class="n">getters</span><span class="o">.</span><span class="n">get_commodity_map</span><span class="p">(</span><span class="n">entries</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+    <span class="n">ext_comm_map</span> <span class="o">=</span> <span class="n">getters</span><span class="o">.</span><span class="n">get_commodity_map</span><span class="p">(</span><span class="n">ext_entries</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">currency</span> <span class="ow">in</span> <span class="nb">set</span><span class="p">(</span><span class="n">comm_map</span><span class="p">)</span> <span class="o">&amp;</span> <span class="nb">set</span><span class="p">(</span><span class="n">ext_comm_map</span><span class="p">):</span>
+        <span class="n">comm_entry</span> <span class="o">=</span> <span class="n">comm_map</span><span class="p">[</span><span class="n">currency</span><span class="p">]</span>
+        <span class="n">ext_comm_entry</span> <span class="o">=</span> <span class="n">ext_comm_map</span><span class="p">[</span><span class="n">currency</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">comm_entry</span> <span class="ow">and</span> <span class="n">ext_comm_entry</span><span class="p">:</span>
+            <span class="n">comm_entry</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">ext_comm_entry</span><span class="o">.</span><span class="n">meta</span><span class="p">)</span>
+
+    <span class="c1"># Note: We cannot include the external file in the list of inputs so that a</span>
+    <span class="c1"># change of it triggers a cache rebuild because side-effects on options_map</span>
+    <span class="c1"># aren&#39;t cascaded through. This is something that should be defined better</span>
+    <span class="c1"># in the plugin interface and perhaps improved upon.</span>
+
+    <span class="k">return</span> <span class="n">new_entries</span><span class="p">,</span> <span class="n">ext_errors</span></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">Beancount</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/index.html">Beancount Modules</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Martin Blais.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

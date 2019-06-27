@@ -1,0 +1,245 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>beancount.plugins.sellgains &#8212; Beancount 2.2.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="beancount.plugins.split_expenses" href="beancount.plugins.split_expenses.html" />
+    <link rel="prev" title="beancount.plugins.pedantic" href="beancount.plugins.pedantic.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-beancount.plugins.sellgains">
+<span id="beancount-plugins-sellgains"></span><h1>beancount.plugins.sellgains<a class="headerlink" href="#module-beancount.plugins.sellgains" title="Permalink to this headline">¶</a></h1>
+<p>A plugin that cross-checks declared gains against prices on lot sales.</p>
+<p>When you sell stock, the gains can be automatically implied by the corresponding
+cash amounts. For example, in the following transaction the 2nd and 3rd postings
+should match the value of the stock sold:</p>
+<dl class="simple">
+<dt>1999-07-31 * “Sell”</dt><dd><p>Assets:US:BRS:Company:ESPP          -81 ADSK {26.3125 USD}
+Assets:US:BRS:Company:Cash      2141.36 USD
+Expenses:Financial:Fees            0.08 USD
+Income:US:Company:ESPP:PnL      -10.125 USD</p>
+</dd>
+</dl>
+<p>The cost basis is checked against: 2141.36 + 008 + -10.125. That is, the balance
+checks computes</p>
+<blockquote>
+<div><dl>
+<dt>-81 x 26.3125  = -2131.3125  +</dt><dd><dl>
+<dt>2141.36    +</dt><dd><blockquote>
+<div><p>0.08    +</p>
+</div></blockquote>
+<p>-10.125</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</div></blockquote>
+<p>and checks that the residual is below a small tolernace.</p>
+<p>But… usually the income leg isn’t given to you in statements. Beancount can
+automatically infer it using the balance, which is convenient, like this:</p>
+<dl class="simple">
+<dt>1999-07-31 * “Sell”</dt><dd><p>Assets:US:BRS:Company:ESPP          -81 ADSK {26.3125 USD}
+Assets:US:BRS:Company:Cash      2141.36 USD
+Expenses:Financial:Fees            0.08 USD
+Income:US:Company:ESPP:PnL</p>
+</dd>
+</dl>
+<p>Additionally, most often you have the sales prices given to you on your
+transaction confirmation statement, so you can enter this:</p>
+<dl class="simple">
+<dt>1999-07-31 * “Sell”</dt><dd><p>Assets:US:BRS:Company:ESPP          -81 ADSK {26.3125 USD} &#64; 26.4375 USD
+Assets:US:BRS:Company:Cash      2141.36 USD
+Expenses:Financial:Fees            0.08 USD
+Income:US:Company:ESPP:PnL</p>
+</dd>
+</dl>
+<p>So in theory, if the price is given (26.4375 USD), we could verify that the
+proceeds from the sale at the given price match non-Income postings. That is,
+verify that</p>
+<blockquote>
+<div><dl class="simple">
+<dt>-81 x 26.4375  = -2141.4375  +</dt><dd><dl class="simple">
+<dt>2141.36    +</dt><dd><p>0.08    +</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</div></blockquote>
+<p>is below a small tolerance value. So this plugin does this.</p>
+<p>In general terms, it does the following: For transactions with postings that
+have a cost and a price, it verifies that the sum of the positions on all
+postings to non-income accounts is below tolerance.</p>
+<p>This provides yet another level of verification and allows you to elide the
+income amounts, knowing that the price is there to provide an extra level of
+error-checking in case you enter a typo.</p>
+<p class="rubric">Functions</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.plugins.sellgains.validate_sell_gains" title="beancount.plugins.sellgains.validate_sell_gains"><code class="xref py py-obj docutils literal notranslate"><span class="pre">validate_sell_gains</span></code></a>(entries, options_map)</p></td>
+<td><p>Check the sum of asset account totals for lots sold with a price on them.</p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Classes</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.plugins.sellgains.SellGainsError" title="beancount.plugins.sellgains.SellGainsError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SellGainsError</span></code></a>(source, message, entry)</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+<dl class="class">
+<dt id="beancount.plugins.sellgains.SellGainsError">
+<em class="property">class </em><code class="sig-prename descclassname">beancount.plugins.sellgains.</code><code class="sig-name descname">SellGainsError</code><span class="sig-paren">(</span><em class="sig-param">source</em>, <em class="sig-param">message</em>, <em class="sig-param">entry</em><span class="sig-paren">)</span><a class="headerlink" href="#beancount.plugins.sellgains.SellGainsError" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="beancount.plugins.sellgains.SellGainsError.entry">
+<em class="property">property </em><code class="sig-name descname">entry</code><a class="headerlink" href="#beancount.plugins.sellgains.SellGainsError.entry" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 2</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.plugins.sellgains.SellGainsError.message">
+<em class="property">property </em><code class="sig-name descname">message</code><a class="headerlink" href="#beancount.plugins.sellgains.SellGainsError.message" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 1</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="beancount.plugins.sellgains.SellGainsError.source">
+<em class="property">property </em><code class="sig-name descname">source</code><a class="headerlink" href="#beancount.plugins.sellgains.SellGainsError.source" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.plugins.sellgains.validate_sell_gains">
+<code class="sig-prename descclassname">beancount.plugins.sellgains.</code><code class="sig-name descname">validate_sell_gains</code><span class="sig-paren">(</span><em class="sig-param">entries</em>, <em class="sig-param">options_map</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/plugins/sellgains.html#validate_sell_gains"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.plugins.sellgains.validate_sell_gains" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check the sum of asset account totals for lots sold with a price on them.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>entries</strong> – A list of directives.</p></li>
+<li><p><strong>unused_options_map</strong> – An options map.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A list of new errors, if any were found.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">Beancount</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Beancount Modules</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../core/index.html">Beancount Core</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../parser/index.html">Parser</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Plugins</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Beancount Modules</a><ul>
+  <li><a href="index.html">Plugins</a><ul>
+      <li>Previous: <a href="beancount.plugins.pedantic.html" title="previous chapter">beancount.plugins.pedantic</a></li>
+      <li>Next: <a href="beancount.plugins.split_expenses.html" title="next chapter">beancount.plugins.split_expenses</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Martin Blais.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../../_sources/modules/plugins/beancount.plugins.sellgains.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

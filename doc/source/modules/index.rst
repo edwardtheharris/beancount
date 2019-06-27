@@ -7,3 +7,4 @@ Beancount Modules
 
    core/index
    parser/index
+   plugins/index

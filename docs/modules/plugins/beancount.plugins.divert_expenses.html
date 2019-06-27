@@ -1,0 +1,207 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>beancount.plugins.divert_expenses &#8212; Beancount 2.2.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="beancount.plugins.exclude_tag" href="beancount.plugins.exclude_tag.html" />
+    <link rel="prev" title="beancount.plugins.commodity_attr" href="beancount.plugins.commodity_attr.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-beancount.plugins.divert_expenses">
+<span id="beancount-plugins-divert-expenses"></span><h1>beancount.plugins.divert_expenses<a class="headerlink" href="#module-beancount.plugins.divert_expenses" title="Permalink to this headline">¶</a></h1>
+<p>For tagged transactions, convert expenses to a single account.</p>
+<p>This plugin allows you to select a tag and it automatically converts all the
+Expenses postings to use a single account. For example, with this input:</p>
+<blockquote>
+<div><p>plugin “divert_expenses” “[‘kid’, ‘Expenses:Child’]”</p>
+<dl class="simple">
+<dt>2018-01-28 * “CVS” “Formula” #kid</dt><dd><p>Liabilities:CreditCard      -10.27 USD
+Expenses:Food:Grocery        10.27 USD</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>It will output:</p>
+<blockquote>
+<div><dl class="simple">
+<dt>2018-01-28 * “CVS” “Formula” #kid</dt><dd><p>Liabilities:CreditCard      -10.27 USD
+Expenses:Child               10.27 USD</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>You can limit the diversion to one posting only, like this:</p>
+<blockquote>
+<div><dl>
+<dt>2018-05-05 * “CVS/PHARMACY” “” #kai</dt><dd><p>Liabilities:CreditCard        -66.38 USD
+Expenses:Pharmacy              21.00 USD  ;; Vitamins for Kai
+Expenses:Pharmacy              45.38 USD</p>
+<blockquote>
+<div><p>divert: FALSE</p>
+</div></blockquote>
+</dd>
+</dl>
+</div></blockquote>
+<p>See unit test for details.</p>
+<p>See this thread for context:
+<a class="reference external" href="https://docs.google.com/drawings/d/18fTrrGlmz0jFbfcGGHTffbdRwbmST8r9_3O26Dd1Xww/edit?usp=sharing">https://docs.google.com/drawings/d/18fTrrGlmz0jFbfcGGHTffbdRwbmST8r9_3O26Dd1Xww/edit?usp=sharing</a></p>
+<p class="rubric">Functions</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.plugins.divert_expenses.divert_expenses" title="beancount.plugins.divert_expenses.divert_expenses"><code class="xref py py-obj docutils literal notranslate"><span class="pre">divert_expenses</span></code></a>(entries, options_map, config_str)</p></td>
+<td><p>Divert expenses.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#beancount.plugins.divert_expenses.replace_expenses_accounts" title="beancount.plugins.divert_expenses.replace_expenses_accounts"><code class="xref py py-obj docutils literal notranslate"><span class="pre">replace_expenses_accounts</span></code></a>(entry, …)</p></td>
+<td><p>Replace the Expenses accounts from the entry.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="function">
+<dt id="beancount.plugins.divert_expenses.divert_expenses">
+<code class="sig-prename descclassname">beancount.plugins.divert_expenses.</code><code class="sig-name descname">divert_expenses</code><span class="sig-paren">(</span><em class="sig-param">entries</em>, <em class="sig-param">options_map</em>, <em class="sig-param">config_str</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/plugins/divert_expenses.html#divert_expenses"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.plugins.divert_expenses.divert_expenses" title="Permalink to this definition">¶</a></dt>
+<dd><p>Divert expenses.</p>
+<p>Explicit price entries are simply maintained in the output list. Prices from
+postings with costs or with prices from Transaction entries are synthesized
+as new Price entries in the list of entries output.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>entries</strong> – A list of directives. We’re interested only in the Transaction instances.</p></li>
+<li><p><strong>options_map</strong> – A parser options dict.</p></li>
+<li><p><strong>config_str</strong> – A configuration string, which is intended to be a list of two strings,
+a tag, and an account to replace expenses with.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A modified list of entries.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="beancount.plugins.divert_expenses.replace_expenses_accounts">
+<code class="sig-prename descclassname">beancount.plugins.divert_expenses.</code><code class="sig-name descname">replace_expenses_accounts</code><span class="sig-paren">(</span><em class="sig-param">entry</em>, <em class="sig-param">replacement_account</em>, <em class="sig-param">acctypes</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/plugins/divert_expenses.html#replace_expenses_accounts"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.plugins.divert_expenses.replace_expenses_accounts" title="Permalink to this definition">¶</a></dt>
+<dd><p>Replace the Expenses accounts from the entry.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>entry</strong> – A Transaction directive.</p></li>
+<li><p><strong>replacement_account</strong> – A string, the account to use for replacement.</p></li>
+<li><p><strong>acctypes</strong> – An AccountTypes instance.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A possibly entry directive.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">Beancount</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Beancount Modules</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../core/index.html">Beancount Core</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../parser/index.html">Parser</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Plugins</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Beancount Modules</a><ul>
+  <li><a href="index.html">Plugins</a><ul>
+      <li>Previous: <a href="beancount.plugins.commodity_attr.html" title="previous chapter">beancount.plugins.commodity_attr</a></li>
+      <li>Next: <a href="beancount.plugins.exclude_tag.html" title="next chapter">beancount.plugins.exclude_tag</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Martin Blais.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../../_sources/modules/plugins/beancount.plugins.divert_expenses.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
