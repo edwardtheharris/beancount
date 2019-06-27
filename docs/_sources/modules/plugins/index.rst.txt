@@ -6,6 +6,7 @@ Plugins
    :caption: Contents:
 
    fix_payees
+   tag_pending
 
 
 .. currentmodule:: beancount.plugins
@@ -35,7 +36,6 @@ Plugins
    pedantic
    sellgains
    split_expenses
-   tag_pending
    unique_prices
    unrealized
 

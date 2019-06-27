@@ -42,13 +42,15 @@
 
 <span class="sd">For example, assuming the user enters linked transactions like this:</span>
 
-<span class="sd">  2013-03-28 * &quot;Bill for datacenter electricity&quot;  ^invoice-27a30ab61191</span>
-<span class="sd">    Expenses:Electricity			  450.82 USD</span>
-<span class="sd">    Liabilities:AccountsPayable</span>
+<span class="sd">  .. code::</span>
 
-<span class="sd">  2013-04-15 * &quot;Paying electricity company&quot; ^invoice-27a30ab61191</span>
-<span class="sd">    Assets:Checking			  	-450.82 USD</span>
-<span class="sd">    Liabilities:AccountsPayable</span>
+<span class="sd">     2013-03-28 * &quot;Bill for datacenter electricity&quot;  ^invoice-27a30ab61191</span>
+<span class="sd">       Expenses:Electricity			  450.82 USD</span>
+<span class="sd">       Liabilities:AccountsPayable</span>
+
+<span class="sd">     2013-04-15 * &quot;Paying electricity company&quot; ^invoice-27a30ab61191</span>
+<span class="sd">       Assets:Checking			  	-450.82 USD</span>
+<span class="sd">       Liabilities:AccountsPayable</span>
 
 <span class="sd">Transactions are grouped by link (&quot;invoice-27a30ab61191&quot;) and then the</span>
 <span class="sd">intersection of their common accounts is automatically calculated</span>
@@ -69,19 +71,17 @@
 <span class="n">__plugins__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;tag_pending_plugin&#39;</span><span class="p">,)</span>
 
 
-<div class="viewcode-block" id="tag_pending_transactions"><a class="viewcode-back" href="../../../modules/plugins/beancount.plugins.tag_pending.html#beancount.plugins.tag_pending.tag_pending_transactions">[docs]</a><span class="k">def</span> <span class="nf">tag_pending_transactions</span><span class="p">(</span><span class="n">entries</span><span class="p">,</span> <span class="n">tag_name</span><span class="o">=</span><span class="s1">&#39;PENDING&#39;</span><span class="p">):</span>
+<div class="viewcode-block" id="tag_pending_transactions"><a class="viewcode-back" href="../../../modules/plugins/tag_pending.html#beancount.plugins.tag_pending.tag_pending_transactions">[docs]</a><span class="k">def</span> <span class="nf">tag_pending_transactions</span><span class="p">(</span><span class="n">entries</span><span class="p">,</span> <span class="n">tag_name</span><span class="o">=</span><span class="s1">&#39;PENDING&#39;</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Filter out incomplete linked transactions to a transfer account.</span>
 
 <span class="sd">    Given a list of entries, group the entries by their link and compute the</span>
 <span class="sd">    balance of the intersection of their common accounts. If the balance does</span>
 <span class="sd">    not sum to zero, insert a &#39;tag_name&#39; tag in the entries.</span>
 
-<span class="sd">    Args:</span>
-<span class="sd">      entries: A list of directives/transactions to process.</span>
-<span class="sd">      tag_name: A string, the name of the tag to be inserted if a linked group</span>
-<span class="sd">        of entries is found not to match</span>
-<span class="sd">    Returns:</span>
-<span class="sd">      A modified set of entries, possibly tagged as pending.</span>
+<span class="sd">    :param list entries: A list of directives/transactions to process.</span>
+<span class="sd">    :param str tag_name: A string, the name of the tag to be inserted if</span>
+<span class="sd">        a linked group of entries is found not to match</span>
+<span class="sd">    :returns: A modified set of entries, possibly tagged as pending.</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">link_groups</span> <span class="o">=</span> <span class="n">basicops</span><span class="o">.</span><span class="n">group_entries_by_link</span><span class="p">(</span><span class="n">entries</span><span class="p">)</span>
@@ -113,14 +113,12 @@
             <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">entries</span><span class="p">]</span></div>
 
 
-<div class="viewcode-block" id="tag_pending_plugin"><a class="viewcode-back" href="../../../modules/plugins/beancount.plugins.tag_pending.html#beancount.plugins.tag_pending.tag_pending_plugin">[docs]</a><span class="k">def</span> <span class="nf">tag_pending_plugin</span><span class="p">(</span><span class="n">entries</span><span class="p">,</span> <span class="n">options_map</span><span class="p">):</span>
+<div class="viewcode-block" id="tag_pending_plugin"><a class="viewcode-back" href="../../../modules/plugins/tag_pending.html#beancount.plugins.tag_pending.tag_pending_plugin">[docs]</a><span class="k">def</span> <span class="nf">tag_pending_plugin</span><span class="p">(</span><span class="n">entries</span><span class="p">,</span> <span class="n">options_map</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;A plugin that finds and tags pending transactions.</span>
 
-<span class="sd">    Args:</span>
-<span class="sd">      entries: A list of entry instances.</span>
-<span class="sd">      options_map: A dict of options parsed from the file.</span>
-<span class="sd">    Returns:</span>
-<span class="sd">      A tuple of entries and errors.</span>
+<span class="sd">    :param list entries: A list of entry instances.</span>
+<span class="sd">    :param dict options_map: A dict of options parsed from the file.</span>
+<span class="sd">    :returns tuple: A tuple of entries and errors.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="p">(</span><span class="n">tag_pending_transactions</span><span class="p">(</span><span class="n">entries</span><span class="p">,</span> <span class="s1">&#39;PENDING&#39;</span><span class="p">),</span> <span class="p">[])</span></div>
 </pre></div>

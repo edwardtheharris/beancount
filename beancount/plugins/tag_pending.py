@@ -44,12 +44,10 @@ def tag_pending_transactions(entries, tag_name='PENDING'):
     balance of the intersection of their common accounts. If the balance does
     not sum to zero, insert a 'tag_name' tag in the entries.
 
-    Args:
-      entries: A list of directives/transactions to process.
-      tag_name: A string, the name of the tag to be inserted if a linked group
-        of entries is found not to match
-    Returns:
-      A modified set of entries, possibly tagged as pending.
+    :param list entries: A list of directives/transactions to process.
+    :param str tag_name: A string, the name of the tag to be inserted if
+        a linked group of entries is found not to match
+    :returns: A modified set of entries, possibly tagged as pending.
 
     """
     link_groups = basicops.group_entries_by_link(entries)
@@ -84,10 +82,8 @@ def tag_pending_transactions(entries, tag_name='PENDING'):
 def tag_pending_plugin(entries, options_map):
     """A plugin that finds and tags pending transactions.
 
-    Args:
-      entries: A list of entry instances.
-      options_map: A dict of options parsed from the file.
-    Returns:
-      A tuple of entries and errors.
+    :param list entries: A list of entry instances.
+    :param dict options_map: A dict of options parsed from the file.
+    :returns tuple: A tuple of entries and errors.
     """
     return (tag_pending_transactions(entries, 'PENDING'), [])

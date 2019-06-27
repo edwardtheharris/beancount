@@ -36,7 +36,6 @@ Plugins
    pedantic
    sellgains
    split_expenses
-   tag_pending
    unique_prices
    unrealized
 
