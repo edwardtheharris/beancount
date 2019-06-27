@@ -1,6 +1,8 @@
 Plugins
 =======
 
+.. currentmodule:: beancount.plugins
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
@@ -8,8 +10,8 @@ Plugins
    fix_payees
    tag_pending
 
-
-.. currentmodule:: beancount.plugins
+.. automodule:: beancount.plugins
+   :members:
 
 .. autosummary::
    :toctree:
