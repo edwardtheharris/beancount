@@ -1374,12 +1374,14 @@ def generate_prices(date_begin, date_end, currencies, cost_currency):
     counter = itertools.count()
     for currency in currencies:
         start_price = random.uniform(30, 200)
-        growth = random.uniform(0.02, 0.13) # %/year
+        growth = random.uniform(0.02, 0.13)  # %/year
         mu = growth * (7 / 365)
-        sigma = random.uniform(0.005, 0.02) # Vol
+        sigma = random.uniform(0.005, 0.02)  # Vol
 
-        for dtime, price_float in zip(rrule.rrule(rrule.WEEKLY, byweekday=rrule.FR,
-                                                  dtstart=date_begin, until=date_end),
+        for dtime, price_float in zip(rrule.rrule(rrule.WEEKLY,
+                                                  byweekday=rrule.FR,
+                                                  dtstart=date_begin,
+                                                  until=date_end),
                                       price_series(start_price, mu, sigma)):
             price = D(price_float).quantize(digits)
             meta = data.new_metadata(generate_prices.__name__, next(counter))
@@ -1390,14 +1392,15 @@ def generate_prices(date_begin, date_end, currencies, cost_currency):
 
 
 def replace(string, replacements, strip=False):
-    """Apply word-boundaried regular expression replacements to an indented string.
+    """Apply word-boundaried re replacements to an indented string.
 
     Args:
       string: Some input template string.
       replacements: A dict of regexp to replacement value.
       strip: A boolean, true if we should strip the input.
     Returns:
-      The input string with the replacements applied to it, with the indentation removed.
+      The input string with the replacements applied to it,
+      with the indentation removed.
     """
     output = textwrap.dedent(string)
     if strip:
@@ -1437,7 +1440,7 @@ def generate_commodity_entries(date_birth):
           price: "USD:google/MUTF:RGAGX"
 
         1995-09-18 commodity VBMPX
-          name: "Vanguard Total Bond Market Index Fund Institutional Plus Shares"
+          name: "Vanguard Total Bond Market Index Fund Plus Shares"
           export: "MUTF:VBMPX"
           price: "USD:google/MUTF:VBMPX"
 
@@ -1510,11 +1513,12 @@ def write_example_file(date_birth, date_begin, date_end, reformat, file):
 
     Args:
       date_birth: A datetime.date instance, the birth date of our character.
-      date_begin: A datetime.date instance, the beginning date at which to generate
-        transactions.
+      date_begin: A datetime.date instance, the beginning date at
+        which to generate transactions.
       date_end: A datetime.date instance, the end date at which to generate
         transactions.
-      reformat: A boolean, true if we should apply global reformatting to this file.
+      reformat: A boolean, true if we should apply global reformatting
+        to this file.
       file: A file object, where to write out the output.
     """
     # The following code entirely writes out the output to generic names, such
@@ -1540,11 +1544,14 @@ def write_example_file(date_birth, date_begin, date_end, reformat, file):
     employer_name, employer_address = random.choice(EMPLOYERS)
 
     logging.info("Generating Salary Employment Income")
-    income_entries = generate_employment_income(employer_name, employer_address,
+    income_entries = generate_employment_income(employer_name,
+                                                employer_address,
                                                 ANNUAL_SALARY,
                                                 account_checking,
-                                                join(account_retirement, 'Cash'),
-                                                date_begin, date_end)
+                                                join(account_retirement,
+                                                     'Cash'),
+                                                date_begin,
+                                                date_end)
 
     logging.info("Generating Expenses from Banking Accounts")
     banking_expenses = generate_banking_expenses(date_begin, date_end,
