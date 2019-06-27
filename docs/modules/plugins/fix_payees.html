@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta charset="utf-8" />
-    <title>beancount.plugins.fix_payees &#8212; Beancount 2.2.1 documentation</title>
+    <title>Fix Payees &#8212; Beancount 2.2.1 documentation</title>
     <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
@@ -34,21 +34,23 @@
           <div class="body" role="main">
             
   <div class="section" id="module-beancount.plugins.fix_payees">
-<span id="beancount-plugins-fix-payees"></span><h1>beancount.plugins.fix_payees<a class="headerlink" href="#module-beancount.plugins.fix_payees" title="Permalink to this headline">¶</a></h1>
+<span id="fix-payees"></span><h1>Fix Payees<a class="headerlink" href="#module-beancount.plugins.fix_payees" title="Permalink to this headline">¶</a></h1>
 <p>Rename payees based on a set of rules.</p>
 <p>This can be used to clean up dirty imported payee names.</p>
 <p>This plugin accepts a list of rules in this format:</p>
 <blockquote>
-<div><dl class="simple">
-<dt>plugin “beancount.plugins.fix_payees” “[</dt><dd><p>(PAYEE, MATCH1, MATCH2, …),</p>
-</dd>
-</dl>
-<p>]”</p>
+<div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">plugin</span> <span class="s2">&quot;beancount.plugins.fix_payees&quot;</span> <span class="s2">&quot;[</span>
+     <span class="p">(</span><span class="n">PAYEE</span><span class="p">,</span> <span class="n">MATCH1</span><span class="p">,</span> <span class="n">MATCH2</span><span class="p">,</span> <span class="o">...</span><span class="p">),</span>
+<span class="p">]</span><span class="s2">&quot;</span>
+</pre></div>
+</div>
 </div></blockquote>
 <p>Each of the “MATCH” clauses is a string, in the format:</p>
 <blockquote>
-<div><p>“A:&lt;regexp&gt;” : Match the account name.
-“D:&lt;regexp&gt;” : Match the payee or the narration.</p>
+<div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="s2">&quot;A:&lt;regexp&gt;&quot;</span> <span class="p">:</span> <span class="n">Match</span> <span class="n">the</span> <span class="n">account</span> <span class="n">name</span><span class="o">.</span>
+<span class="s2">&quot;D:&lt;regexp&gt;&quot;</span> <span class="p">:</span> <span class="n">Match</span> <span class="n">the</span> <span class="n">payee</span> <span class="ow">or</span> <span class="n">the</span> <span class="n">narration</span><span class="o">.</span>
+</pre></div>
+</div>
 </div></blockquote>
 <p>The plugin matches the Transactions in the file and if there is a
 case-insensitive match against the regular expression (we use re.search()),
@@ -56,45 +58,18 @@ replaces the payee name by “PAYEE”. If multiple rules match, only the first 
 is used.</p>
 <p>For example:</p>
 <blockquote>
-<div><p>plugin “beancount.plugins.fix_payees” “[</p>
-<blockquote>
-<div><dl class="simple">
-<dt>(“T-Mobile USA”,</dt><dd><p>“A:Expenses:Communications:Phone”,
-“D:t-mobile”),</p>
-</dd>
-<dt>(“Con Edison”,</dt><dd><p>“A:Expenses:Home:Electricity”,
-“D:con ?ed”),</p>
-</dd>
-<dt>(“Birreria &#64; Eataly”,</dt><dd><p>“D:EATALY BIRRERIA”),</p>
-</dd>
-</dl>
+<div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">plugin</span> <span class="s2">&quot;beancount.plugins.fix_payees&quot;</span> <span class="s2">&quot;[</span>
+ <span class="p">(</span><span class="s2">&quot;T-Mobile USA&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;A:Expenses:Communications:Phone&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;D:t-mobile&quot;</span><span class="p">),</span>
+ <span class="p">(</span><span class="s2">&quot;Con Edison&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;A:Expenses:Home:Electricity&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;D:con ?ed&quot;</span><span class="p">),</span>      <span class="p">(</span><span class="s2">&quot;Birreria @ Eataly&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;D:EATALY BIRRERIA&quot;</span><span class="p">),</span>
+<span class="p">]</span><span class="s2">&quot;</span>
+</pre></div>
+</div>
 </div></blockquote>
-<p>]”</p>
-</div></blockquote>
-<p class="rubric">Functions</p>
-<table class="longtable docutils align-default">
-<colgroup>
-<col style="width: 10%" />
-<col style="width: 90%" />
-</colgroup>
-<tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.plugins.fix_payees.fix_payees" title="beancount.plugins.fix_payees.fix_payees"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fix_payees</span></code></a>(entries, options_map, config)</p></td>
-<td><p>Rename payees based on a set of rules.</p></td>
-</tr>
-</tbody>
-</table>
-<p class="rubric">Classes</p>
-<table class="longtable docutils align-default">
-<colgroup>
-<col style="width: 10%" />
-<col style="width: 90%" />
-</colgroup>
-<tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.plugins.fix_payees.FixPayeesError" title="beancount.plugins.fix_payees.FixPayeesError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">FixPayeesError</span></code></a>(source, message, entry)</p></td>
-<td><p></p></td>
-</tr>
-</tbody>
-</table>
 <dl class="class">
 <dt id="beancount.plugins.fix_payees.FixPayeesError">
 <em class="property">class </em><code class="sig-prename descclassname">beancount.plugins.fix_payees.</code><code class="sig-name descname">FixPayeesError</code><span class="sig-paren">(</span><em class="sig-param">source</em>, <em class="sig-param">message</em>, <em class="sig-param">entry</em><span class="sig-paren">)</span><a class="headerlink" href="#beancount.plugins.fix_payees.FixPayeesError" title="Permalink to this definition">¶</a></dt>
@@ -125,10 +100,10 @@ is used.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>entries</strong> – a list of entry instances</p></li>
-<li><p><strong>options_map</strong> – a dict of options parsed from the file</p></li>
-<li><p><strong>config</strong> – A configuration string, which is intended to be a list of
-(PAYEE, MATCH, …) rules. See module docstring for details.</p></li>
+<li><p><strong>entries</strong> (<em>list</em>) – a list of entry instances</p></li>
+<li><p><strong>options_map</strong> (<em>dict</em>) – a dict of options parsed from the file</p></li>
+<li><p><strong>config</strong> (<em>str</em>) – A configuration string, which is intended to be a list of
+<cite>(PAYEE, MATCH, …)</cite> rules. See module docstring for details.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>

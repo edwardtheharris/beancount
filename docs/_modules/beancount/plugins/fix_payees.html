@@ -38,14 +38,18 @@
 
 <span class="sd">This plugin accepts a list of rules in this format:</span>
 
-<span class="sd">  plugin &quot;beancount.plugins.fix_payees&quot; &quot;[</span>
-<span class="sd">      (PAYEE, MATCH1, MATCH2, ...),</span>
-<span class="sd">  ]&quot;</span>
+<span class="sd">  .. code::</span>
+
+<span class="sd">     plugin &quot;beancount.plugins.fix_payees&quot; &quot;[</span>
+<span class="sd">          (PAYEE, MATCH1, MATCH2, ...),</span>
+<span class="sd">     ]&quot;</span>
 
 <span class="sd">Each of the &quot;MATCH&quot; clauses is a string, in the format:</span>
 
-<span class="sd">  &quot;A:&lt;regexp&gt;&quot; : Match the account name.</span>
-<span class="sd">  &quot;D:&lt;regexp&gt;&quot; : Match the payee or the narration.</span>
+<span class="sd">  .. code::</span>
+
+<span class="sd">     &quot;A:&lt;regexp&gt;&quot; : Match the account name.</span>
+<span class="sd">     &quot;D:&lt;regexp&gt;&quot; : Match the payee or the narration.</span>
 
 <span class="sd">The plugin matches the Transactions in the file and if there is a</span>
 <span class="sd">case-insensitive match against the regular expression (we use re.search()),</span>
@@ -54,20 +58,18 @@
 
 <span class="sd">For example:</span>
 
-<span class="sd">  plugin &quot;beancount.plugins.fix_payees&quot; &quot;[</span>
+<span class="sd">  .. code::</span>
 
+<span class="sd">     plugin &quot;beancount.plugins.fix_payees&quot; &quot;[</span>
 <span class="sd">      (&quot;T-Mobile USA&quot;,</span>
 <span class="sd">       &quot;A:Expenses:Communications:Phone&quot;,</span>
 <span class="sd">       &quot;D:t-mobile&quot;),</span>
-
 <span class="sd">      (&quot;Con Edison&quot;,</span>
 <span class="sd">       &quot;A:Expenses:Home:Electricity&quot;,</span>
-<span class="sd">       &quot;D:con ?ed&quot;),</span>
-
+<span class="sd">       &quot;D:con ?ed&quot;),\</span>
 <span class="sd">      (&quot;Birreria @ Eataly&quot;,</span>
 <span class="sd">       &quot;D:EATALY BIRRERIA&quot;),</span>
-
-<span class="sd">  ]&quot;</span>
+<span class="sd">     ]&quot;</span>
 
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="n">__copyright__</span> <span class="o">=</span> <span class="s2">&quot;Copyright (C) 2016  Martin Blais&quot;</span>
@@ -93,13 +95,11 @@
 <div class="viewcode-block" id="fix_payees"><a class="viewcode-back" href="../../../modules/plugins/fix_payees.html#beancount.plugins.fix_payees.fix_payees">[docs]</a><span class="k">def</span> <span class="nf">fix_payees</span><span class="p">(</span><span class="n">entries</span><span class="p">,</span> <span class="n">options_map</span><span class="p">,</span> <span class="n">config</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Rename payees based on a set of rules. See module docstring for details.</span>
 
-<span class="sd">    Args:</span>
-<span class="sd">      entries: a list of entry instances</span>
-<span class="sd">      options_map: a dict of options parsed from the file</span>
-<span class="sd">      config: A configuration string, which is intended to be a list of</span>
-<span class="sd">        (PAYEE, MATCH, ...) rules. See module docstring for details.</span>
-<span class="sd">    Returns:</span>
-<span class="sd">      A tuple of entries and errors.</span>
+<span class="sd">    :param list entries: a list of entry instances</span>
+<span class="sd">    :param dict options_map: a dict of options parsed from the file</span>
+<span class="sd">    :param str config: A configuration string, which is intended to be a list of</span>
+<span class="sd">        `(PAYEE, MATCH, ...)` rules. See module docstring for details.</span>
+<span class="sd">    :return:  A tuple of entries and errors.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">errors</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span>

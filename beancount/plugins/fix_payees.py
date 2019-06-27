@@ -4,14 +4,18 @@ This can be used to clean up dirty imported payee names.
 
 This plugin accepts a list of rules in this format:
 
-  plugin "beancount.plugins.fix_payees" "[
-      (PAYEE, MATCH1, MATCH2, ...),
-  ]"
+  .. code::
+
+     plugin "beancount.plugins.fix_payees" "[
+          (PAYEE, MATCH1, MATCH2, ...),
+     ]"
 
 Each of the "MATCH" clauses is a string, in the format:
 
-  "A:<regexp>" : Match the account name.
-  "D:<regexp>" : Match the payee or the narration.
+  .. code::
+
+     "A:<regexp>" : Match the account name.
+     "D:<regexp>" : Match the payee or the narration.
 
 The plugin matches the Transactions in the file and if there is a
 case-insensitive match against the regular expression (we use re.search()),
@@ -20,20 +24,18 @@ is used.
 
 For example:
 
-  plugin "beancount.plugins.fix_payees" "[
+  .. code::
 
+     plugin "beancount.plugins.fix_payees" "[
       ("T-Mobile USA",
        "A:Expenses:Communications:Phone",
        "D:t-mobile"),
-
       ("Con Edison",
        "A:Expenses:Home:Electricity",
-       "D:con ?ed"),
-
+       "D:con ?ed"),\
       ("Birreria @ Eataly",
        "D:EATALY BIRRERIA"),
-
-  ]"
+     ]"
 
 """
 __copyright__ = "Copyright (C) 2016  Martin Blais"
@@ -59,13 +61,11 @@ _DEBUG = False
 def fix_payees(entries, options_map, config):
     """Rename payees based on a set of rules. See module docstring for details.
 
-    Args:
-      entries: a list of entry instances
-      options_map: a dict of options parsed from the file
-      config: A configuration string, which is intended to be a list of
-        (PAYEE, MATCH, ...) rules. See module docstring for details.
-    Returns:
-      A tuple of entries and errors.
+    :param list entries: a list of entry instances
+    :param dict options_map: a dict of options parsed from the file
+    :param str config: A configuration string, which is intended to be a list of
+        `(PAYEE, MATCH, ...)` rules. See module docstring for details.
+    :return:  A tuple of entries and errors.
     """
     errors = []
     if config.strip():
