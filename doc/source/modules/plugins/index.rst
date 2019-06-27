@@ -6,6 +6,7 @@ Plugins
    :caption: Contents:
 
    fix_payees
+   tag_pending
 
 
 .. currentmodule:: beancount.plugins
