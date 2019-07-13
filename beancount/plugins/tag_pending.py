@@ -9,6 +9,7 @@ implement that with a plugin.
 
 For example, assuming the user enters linked transactions like this:
 
+<<<<<<< HEAD
 .. code::
 
    2013-03-28 * "Bill for datacenter electricity"  ^invoice-27a30ab61191
@@ -19,6 +20,17 @@ For example, assuming the user enters linked transactions like this:
       Assets:Checking			  	-450.82 USD
       Liabilities:AccountsPayable
 
+=======
+  .. code::
+
+     2013-03-28 * "Bill for datacenter electricity"  ^invoice-27a30ab61191
+       Expenses:Electricity			  450.82 USD
+       Liabilities:AccountsPayable
+
+     2013-04-15 * "Paying electricity company" ^invoice-27a30ab61191
+       Assets:Checking			  	-450.82 USD
+       Liabilities:AccountsPayable
+>>>>>>> 69a90239ae29d7bd49e0df80f6e7fa9666087d40
 
 Transactions are grouped by link ("invoice-27a30ab61191") and then the
 intersection of their common accounts is automatically calculated
@@ -46,10 +58,17 @@ def tag_pending_transactions(entries, tag_name='PENDING'):
     balance of the intersection of their common accounts. If the balance does
     not sum to zero, insert a 'tag_name' tag in the entries.
 
+<<<<<<< HEAD
     :param entries: A list of directives/transactions to process.
     :param tag_name: A string, the name of the tag to be inserted if async
         linked  group of entries is found not to match
     :return: A modified set of entries, possibly tagged as pending.
+=======
+    :param list entries: A list of directives/transactions to process.
+    :param str tag_name: A string, the name of the tag to be inserted if
+        a linked group of entries is found not to match
+    :returns: A modified set of entries, possibly tagged as pending.
+>>>>>>> 69a90239ae29d7bd49e0df80f6e7fa9666087d40
 
     """
     link_groups = basicops.group_entries_by_link(entries)
@@ -84,10 +103,8 @@ def tag_pending_transactions(entries, tag_name='PENDING'):
 def tag_pending_plugin(entries, options_map):
     """A plugin that finds and tags pending transactions.
 
-    Args:
-      entries: A list of entry instances.
-      options_map: A dict of options parsed from the file.
-    Returns:
-      A tuple of entries and errors.
+    :param list entries: A list of entry instances.
+    :param dict options_map: A dict of options parsed from the file.
+    :returns tuple: A tuple of entries and errors.
     """
     return (tag_pending_transactions(entries, 'PENDING'), [])

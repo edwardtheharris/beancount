@@ -1,14 +1,14 @@
-beancount.parser.parser
+Parser
 =======================
 
 .. automodule:: beancount.parser.parser
 
-   
-   
+
+
    .. rubric:: Functions
 
    .. autosummary::
-   
+
       is_entry_incomplete
       is_posting_incomplete
       parse_doc
@@ -16,13 +16,3 @@ beancount.parser.parser
       parse_many
       parse_one
       parse_string
-   
-   
-
-   
-   
-   
-
-   
-   
-   

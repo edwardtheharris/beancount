@@ -1,14 +1,17 @@
 Plugins
 =======
 
+.. currentmodule:: beancount.plugins
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
    fix_payees
+   tag_pending
 
-
-.. currentmodule:: beancount.plugins
+.. automodule:: beancount.plugins
+   :members:
 
 .. autosummary::
    :toctree:
@@ -35,7 +38,6 @@ Plugins
    pedantic
    sellgains
    split_expenses
-   tag_pending
    unique_prices
    unrealized
 
