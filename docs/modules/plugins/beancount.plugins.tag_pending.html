@@ -36,44 +36,46 @@
   <div class="section" id="module-beancount.plugins.tag_pending">
 <span id="beancount-plugins-tag-pending"></span><h1>beancount.plugins.tag_pending<a class="headerlink" href="#module-beancount.plugins.tag_pending" title="Permalink to this headline">¶</a></h1>
 <p>An example of tracking unpaid payables or receivables.</p>
-<p>A user with lots of invoices to track may want to produce a report of pending or
-incomplete payables or receivables. Beancount does not by default offer such a
-dedicated feature, but it is easy to build one by using existing link attributes
-on transactions. This is an example on how to implement that with a plugin.</p>
+<p>A user with lots of invoices to track may want to produce a report of pending
+or incomplete payables or receivables. Beancount does not by default offer
+such a dedicated feature, but it is easy to build one by using existing
+link attributes on transactions. This is an example on how to
+implement that with a plugin.</p>
 <p>For example, assuming the user enters linked transactions like this:</p>
-<blockquote>
-<div><dl class="simple">
-<dt>2013-03-28 * “Bill for datacenter electricity”  ^invoice-27a30ab61191</dt><dd><p>Expenses:Electricity                          450.82 USD
-Liabilities:AccountsPayable</p>
-</dd>
-<dt>2013-04-15 * “Paying electricity company” ^invoice-27a30ab61191</dt><dd><p>Assets:Checking                             -450.82 USD
-Liabilities:AccountsPayable</p>
-</dd>
-</dl>
-</div></blockquote>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="mi">2013</span><span class="o">-</span><span class="mi">03</span><span class="o">-</span><span class="mi">28</span> <span class="o">*</span> <span class="s2">&quot;Bill for datacenter electricity&quot;</span>  <span class="o">^</span><span class="n">invoice</span><span class="o">-</span><span class="mi">27</span><span class="n">a30ab61191</span>
+   <span class="n">Expenses</span><span class="p">:</span><span class="n">Electricity</span>                        <span class="mf">450.82</span> <span class="n">USD</span>
+   <span class="n">Liabilities</span><span class="p">:</span><span class="n">AccountsPayable</span>
+
+<span class="mi">2013</span><span class="o">-</span><span class="mi">04</span><span class="o">-</span><span class="mi">15</span> <span class="o">*</span> <span class="s2">&quot;Paying electricity company&quot;</span> <span class="o">^</span><span class="n">invoice</span><span class="o">-</span><span class="mi">27</span><span class="n">a30ab61191</span>
+   <span class="n">Assets</span><span class="p">:</span><span class="n">Checking</span>                           <span class="o">-</span><span class="mf">450.82</span> <span class="n">USD</span>
+   <span class="n">Liabilities</span><span class="p">:</span><span class="n">AccountsPayable</span>
+</pre></div>
+</div>
 <p>Transactions are grouped by link (“invoice-27a30ab61191”) and then the
 intersection of their common accounts is automatically calculated
-(“Liabilities:AccountsPayable”). We then add up the balance of all the postings
-for this account in this link group and check if the sum is zero. If there is a
-residual amount in this balance, we mark the associated entries as incomplete by
-inserting a #PENDING tag on them. The user can then use that tag to navigate to
-the corresponding view in the web interface, or just find the entries and
-produce a listing of them.</p>
-<p class="rubric">Functions</p>
-<table class="longtable docutils align-default">
-<colgroup>
-<col style="width: 10%" />
-<col style="width: 90%" />
-</colgroup>
-<tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#beancount.plugins.tag_pending.tag_pending_plugin" title="beancount.plugins.tag_pending.tag_pending_plugin"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tag_pending_plugin</span></code></a>(entries, options_map)</p></td>
-<td><p>A plugin that finds and tags pending transactions.</p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#beancount.plugins.tag_pending.tag_pending_transactions" title="beancount.plugins.tag_pending.tag_pending_transactions"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tag_pending_transactions</span></code></a>(entries[, tag_name])</p></td>
-<td><p>Filter out incomplete linked transactions to a transfer account.</p></td>
-</tr>
-</tbody>
-</table>
+(“Liabilities:AccountsPayable”). We then add up the balance of all the
+postings for this account in this link group and check if the sum is zero.
+If there is a residual amount in this balance, we mark the
+associated entries as incomplete by inserting a #PENDING tag on them.
+The user can then use that tag to navigate to the corresponding view
+in the web interface, or just find the entries and produce a listing of them.</p>
+<dl class="function">
+<dt id="beancount.plugins.tag_pending.tag_pending_plugin">
+<code class="sig-prename descclassname">beancount.plugins.tag_pending.</code><code class="sig-name descname">tag_pending_plugin</code><span class="sig-paren">(</span><em class="sig-param">entries</em>, <em class="sig-param">options_map</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/plugins/tag_pending.html#tag_pending_plugin"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.plugins.tag_pending.tag_pending_plugin" title="Permalink to this definition">¶</a></dt>
+<dd><p>A plugin that finds and tags pending transactions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>entries</strong> – A list of entry instances.</p></li>
+<li><p><strong>options_map</strong> – A dict of options parsed from the file.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A tuple of entries and errors.</p>
+</dd>
+</dl>
+</dd></dl>
+
 <dl class="function">
 <dt id="beancount.plugins.tag_pending.tag_pending_transactions">
 <code class="sig-prename descclassname">beancount.plugins.tag_pending.</code><code class="sig-name descname">tag_pending_transactions</code><span class="sig-paren">(</span><em class="sig-param">entries</em>, <em class="sig-param">tag_name='PENDING'</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/plugins/tag_pending.html#tag_pending_transactions"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.plugins.tag_pending.tag_pending_transactions" title="Permalink to this definition">¶</a></dt>
@@ -85,8 +87,8 @@ not sum to zero, insert a ‘tag_name’ tag in the entries.</p>
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>entries</strong> – A list of directives/transactions to process.</p></li>
-<li><p><strong>tag_name</strong> – A string, the name of the tag to be inserted if a linked group
-of entries is found not to match</p></li>
+<li><p><strong>tag_name</strong> – A string, the name of the tag to be inserted if async
+linked  group of entries is found not to match</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
@@ -96,8 +98,29 @@ of entries is found not to match</p></li>
 </dd></dl>
 
 <dl class="function">
-<dt id="beancount.plugins.tag_pending.tag_pending_plugin">
-<code class="sig-prename descclassname">beancount.plugins.tag_pending.</code><code class="sig-name descname">tag_pending_plugin</code><span class="sig-paren">(</span><em class="sig-param">entries</em>, <em class="sig-param">options_map</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/plugins/tag_pending.html#tag_pending_plugin"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#beancount.plugins.tag_pending.tag_pending_plugin" title="Permalink to this definition">¶</a></dt>
+<dt>
+<code class="sig-prename descclassname">beancount.plugins.tag_pending.</code><code class="sig-name descname">tag_pending_transactions</code><span class="sig-paren">(</span><em class="sig-param">entries</em>, <em class="sig-param">tag_name='PENDING'</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/plugins/tag_pending.html#tag_pending_transactions"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>Filter out incomplete linked transactions to a transfer account.</p>
+<p>Given a list of entries, group the entries by their link and compute the
+balance of the intersection of their common accounts. If the balance does
+not sum to zero, insert a ‘tag_name’ tag in the entries.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>entries</strong> – A list of directives/transactions to process.</p></li>
+<li><p><strong>tag_name</strong> – A string, the name of the tag to be inserted if async
+linked  group of entries is found not to match</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A modified set of entries, possibly tagged as pending.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="sig-prename descclassname">beancount.plugins.tag_pending.</code><code class="sig-name descname">tag_pending_plugin</code><span class="sig-paren">(</span><em class="sig-param">entries</em>, <em class="sig-param">options_map</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/beancount/plugins/tag_pending.html#tag_pending_plugin"><span class="viewcode-link">[source]</span></a></dt>
 <dd><p>A plugin that finds and tags pending transactions.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -180,7 +203,7 @@ of entries is found not to match</p></li>
       &copy;2019, Martin Blais.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.2</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.0</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

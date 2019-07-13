@@ -35,29 +35,33 @@
 <span></span><span class="ch">#!/usr/bin/env python3</span>
 <span class="sd">&quot;&quot;&quot;An example of tracking unpaid payables or receivables.</span>
 
-<span class="sd">A user with lots of invoices to track may want to produce a report of pending or</span>
-<span class="sd">incomplete payables or receivables. Beancount does not by default offer such a</span>
-<span class="sd">dedicated feature, but it is easy to build one by using existing link attributes</span>
-<span class="sd">on transactions. This is an example on how to implement that with a plugin.</span>
+<span class="sd">A user with lots of invoices to track may want to produce a report of pending</span>
+<span class="sd">or incomplete payables or receivables. Beancount does not by default offer</span>
+<span class="sd">such a dedicated feature, but it is easy to build one by using existing</span>
+<span class="sd">link attributes on transactions. This is an example on how to</span>
+<span class="sd">implement that with a plugin.</span>
 
 <span class="sd">For example, assuming the user enters linked transactions like this:</span>
 
-<span class="sd">  2013-03-28 * &quot;Bill for datacenter electricity&quot;  ^invoice-27a30ab61191</span>
-<span class="sd">    Expenses:Electricity			  450.82 USD</span>
-<span class="sd">    Liabilities:AccountsPayable</span>
+<span class="sd">.. code::</span>
 
-<span class="sd">  2013-04-15 * &quot;Paying electricity company&quot; ^invoice-27a30ab61191</span>
-<span class="sd">    Assets:Checking			  	-450.82 USD</span>
-<span class="sd">    Liabilities:AccountsPayable</span>
+<span class="sd">   2013-03-28 * &quot;Bill for datacenter electricity&quot;  ^invoice-27a30ab61191</span>
+<span class="sd">      Expenses:Electricity			  450.82 USD</span>
+<span class="sd">      Liabilities:AccountsPayable</span>
+
+<span class="sd">   2013-04-15 * &quot;Paying electricity company&quot; ^invoice-27a30ab61191</span>
+<span class="sd">      Assets:Checking			  	-450.82 USD</span>
+<span class="sd">      Liabilities:AccountsPayable</span>
+
 
 <span class="sd">Transactions are grouped by link (&quot;invoice-27a30ab61191&quot;) and then the</span>
 <span class="sd">intersection of their common accounts is automatically calculated</span>
-<span class="sd">(&quot;Liabilities:AccountsPayable&quot;). We then add up the balance of all the postings</span>
-<span class="sd">for this account in this link group and check if the sum is zero. If there is a</span>
-<span class="sd">residual amount in this balance, we mark the associated entries as incomplete by</span>
-<span class="sd">inserting a #PENDING tag on them. The user can then use that tag to navigate to</span>
-<span class="sd">the corresponding view in the web interface, or just find the entries and</span>
-<span class="sd">produce a listing of them.</span>
+<span class="sd">(&quot;Liabilities:AccountsPayable&quot;). We then add up the balance of all the</span>
+<span class="sd">postings for this account in this link group and check if the sum is zero.</span>
+<span class="sd">If there is a residual amount in this balance, we mark the</span>
+<span class="sd">associated entries as incomplete by inserting a #PENDING tag on them.</span>
+<span class="sd">The user can then use that tag to navigate to the corresponding view</span>
+<span class="sd">in the web interface, or just find the entries and produce a listing of them.</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="n">__copyright__</span> <span class="o">=</span> <span class="s2">&quot;Copyright (C) 2014-2017  Martin Blais&quot;</span>
@@ -76,12 +80,10 @@
 <span class="sd">    balance of the intersection of their common accounts. If the balance does</span>
 <span class="sd">    not sum to zero, insert a &#39;tag_name&#39; tag in the entries.</span>
 
-<span class="sd">    Args:</span>
-<span class="sd">      entries: A list of directives/transactions to process.</span>
-<span class="sd">      tag_name: A string, the name of the tag to be inserted if a linked group</span>
-<span class="sd">        of entries is found not to match</span>
-<span class="sd">    Returns:</span>
-<span class="sd">      A modified set of entries, possibly tagged as pending.</span>
+<span class="sd">    :param entries: A list of directives/transactions to process.</span>
+<span class="sd">    :param tag_name: A string, the name of the tag to be inserted if async</span>
+<span class="sd">        linked  group of entries is found not to match</span>
+<span class="sd">    :return: A modified set of entries, possibly tagged as pending.</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">link_groups</span> <span class="o">=</span> <span class="n">basicops</span><span class="o">.</span><span class="n">group_entries_by_link</span><span class="p">(</span><span class="n">entries</span><span class="p">)</span>
@@ -181,7 +183,7 @@
       &copy;2019, Martin Blais.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.2</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.0</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
     </div>

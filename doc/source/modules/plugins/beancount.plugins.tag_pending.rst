@@ -1,23 +1,10 @@
 beancount.plugins.tag\_pending
 ==============================
 
+.. currentmodule:: beancount.plugins
+
 .. automodule:: beancount.plugins.tag_pending
 
-   
-   
-   .. rubric:: Functions
+   .. autofunction:: tag_pending_plugin
 
-   .. autosummary::
-   
-      tag_pending_plugin
-      tag_pending_transactions
-   
-   
-
-   
-   
-   
-
-   
-   
-   
+   .. autofunction:: tag_pending_transactions
