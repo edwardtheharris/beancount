@@ -1,4 +1,4 @@
-node() {
+node('worker') {
   stage('pipenv') {
     sh($/
       pipenv install --dev
