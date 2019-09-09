@@ -1,0 +1,22 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+python-dateutil = "*"
+bottle = "*"
+ply = "*"
+lxml = "*"
+google-api-python-client = "*"
+"oauth2client" = "*"
+"httplib2" = "*"
+requests = "*"
+"beautifulsoup4" = "*"
+python-magic = "*"
+
+[dev-packages]
+pytest = "*"
+
+[requires]
+python_version = "3.7"
