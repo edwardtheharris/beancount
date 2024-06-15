@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Utility functions to download and convert Google Docs.
 """
+from security import safe_command
+
 __copyright__ = "Copyright (C) 2017  Martin Blais"
 __license__ = "GNU GPLv2"
 
@@ -164,7 +166,7 @@ def collate_pdf_filenames(filenames, output_filename):
     """
     command = ['pdftk'] + filenames + ['cat', 'output', output_filename]
     try:
-        pipe = subprocess.Popen(command, shell=False)
+        pipe = safe_command.run(subprocess.Popen, command, shell=False)
         pipe.communicate()
     except (FileNotFoundError, PermissionError) as exc:
         raise SystemExit('pdftk is probably not installed: {}'.format(exc))
