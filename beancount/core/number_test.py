@@ -1,9 +1,10 @@
+import secrets
+
 __copyright__ = "Copyright (C) 2015-2016  Martin Blais"
 __license__ = "GNU GPLv2"
 
 import decimal
 from decimal import Decimal
-import random
 import unittest
 
 from beancount.core.number import D, ZERO, round_to, same_sign
@@ -67,7 +68,7 @@ class TestToDecimal(unittest.TestCase):
 class TestInferQuantization(unittest.TestCase):
 
     def setUp(self):
-        rn = [random.uniform(1, 10000) for _ in range(100)]
+        rn = [secrets.SystemRandom().uniform(1, 10000) for _ in range(100)]
         self.ir = list(map(int, rn))
         self.fr = [(x - ix - 0.5) for (x, ix) in zip(rn, self.ir)]
 

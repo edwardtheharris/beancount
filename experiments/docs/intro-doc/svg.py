@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Generate a visual graph of transactions.
 """
+import secrets
+
 __copyright__ = "Copyright (C) 2016-2017  Martin Blais"
 __license__ = "GNU GPLv2"
 
@@ -10,7 +12,6 @@ import csv
 import collections
 import logging
 import math
-import random
 import re
 import textwrap
 from os import path
@@ -104,9 +105,9 @@ def main():
 
     # Seed randomness for consistency.
     if args.seed is None:
-        args.seed = random.randint(0, 2**20)
+        args.seed = secrets.SystemRandom().randint(0, 2**20)
         print('seed = %s' % args.seed)
-    random.seed(args.seed)
+    secrets.SystemRandom().seed(args.seed)
 
     # Read the balances.
     with open(args.balances_filename, 'r') as balfile:
@@ -120,19 +121,19 @@ def main():
     # balance_groups = [random.sample(balances, random.randint(5, 24)) for _ in range(2)]
 
     sbalances = [bal for bal in balances if not bal[0].startswith('Equity')]
-    random.shuffle(sbalances)
+    secrets.SystemRandom().shuffle(sbalances)
 
-    random.seed(args.seed)
+    secrets.SystemRandom().seed(args.seed)
     p = Params()
     p.draw_acctype = False
     p.y_interline += 2.5
     draw_diagram(p, [sbalances], 'svg3.html')
 
-    random.seed(args.seed)
+    secrets.SystemRandom().seed(args.seed)
     p.draw_acctype = True
     draw_diagram(p, [sbalances], 'svg4.html')
 
-    random.seed(args.seed)
+    secrets.SystemRandom().seed(args.seed)
     p.draw_acctype = False
     p.x_timeline_end /= 2
     p.x_width = p.x_timeline_end + p.x_margin + p.x_balance_width + p.x_margin
@@ -140,7 +141,7 @@ def main():
     p.draw_period = False
     draw_diagram(p, [sbalances[0:len(sbalances)//2]], 'svg2.html')
 
-    random.seed(args.seed)
+    secrets.SystemRandom().seed(args.seed)
     p.x_timeline_end *= 0.7
     p.x_width = p.x_timeline_end + p.x_margin + p.x_balance_width + p.x_margin
     p.x_timeline_before = 100
@@ -148,29 +149,29 @@ def main():
 
 
     p = Params()
-    random.seed(args.seed+1)
+    secrets.SystemRandom().seed(args.seed+1)
     group_dict = groupby(balances, lambda item: item[0].split(':', 1)[0])
     group_dict['Equity'].reverse()
     groups = [group_dict[x] for x in 'Assets Liabilities Equity Income Expenses'.split()]
     draw_diagram(p, groups, 'svg5.html')
 
-    random.seed(args.seed+1)
+    secrets.SystemRandom().seed(args.seed+1)
     p.draw_clearing = True
     draw_diagram(p, groups, 'svg6.html', scale_income=D('0.3'))
 
-    random.seed(args.seed+1)
+    secrets.SystemRandom().seed(args.seed+1)
     p.draw_opening = True
     draw_diagram(p, groups, 'svg7.html')
 
-    random.seed(args.seed+1)
+    secrets.SystemRandom().seed(args.seed+1)
     p.draw_before = False
     draw_diagram(p, groups, 'svg8.html')
 
-    random.seed(args.seed+1)
+    secrets.SystemRandom().seed(args.seed+1)
     p.draw_after = False
     draw_diagram(p, groups, 'svg9.html')
 
-    random.seed(args.seed+1)
+    secrets.SystemRandom().seed(args.seed+1)
     p.draw_close = True
     draw_diagram(p, groups, 'svgA.html')
 
@@ -447,16 +448,16 @@ def create_txn(p, x, y_lines, boxes):
         # Select a number of postings.
         num_postings = 0
         while not (p.min_postings <= num_postings <= min(p.max_postings, len(y_lines))):
-            num_postings = int(random.lognormvariate(1.0, 0.4))
+            num_postings = int(secrets.SystemRandom().lognormvariate(1.0, 0.4))
 
         # Select some subset of lines. Try to keep the lines together.
-        first_line = random.randint(0, len(y_lines) - num_postings)
+        first_line = secrets.SystemRandom().randint(0, len(y_lines) - num_postings)
         lines = [first_line]
         probab_select = 0.3
         line = first_line
         while len(lines) < num_postings:
             for line in range(first_line + 1, len(y_lines)):
-                if random.random() < probab_select:
+                if secrets.SystemRandom().random() < probab_select:
                     lines.append(line)
                 if len(lines) >= num_postings:
                     break
