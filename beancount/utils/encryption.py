@@ -1,5 +1,7 @@
 """Support for encrypted tests.
 """
+from security import safe_command
+
 __copyright__ = "Copyright (C) 2015-2017  Martin Blais"
 __license__ = "GNU GPLv2"
 
@@ -50,7 +52,7 @@ def read_encrypted_file(filename):
       OSError: If we could not properly decrypt the file.
     """
     command = ['gpg', '--batch', '--decrypt', path.realpath(filename)]
-    pipe = subprocess.Popen(command,
+    pipe = safe_command.run(subprocess.Popen, command,
                             shell=False,
                             stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE)

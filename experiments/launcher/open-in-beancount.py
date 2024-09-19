@@ -17,6 +17,8 @@ How to install this on Ubuntu
      xdg-open 'beancount:///path/to/file.beancount?lineno=100'
 
 """
+from security import safe_command
+
 __copyright__ = "Copyright (C) 2016  Martin Blais"
 __license__ = "GNU GPLv2"
 
@@ -52,7 +54,7 @@ def main():
     # Launch your favorite editor to that given location.
     command = EDITOR.format(filename=filename, lineno=lineno)
     print(command)
-    code = subprocess.call(command, shell=True)
+    code = safe_command.run(subprocess.call, command, shell=True)
     if code != 0:
         print("Error launching editor: %s".format(code), file=sys.stderr)
         sys.exit(1)
