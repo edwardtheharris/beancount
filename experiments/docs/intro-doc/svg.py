@@ -110,7 +110,7 @@ def main():
 
     # Read the balances.
     with open(args.balances_filename, 'r') as balfile:
-        balfile.readline()
+        balfile.readline(5_000_000)
         balances = sorted([(account, balance)
                            for (account, balance) in csv.reader(balfile)
                            if (not re.search(r'201\d', account) and
