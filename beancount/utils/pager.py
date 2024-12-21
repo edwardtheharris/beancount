@@ -13,6 +13,8 @@ upon exit we close the file object. This also silences broken pipe errors
 triggered by the user exiting the sub-process, and recovers from a failing pager
 command by just using stdout.
 """
+from security import safe_command
+
 __copyright__ = "Copyright (C) 2014-2017  Martin Blais"
 __license__ = "GNU GPLv2"
 
@@ -57,7 +59,7 @@ def create_pager(command, file):
     env['LESSCHARSET'] = "utf-8"
 
     try:
-        pipe = subprocess.Popen(command, shell=True,
+        pipe = safe_command.run(subprocess.Popen, command, shell=True,
                                 stdin=subprocess.PIPE,
                                 stdout=file,
                                 env=env)

@@ -1,3 +1,5 @@
+from security import safe_command
+
 __copyright__ = "Copyright (C) 2015-2016  Martin Blais"
 __license__ = "GNU GPLv2"
 
@@ -109,7 +111,7 @@ class TestEncryptedBase(unittest.TestCase):
                    '--homedir', self.ringdir,
                    '--trust-model', 'always') + args
         stdin = kw.pop('stdin', None)
-        pipe = subprocess.Popen(command, shell=False,
+        pipe = safe_command.run(subprocess.Popen, command, shell=False,
                                 stdin=subprocess.PIPE if stdin else None,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
