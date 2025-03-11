@@ -1,3 +1,5 @@
+import secrets
+
 __copyright__ = "Copyright (C) 2014-2017  Martin Blais"
 __license__ = "GNU GPLv2"
 
@@ -11,7 +13,6 @@ import itertools
 import logging
 import math
 import operator
-import random
 import re
 import sys
 import textwrap
@@ -222,7 +223,7 @@ def date_random_seq(date_begin, date_end, days_min, days_max):
     assert days_min <= days_max
     date = date_begin
     while date < date_end:
-        nb_days_forward = random.randint(days_min, days_max)
+        nb_days_forward = secrets.SystemRandom().randint(days_min, days_max)
         date += datetime.timedelta(days=nb_days_forward)
         if date >= date_end:
             break
@@ -244,7 +245,7 @@ def delay_dates(date_iter, delay_days_min, delay_days_max):
     last_date = last_date.date() if isinstance(last_date, datetime.datetime) else last_date
     for dtime in dates:
         date = dtime.date() if isinstance(dtime, datetime.datetime) else dtime
-        date += datetime.timedelta(days=random.randint(delay_days_min, delay_days_max))
+        date += datetime.timedelta(days=secrets.SystemRandom().randint(delay_days_min, delay_days_max))
         if date >= last_date:
             break
         yield date
@@ -520,15 +521,15 @@ def generate_tax_accounts(year, date_max):
     """
     date_year = datetime.date(year, 1, 1)
     date_filing = (datetime.date(year + 1, 3, 20) +
-                   datetime.timedelta(days=random.randint(0, 5)))
+                   datetime.timedelta(days=secrets.SystemRandom().randint(0, 5)))
 
-    date_federal = (date_filing + datetime.timedelta(days=random.randint(0, 4)))
-    date_state = (date_filing + datetime.timedelta(days=random.randint(0, 4)))
+    date_federal = (date_filing + datetime.timedelta(days=secrets.SystemRandom().randint(0, 4)))
+    date_state = (date_filing + datetime.timedelta(days=secrets.SystemRandom().randint(0, 4)))
 
     quantum = D('0.01')
-    amount_federal = D(max(random.normalvariate(500, 120), 12)).quantize(quantum)
+    amount_federal = D(max(secrets.SystemRandom().normalvariate(500, 120), 12)).quantize(quantum)
     amount_federal_neg = -amount_federal
-    amount_state = D(max(random.normalvariate(300, 100), 10)).quantize(quantum)
+    amount_state = D(max(secrets.SystemRandom().normalvariate(300, 100), 10)).quantize(quantum)
     amount_state_neg = -amount_state
     amount_payable = -(amount_federal + amount_state)
 
@@ -789,7 +790,7 @@ def generate_taxable_investment(date_begin, date_end, entries, price_map, stocks
             portfolio_cost = total.reduce(convert.get_cost).get_currency_units('CCY').number
             amount_cash = (frac_dividend * portfolio_cost).quantize(D('0.01'))
             amount_cash_neg = -amount_cash
-            stock = random.choice(stocks)
+            stock = secrets.choice(stocks)
             cash_dividend = parse(f"""
               {next_dividend_date} * "Dividends on portfolio"
                 {account}:Cash        {amount_cash:.2f} CCY
@@ -806,8 +807,8 @@ def generate_taxable_investment(date_begin, date_end, entries, price_map, stocks
         assert total_cash >= ZERO, ('Cash balance is negative: {}'.format(total_cash))
         invest_cash = total_cash * frac_invest - commission
         if invest_cash > min_amount:
-            if random.random() < p_daily_buy:
-                commodities = random.sample(stocks, random.randint(1, len(stocks)))
+            if secrets.SystemRandom().random() < p_daily_buy:
+                commodities = secrets.SystemRandom().sample(stocks, secrets.SystemRandom().randint(1, len(stocks)))
                 lot_amount = round_to(invest_cash / len(commodities), round_amount)
 
                 invested_amount = ZERO
@@ -839,7 +840,7 @@ def generate_taxable_investment(date_begin, date_end, entries, price_map, stocks
                 continue
 
         # Otherwise, sell with low probability.
-        if not stocks_inventory.is_empty() and random.random() < p_daily_sell:
+        if not stocks_inventory.is_empty() and secrets.SystemRandom().random() < p_daily_sell:
             # Choose the lot with the highest gain or highest loss.
             gains = []
             for position in stocks_inventory.get_positions():
@@ -855,7 +856,7 @@ def generate_taxable_investment(date_begin, date_end, entries, price_map, stocks
                 continue
 
             # Sell either biggest winner or biggest loser.
-            biggest = bool(random.random() < 0.5)
+            biggest = bool(secrets.SystemRandom().random() < 0.5)
             lot_tuple = sorted(gains)[0 if biggest else -1]
             gain, market_value, price, sell_position = lot_tuple
             #logging.info('Selling {} for {}'.format(sell_position, market_value))
@@ -903,10 +904,10 @@ def generate_periodic_expenses(date_iter,
         amount = D(amount_generator())
         txn_payee = (payee
                      if isinstance(payee, str)
-                     else random.choice(payee))
+                     else secrets.choice(payee))
         txn_narration = (narration
                          if isinstance(narration, str)
-                         else random.choice(narration))
+                         else secrets.choice(narration))
         amount_neg = -amount
         new_entries.extend(parse(f"""
           {date} * "{txn_payee}" "{txn_narration}"
@@ -1162,25 +1163,25 @@ def generate_banking_expenses(date_begin, date_end, account, rent_amount):
         delay_dates(rrule.rrule(rrule.MONTHLY, dtstart=date_begin, until=date_end), 2, 5),
         "RiverBank Properties", "Paying the rent",
         account, 'Expenses:Home:Rent',
-        lambda: random.normalvariate(float(rent_amount), 0))
+        lambda: secrets.SystemRandom().normalvariate(float(rent_amount), 0))
 
     electricity_expenses = generate_periodic_expenses(
         delay_dates(rrule.rrule(rrule.MONTHLY, dtstart=date_begin, until=date_end), 7, 8),
         "EDISON POWER", "",
         account, 'Expenses:Home:Electricity',
-        lambda: random.normalvariate(65, 0))
+        lambda: secrets.SystemRandom().normalvariate(65, 0))
 
     internet_expenses = generate_periodic_expenses(
         delay_dates(rrule.rrule(rrule.MONTHLY, dtstart=date_begin, until=date_end), 20, 22),
         "Wine-Tarner Cable", "",
         account, 'Expenses:Home:Internet',
-        lambda: random.normalvariate(80, 0.10))
+        lambda: secrets.SystemRandom().normalvariate(80, 0.10))
 
     phone_expenses = generate_periodic_expenses(
         delay_dates(rrule.rrule(rrule.MONTHLY, dtstart=date_begin, until=date_end), 17, 19),
         "Verizon Wireless", "",
         account, 'Expenses:Home:Phone',
-        lambda: random.normalvariate(60, 10))
+        lambda: secrets.SystemRandom().normalvariate(60, 10))
 
     return data.sorted(fee_expenses +
                        rent_expenses +
@@ -1208,15 +1209,15 @@ def generate_regular_credit_expenses(date_birth, date_begin, date_end,
         date_random_seq(date_begin, date_end, 1, 5),
         RESTAURANT_NAMES, RESTAURANT_NARRATIONS,
         account_credit, 'Expenses:Food:Restaurant',
-        lambda: min(random.lognormvariate(math.log(30), math.log(1.5)),
-                    random.randint(200, 220)))
+        lambda: min(secrets.SystemRandom().lognormvariate(math.log(30), math.log(1.5)),
+                    secrets.SystemRandom().randint(200, 220)))
 
     groceries_expenses = generate_periodic_expenses(
         date_random_seq(date_begin, date_end, 5, 20),
         GROCERIES_NAMES, "Buying groceries",
         account_credit, 'Expenses:Food:Groceries',
-        lambda: min(random.lognormvariate(math.log(80), math.log(1.3)),
-                    random.randint(250, 300)))
+        lambda: min(secrets.SystemRandom().lognormvariate(math.log(80), math.log(1.3)),
+                    secrets.SystemRandom().randint(250, 300)))
 
     subway_expenses = generate_periodic_expenses(
         date_random_seq(date_begin, date_end, 27, 33),
@@ -1257,8 +1258,8 @@ def compute_trip_dates(date_begin, date_end):
 
     date = date_begin
     while 1:
-        duration_at_home = datetime.timedelta(days=random.randint(*days_at_home))
-        duration_trip = datetime.timedelta(days=random.randint(*days_trip))
+        duration_at_home = datetime.timedelta(days=secrets.SystemRandom().randint(*days_at_home))
+        duration_trip = datetime.timedelta(days=secrets.SystemRandom().randint(*days_trip))
         date_trip_begin = date + duration_at_home
         date_trip_end = date_trip_begin + duration_trip
         if date_trip_end >= date_end:
@@ -1292,8 +1293,8 @@ def generate_trip_entries(date_begin, date_end,
     new_entries = []
     for date in date_iter(date_begin, date_end):
         for payee, account_expense, (mu, sigma3) in config:
-            if random.random() < p_day_generate:
-                amount = random.normalvariate(mu, sigma3 / 3.)
+            if secrets.SystemRandom().random() < p_day_generate:
+                amount = secrets.SystemRandom().normalvariate(mu, sigma3 / 3.)
                 amount_neg = -amount
                 new_entries.extend(parse(f"""
                   {date} * "{payee}" "" #{tag}
@@ -1331,7 +1332,7 @@ def price_series(start, mu, sigma):
     value = start
     while 1:
         yield value
-        value += random.normalvariate(mu, sigma) * value
+        value += secrets.SystemRandom().normalvariate(mu, sigma) * value
 
 
 def generate_prices(date_begin, date_end, currencies, cost_currency):
@@ -1349,10 +1350,10 @@ def generate_prices(date_begin, date_end, currencies, cost_currency):
     entries = []
     counter = itertools.count()
     for currency in currencies:
-        start_price = random.uniform(30, 200)
-        growth = random.uniform(0.02, 0.13) # %/year
+        start_price = secrets.SystemRandom().uniform(30, 200)
+        growth = secrets.SystemRandom().uniform(0.02, 0.13) # %/year
         mu = growth * (7 / 365)
-        sigma = random.uniform(0.005, 0.02) # Vol
+        sigma = secrets.SystemRandom().uniform(0.005, 0.02) # Vol
 
         for dtime, price_float in zip(rrule.rrule(rrule.WEEKLY, byweekday=rrule.FR,
                                                   dtstart=date_begin, until=date_end),
@@ -1513,7 +1514,7 @@ def write_example_file(date_birth, date_begin, date_end, reformat, file):
     rent_amount = round_to(ANNUAL_SALARY / RENT_DIVISOR, RENT_INCREMENT)
 
     # Get a random employer.
-    employer_name, employer_address = random.choice(EMPLOYERS)
+    employer_name, employer_address = secrets.choice(EMPLOYERS)
 
     logging.info("Generating Salary Employment Income")
     income_entries = generate_employment_income(employer_name, employer_address,
@@ -1534,7 +1535,7 @@ def write_example_file(date_birth, date_begin, date_end, reformat, file):
     trip_entries = []
     destinations = sorted(TRIP_DESTINATIONS.items())
     destinations.extend(destinations)
-    random.shuffle(destinations)
+    secrets.SystemRandom().shuffle(destinations)
     for (date_trip_begin, date_trip_end), (destination_name, config) in zip(
             compute_trip_dates(date_begin, date_end), destinations):
 
@@ -1753,6 +1754,6 @@ def main(date_begin, date_end, date_birth, seed, no_reformat, output, verbose):
     logging.basicConfig(level=level, format='%(levelname)-8s: %(message)s')
     if seed is not None:
         logging.info("Seed = %s", seed)
-        random.seed(seed)
+        secrets.SystemRandom().seed(seed)
 
     write_example_file(date_birth, date_begin, date_end, reformat, file=output)
