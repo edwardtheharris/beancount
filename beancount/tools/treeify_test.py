@@ -1,4 +1,6 @@
 """Unit tests for treeify tool."""
+from security import safe_command
+
 __copyright__ = "Copyright (C) 2014-2017  Martin Blais"
 __license__ = "GNU GPLv2"
 
@@ -20,7 +22,7 @@ def treeify(string, options=None):
     Returns:
       The treeified string.
     """
-    pipe = subprocess.Popen([PROGRAM] + (options or []),
+    pipe = safe_command.run(subprocess.Popen, [PROGRAM] + (options or []),
                             shell=False,
                             stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE,
