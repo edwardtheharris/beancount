@@ -1,13 +1,14 @@
 """
 Unit tests for the Position class.
 """
+import secrets
+
 __copyright__ = "Copyright (C) 2014-2017  Martin Blais"
 __license__ = "GNU GPLv2"
 
 import datetime
 import unittest
 import copy
-import random
 from datetime import date
 
 from beancount.core import position
@@ -294,7 +295,7 @@ class TestPosition(unittest.TestCase):
         self.assertEqual([pos1, pos2, pos3, pos4], sorted(positions))
 
         for _ in range(64):
-            random.shuffle(positions)
+            secrets.SystemRandom().shuffle(positions)
             self.assertEqual([pos1, pos2, pos3, pos4], sorted(positions))
 
     def test_copy(self):

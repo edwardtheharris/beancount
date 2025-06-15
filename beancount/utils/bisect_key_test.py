@@ -1,7 +1,7 @@
+import secrets
+
 __copyright__ = "Copyright (C) 2014, 2016-2017  Martin Blais"
 __license__ = "GNU GPLv2"
-
-import random
 import unittest
 
 from beancount.utils import bisect_key
@@ -12,7 +12,7 @@ class TestBisectWithKey(unittest.TestCase):
     def test_bisect_left_with_key(self):
         second = lambda x: x[1]
 
-        data = [(random.random(), i) for i in range(100)]
+        data = [(secrets.SystemRandom().random(), i) for i in range(100)]
         index = bisect_key.bisect_left_with_key(data, 40, key=second)
         self.assertEqual(index, 40)
         self.assertEqual(data[index][1], 40)
