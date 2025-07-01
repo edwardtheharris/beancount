@@ -1,6 +1,8 @@
 """
 Tests for parser.
 """
+from security import safe_command
+
 __copyright__ = "Copyright (C) 2014-2016  Martin Blais"
 __license__ = "GNU GPLv2"
 
@@ -107,7 +109,7 @@ class TestParserInputs(unittest.TestCase):
         env = test_utils.subprocess_env() if 'bazel' not in __file__ else None
         code = ('import beancount.parser.parser_test as p; '
                 'p.TestParserInputs.parse_stdin()')
-        pipe = subprocess.Popen([sys.executable, '-c', code, __file__],
+        pipe = safe_command.run(subprocess.Popen, [sys.executable, '-c', code, __file__],
                                 env=env,
                                 stdin=subprocess.PIPE)
         output, errors = pipe.communicate(self.INPUT.encode('utf-8'))
